@@ -21,12 +21,12 @@ high-level summary of what it does.
 \par
 The APIs are all specified in C, as this provides a consistent language and is
 explicit about data types which means there's no need for a separate Python
-specification.  The C code is frequently wrapped with python (via ctypes), but
-modules are often included as pure C code as they run considerably faster when
+specification.  The C code is frequently wrapped with Python (via ctypes), but
+modules are typically written in C code as they run considerably faster when
 it is all native code.
 
 \section{Manager}
-The manager it what coordinates a fuzz job.  It decides which seeds to use,
+The manager is what coordinates a fuzz job.  It decides which seeds to use,
 which mutators to run and kicks off one or more Main Fuzzers.
 
 \section{Main Fuzzer}
