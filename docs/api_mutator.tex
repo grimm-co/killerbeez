@@ -1,14 +1,14 @@
-The mutator modules are what actual mutate the seed files.  These would include
-things like a bit flipper, byte munger and so forth.  They are given a seed file
-and optionally some state information.  The state information is module-specific
-and allow the mutator to pick up where it left off.  For example, the bit
-flipper mutator module, which simply flips one bit in the input file, would just
-need to record what bit to flip as their state.  On the other hand, the byte
-munger will need to keep track of which byte it's modifying and what the new
-value is for that byte (e.g.  stomp the fourth byte with 0x41).  Additionally,
-each mutator will have a variety of configuration options that can be specified
-that will be mutator specific.  Both the mutator state and options will be
-specified as a JSON char arrays.
+The mutator modules are what actually mutate the seed files.  These would
+include things like a bit flipper, byte munger and so forth.  They are given a
+seed file and optionally some state information.  The state information is
+module-specific and allows the mutator to pick up where it left off.  For
+example, the bit flipper mutator module, which simply flips one bit in the input
+file, would just need to record what bit to flip as their state.  On the other
+hand, the byte munger will need to keep track of which byte it's modifying and
+what the new value is for that byte (e.g.  stomp the fourth byte with 0x41).
+Additionally, each mutator will have a variety of configuration options that can
+be specified that will be mutator specific.  Both the mutator state and options
+will be specified as a JSON char arrays.
 
 \par
 Anything which is mutator specific will only be used within the mutator
