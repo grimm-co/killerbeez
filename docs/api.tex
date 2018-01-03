@@ -27,7 +27,9 @@ it is all native code.
 
 \section{Manager}
 The manager is what coordinates a fuzz job.  It decides which seeds to use,
-which mutators to run and kicks off one or more Main Fuzzers.
+which mutators to run and sends this information to the client, which kicks
+off one or more Main Fuzzers.  The client will then also handle getting the
+results back to the manager.
 
 \section{Main Fuzzer}
 This will run many iterations of a single seed and a single mutator against a
