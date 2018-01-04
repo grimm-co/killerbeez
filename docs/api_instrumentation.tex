@@ -1,0 +1,185 @@
+The instrumentation modules are what track the state of a process and
+determine if a path through the process is new.  This will include things such
+as QEMU (for Linux), LLVM (for source), PIN, Dynamo-RIO, Dyninst, and Intel PT.
+They are optionally given some state information.  The state information is
+module-specific and is used to tell the instrumentation module which paths have
+been previously hit.  Additionally, each instrumentation module will have a
+variety of configuration options that can be specified that will be
+specific to that instrumentation module.  These options will be specified as a
+JSON char array.
+
+\par
+Anything which is instrumentation specific will only be used within the
+instrumentation functions.  All other components will treat these items as
+opaque strings/blobs.
+
+\api{void * create(char * options, char * state)
+}{
+This function will create and return an instrumentation struct that defines
+the instrumentation's state.  The state argument will be used to load the
+previously executed paths through the fuzzed program.
+}{
+\item options - a JSON string that contains the instrumentation specific options
+\item state - used to load a previously dumped state (produced by the get\_state()
+function), that defines the current paths seen by the instrumentation.
+Alternatively, NULL can be provided to start an instrumentation without a
+previously dumped state
+\item return value - an instrumentation specific structure or NULL on failure.
+The returned value should not be used for anything other than passing to the
+various Instrumentation API functions
+}
+
+\api{void cleanup(void * instrumentation\_state)
+}{
+This function will release any resources that the instrumentation has open and
+free the instrumentation state.
+}{
+\item instrumentation\_state - an instrumentation specific structure previously
+created by the create function.  This structure will be freed and should not be
+referenced afterwards
+}
+
+\api{char * get\_state(void * instrumentation\_state, int *out\_length)
+}{
+This function will return the state information holding the previous execution
+path info.  The returned value can later be passed to the instrumentation
+create() function to load the state back into an instrumentation struct.
+It is the caller's responsibility to free the memory allocated and returned
+here using the free\_state() function.
+}{
+\item instrumentation\_state - an instrumentation specific structure previously
+created by the create function
+\item out\_length - this pointer will be filled with the length of the returned
+state buffer
+\item return value - a buffer that holds information about the previous
+execution paths as a JSON char array.
+}
+
+\api{void free\_state(char * state)
+}{
+This function will free a previously dumped state (via the get\_state()
+function) of the instrumentation.
+}{
+\item state - a previously dumped state buffer obtained by the get\_state()
+function
+}
+
+\api{int set\_state(void * instrumentation\_state, char * state)
+}{
+This function will set the previous execution paths of the instrumentation.
+This can be used to restart an instrumentation once it has been created.
+}{
+\item instrumentation\_state - an instrumentation specific structure previously
+created by the create() function
+\item state - a previously dumped state buffer obtained by the get\_state()
+function
+\item return value - 0 on success or non-zero on failure
+}
+
+\api{void * merge(void * instrumentation\_state,
+void * other\_instrumentation\_state)
+}{
+This function will merge two sets of instrumentation coverage data.  The
+resulting instrumentation state will include the tracked coverage from both
+instrumentation states.  Both instrumentation states must have the same
+instrumentation options (what to track coverage of, which modules, etc.)
+specified, and generally need to be produced by the same instrumentation
+module in order for the merge to work correctly.  It's possible that two
+different instrumentation modules may produce state information in the same
+format, however this is up to them and not something guaranteed by this
+specification.  Neither argument will be modified nor freed.  It is the caller's
+responsibility to free the memory allocated and returned here using the
+free\_state() function.
+}{
+\item instrumentation\_state - an instrumentation specific structure previously
+created by the create() function
+\item other\_instrumentation\_state - a second instrumentation specific structure
+previously created by the create() function that should be merged with the first
+\item return value - an instrumentation specific structure that combines the
+coverage information from both of the instrumentation states or NULL on failure
+}
+
+\api{int enable(void * instrumentation\_state, HANDLE * process, char * cmd\_line,
+char * input, size\_t input\_length)
+}{
+This function will enable the instrumentation module for a specific process and
+runs that process.  If the process needs to be restarted, it will be.
+}{
+\item instrumentation\_state - an instrumentation specific structure previously
+created by the create() function
+\item process - a pointer to a handle for the process on which the
+instrumentation was enabled
+\item cmd\_line - the command line of the fuzzed process on which to enable
+instrumentation
+\item input - pointer to the buffer containing the input data that should be
+sent to the fuzzed process
+\item input\_length - the length of the input parameter
+\item return value - 0 on success, non-zero on failure
+}
+
+\api{int is\_new\_path(void * instrumentation\_state)
+}{
+This function will determine whether the process being instrumented has taken a
+new path.  It should be called after the process has finished processing the
+tested input.
+}{
+\item instrumentation\_state - an instrumentation specific structure previously
+created by the create() function
+\item return value - 1 if the previously setup process (via the enable()
+function) took a new path, 0 if it did not, or -1 on failure
+}
+
+\api{int get\_module\_info(void * instrumentation\_state, int index, int * is\_new,
+char ** module\_name, char **info, int size)
+}{
+This function is optional and not required for the fuzzer to work.  It
+can be used to obtain coverage information for each executable/library
+separately.  This function returns information about each of the separate
+modules (shared libraries such as .dll, .so, .dynlib).
+}{
+\item instrumentation\_state - an instrumentation specific structure previously
+created by the create() function
+\item index - an index into the module list for the module about which
+information should be retrieved.  The return value will indicate if a module
+exists for this index.  Indices start at 0 and increase from there
+\item is\_new - This parameter returns whether or not the last run of the
+instrumentation returned a new path for the module with the specified index.  In
+order for the information returned in this parameter to be accurate, the
+is\_new\_path method should be called first.  This parameter is optional and can
+be set to NULL, if you do not want this information
+\item module\_name - This parameter returns the filename of the module at the
+specified index.  This parameter is optional and can be set to NULL, if you do
+not want this information.  This parameter should not be freed by the caller
+\item info - This parameter returns the per-instrumentation path info for the
+module with the specified index.  For example, for the DynamoRIO module, the
+returned info is an AFL style bitmap of the edges.  This parameter is optional
+and can be set to NULL, if you do not want this information.  This parameter
+should not be freed by the caller
+\item size - This parameter returns the size of the per-instrumentation path
+info in the returned info parameter.  This parameter is optional and can be set
+to NULL, if you do not want this information
+\item return value - non-zero if module with the specified index cannot be
+found, or 0 if it is found
+}
+
+\api{instrumentation\_edges\_t * get\_edges(void * instrumentation\_state,
+int index)
+}{
+This function is optional and not required for the fuzzer to work.  It is used
+by the tracer.  This function returns an array of basic block edges that
+occurred in the most recent run of the instrumentation.
+}{
+\item instrumentation\_state - an instrumentation specific structure previously
+created by the create() function.
+\item index - If per-module instrumentation information is enabled, this
+parameter is an index into the module list for the module about which edges
+should be retrieved.  The return value will indicate if a module exists for this
+index.  Indices start at 0 and increase from there.  If per-module
+instrumentation information is NOT enabled, then this parameter is ignored and
+the general edges array will be returned.
+\item return value - NULL if an array of basic block edges was not tracked for
+the most recent instrumentation run or per-module instrumentation is enabled and
+the requested index was not found.  Otherwise, an instrumentation\_edges\_t pointer
+that contains an array of basic block edges that were hit in the most recent
+instrumentation run.  The returned pointer should be freed by the caller.
+}

@@ -1,0 +1,174 @@
+The mutator modules are what actually mutate the seed files.  These would
+include things like a bit flipper, byte munger and so forth.  They are given a
+seed file and optionally some state information.  The state information is
+module-specific and allows the mutator to pick up where it left off.  For
+example, the bit flipper mutator module, which simply flips one bit in the input
+file, would just need to record what bit to flip as their state.  On the other
+hand, the byte munger will need to keep track of which byte it's modifying and
+what the new value is for that byte (e.g.  stomp the fourth byte with 0x41).
+Additionally, each mutator will have a variety of configuration options that can
+be specified that will be mutator specific.  Both the mutator state and options
+will be specified as JSON char arrays.
+
+\par
+Anything which is mutator specific will only be used within the mutator
+functions.  All other components will treat these items as opaque strings/blobs.
+
+
+\api{void init(mutator\_t * m)
+}{
+This function fills in m with all of the function pointers for this mutator.
+% TODO Put this note in a sidebar
+Note: This function only appears when compiled as a module.  When
+ALL\_MUTATORS\_IN\_ONE is defined, this function will not exist, as there would
+be a name collision with all the other init() functions from other modules and
+there will not be any need for obtaining this struct, as all the functions will
+just be called directly.  It's just the code which uses modules which will want
+to use this struct.  ALL\_MUTATORS\_IN\_ONE being defined will cause all the
+other functions to have the name of the mutator and an underscore prepended.
+This means that the create() function will be called bit\_flip\_create() in the
+bit flipper mutator.  The name of the mutator is defined by MUTATOR\_NAME.
+}{
+\item m - a pointer to a mutator\_t structure that will be filled in with the
+function pointers that define this mutator.
+\item return value - none
+}
+
+
+\api{void * create(char * options, char * state, char * input,
+size\_t input\_length)
+}{
+This function will allocate and initialize the mutator structure.  The allocated
+structure will exist until the cleanup() function is called.
+}{
+\item options - a json string that contains the mutator specific string of
+options.
+\item state - used to load a previously dumped state (produced by the get\_state()
+function), that defines the current iteration of the mutator.  This will be a
+mutator specific JSON string.  Alternatively, NULL can be provided to start a
+mutator without a previously dumped state.
+\item input - base input string which will be modified to produce mutated inputs
+later when the mutate() function is called
+\item input\_length - the size of the input buffer
+\item return value - a mutator specific structure or NULL on failure.  The
+returned value should not be used for anything other than passing to the various
+Mutator API functions.
+}
+
+
+\api{void cleanup(void * mutator\_state)
+}{
+This function will release any resources that the mutator has open and free the
+mutator state structure.
+}{
+\item mutator\_state - a mutator specific structure previously created by the
+create() function.  This structure will be freed and should not be referenced
+afterwards.
+}
+
+
+\api{
+int mutate(void * mutator\_state, char * output\_buffer, size\_t buffer\_length)
+}{
+This function will mutate the input given in the create() function and return it
+in the output\_buffer argument.  The size of the output\_buffer will be mutator
+specific.  For example, some mutators may require this buffer to be larger than
+the original input (passed to the create() function) as it's going to extend the
+original input in some way.  Other mutators will want it to be the same size.
+Guidance on this will be specified by the mutator specific documentation.
+}{
+\item mutator\_state - a mutator specific structure previously created by the
+create() function.
+\item output\_buffer - a buffer to which the mutated input will be written
+\item buffer\_length - the size of the passed in buffer argument
+\item return value - the length of the mutated data, 0 when the mutator is out
+of mutations, or -1 on error
+}
+
+
+\api{char * get\_state(void * mutator\_state)
+}{
+This function will return the state of the mutator.  The returned value can be
+used to restart the mutator at a later time, by passing it to the create() or
+set\_state() function.  It is the caller's responsibility to free the memory
+allocated here using the free\_state() function.
+}{
+\item mutator\_state - a mutator specific structure previously created by the
+create() function.
+\item return value - a buffer that defines the current state of the mutator.
+This will be a mutator specific JSON string.
+}
+
+
+\api{void free\_state(char * state)}{
+This function will free a previously dumped state (via the get\_state()
+function) of the mutator.
+}{
+\item state - a previously dumped state buffer obtained by the get\_state()
+function.
+}
+
+
+\api{int set\_state(void * mutator\_state, char * state)
+}{
+This function will set the current state of the mutator.  This can be used to
+restart a mutator once from a previous run.
+}{
+\item mutator\_state - a mutator specific structure previously created by the
+create() function.
+\item state - a previously dumped state buffer obtained by the get\_state()
+function.  This will be a mutator specific JSON string.
+\item return value - 0 on success or non-zero on failure
+}
+
+
+\api{
+int get\_current\_iteration(void * mutator\_state)
+}{
+This function will return the current iteration count of the mutator, i.e. how
+many mutations have been generated with it.
+}{
+\item mutator\_state - a mutator specific structure previously created by the
+create() function.
+\item return value - the number of previously generated mutations
+}
+
+
+\api{int get\_total\_iteration\_count(void * mutator\_state)
+}{
+This function will return the total possible number of mutations with this
+mutator.  For some mutators, this value won't be possible to predict or the
+mutator will be capable of an infinite number of mutations.
+}{
+\item mutator\_state - a mutator specific structure previously created by the
+create() function.
+\item return value - the number of possible mutations with this mutator.  If
+this number can't be predicted or is infinite, -1 will be returned.
+}
+
+
+\api{int set\_input(void * mutator\_state, char * new\_input,
+size\_t input\_length)
+}{
+This function will set the input (saved in the mutator's state) to something new.
+This can be used to reinitialize a mutator with new data, without reallocating
+the entire state struct.
+}{
+\item mutator\_state - a mutator specific structure previously created by the
+create() function.
+\item new\_input - The new input used to produce new mutated inputs later when
+the mutate() function is called
+\item input\_length - the size in bytes of the input buffer.
+\item return value - 0 on success and -1 on failure
+}
+
+
+\api{int help(char ** help\_str)
+}{
+This function sets a help message for the mutator. This is useful if the mutator
+takes a JSON options string in the create() function.
+}{
+\item help\_str - A double pointer that will be updated to point to the new help
+string.
+\item return value - 0 on success and -1 on failure
+}
