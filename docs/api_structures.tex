@@ -1,0 +1,17 @@
+This section describes the structures used throughout the API.  For each of the
+top level components, there is a structure which defines the available functions
+in that component.  This allows for a common interface among all of the
+available implementations of a component.
+
+\vbox{\lstinputlisting[
+  label={lst:mutatort},
+  caption={\texttt{mutator\_t} struct definition},
+  language=C,
+  captionpos=b
+  ]{files/mutator_t.c}
+}
+
+The \texttt{mutator\_t} structure, shown in Listing \ref{lst:mutatort}, defines
+all of the common interfaces for each mutator.  The definitions of each of the
+function pointers in the \texttt{mutator\_t} structure is described in Section
+\ref{mutator}.
