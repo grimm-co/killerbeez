@@ -9,7 +9,7 @@ All other components will treat these items as opaque strings/blobs.
 
 
 \api{void * create(char * options, instrumentation\_t * instrumentation,
-void * instrumentation\_state)
+void * instrumentation\_state, mutator\_t * mutator, void * mutator\_state)
 }{
 This function will allocate and initialize the driver structures.  If the driver
 is going to be testing a long-running process, this function should start that
@@ -21,9 +21,20 @@ options.
 \item instrumentation - a pointer to an instrumentation instance that the driver
 will use to instrument the requested program.  The caller should initialize this
 instrumentation instance before the create call to the driver, and then free it
-after cleaning up the driver.
+after cleaning up the driver.  This parameter is optional and can be set to NULL
+if the caller does not wish to use an instrumentation with the driver.
 \item instrumentation\_state - a pointer to the instrumentation state for the
-passed in instrumentation.
+passed in instrumentation.  This parameter is optional and can be set to NULL
+if the caller does not wish to use an instrumentation with the driver.
+\item mutator - a pointer to a mutator instance that the driver can use to
+obtain the next input (for use in the \texttt{test\_next\_input} function).
+This parameter is optional and can be set to NULL if the caller does not wish to
+use a mutator with the driver.  Without this parameter, the
+\texttt{test\_next\_input} and \texttt{get\_last\_input} functions will be
+unavailable.
+\item mutator\_state - a pointer to the mutator state for the passed in mutator.
+This parameter is optional and can be set to NULL if the caller does not wish to
+use a mutator with the driver.
 \item return value - a driver specific structure or NULL on failure.  The
 returned value should not be used for anything other than passing to the various
 Driver API functions.
@@ -50,5 +61,34 @@ finished processing the given input.
 create function.
 \item buffer -  the input that should be tested
 \item length - the length of the buffer argument
-\item return value - 0 on success, non-zero on failure
+\item return value - 0 on success, -1 on failure
 }
+
+\api{int test\_next\_input(void * driver\_state);
+}{
+This function uses the mutator given during the driver creation to retrieve the
+next mutated input and test it against the target program.  This function blocks
+execution until the program being fuzzed has finished processing the mutated
+input.  This function is only available if a mutator was given to the driver
+in the \texttt{create} function.
+}{
+\item driver\_state - a driver specific structure previously created by the
+create function.
+\item return value - 0 on success, -1 on failure, or -2 if the mutator has run
+out of inputs to to mutate.
+}
+
+\api{void * get\_last\_input(void * driver\_state, int * length);
+}{
+This function retrieves the most recent mutated input that was tested with the
+\texttt{test\_next\_input} function.  This function is only available if a
+mutator was given to the driver in the \texttt{create} function.
+}{
+\item driver\_state - a driver specific structure previously created by the
+create function.
+\item length - a pointer to an integer that will be set to the length of the
+returned buffer.
+\item return value - on success this function will return a buffer containing
+the last input that was tested, or NULL on failure.
+}
+

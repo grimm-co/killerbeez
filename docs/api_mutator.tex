@@ -1,14 +1,13 @@
-The mutator modules are what actually mutate the seed files.  These would
-include things like a bit flipper, byte munger and so forth.  They are given a
-seed file and optionally some state information.  The state information is
+The mutator modules are what actually mutate the seed buffers.  These would
+include things like a bit flipper, byte munger and so forth.  They are given an
+input buffer and optionally some state information.  The state information is
 module-specific and allows the mutator to pick up where it left off.  For
 example, the bit flipper mutator module, which simply flips one bit in the input
-file, would just need to record what bit to flip as their state.  On the other
-hand, the byte munger will need to keep track of which byte it's modifying and
-what the new value is for that byte (e.g.  stomp the fourth byte with 0x41).
-Additionally, each mutator will have a variety of configuration options that can
-be specified that will be mutator specific.  Both the mutator state and options
-will be specified as JSON char arrays.
+buffer, would just need to record what bit to flip as their state.  On the other
+hand, more complicated mutators may need to keep track of more information.
+Additionally, each mutator will have a variety of mutator specific configuration
+options that can be specified.  Both the mutator state and options will be
+specified as JSON char arrays.
 
 \par
 Anything which is mutator specific will only be used within the mutator
@@ -41,7 +40,7 @@ size\_t input\_length)
 This function will allocate and initialize the mutator structure.  The allocated
 structure will exist until the cleanup() function is called.
 }{
-\item options - a json string that contains the mutator specific string of
+\item options - a JSON string that contains the mutator specific string of
 options.
 \item state - used to load a previously dumped state (produced by the get\_state()
 function), that defines the current iteration of the mutator.  This will be a
@@ -68,10 +67,10 @@ afterwards.
 
 
 \api{
-int mutate(void * mutator\_state, char * output\_buffer, size\_t buffer\_length)
+int mutate(void * mutator\_state, char * buffer, size\_t buffer\_length)
 }{
 This function will mutate the input given in the create() function and return it
-in the output\_buffer argument.  The size of the output\_buffer will be mutator
+in the buffer argument.  The size of the buffer will be mutator
 specific.  For example, some mutators may require this buffer to be larger than
 the original input (passed to the create() function) as it's going to extend the
 original input in some way.  Other mutators will want it to be the same size.
@@ -79,10 +78,47 @@ Guidance on this will be specified by the mutator specific documentation.
 }{
 \item mutator\_state - a mutator specific structure previously created by the
 create() function.
-\item output\_buffer - a buffer to which the mutated input will be written
+\item buffer - a buffer to which the mutated input will be written
 \item buffer\_length - the size of the passed in buffer argument
 \item return value - the length of the mutated data, 0 when the mutator is out
 of mutations, or -1 on error
+}
+
+\api{
+int mutate\_thread\_safe(void * mutator\_state, char * buffer, size\_t buffer\_length)
+}{
+This function is identical to the \texttt{mutate} function, with the exception
+it ensures that the mutations are done in a thread safe way.  If the mutator
+will be accessed via multiple concurrent threads, this function should be used
+instead of the \texttt{mutate} function.
+}{
+\item mutator\_state - a mutator specific structure previously created by the
+create() function.
+\item buffer - a buffer to which the mutated input will be written
+\item buffer\_length - the size of the passed in buffer argument
+\item return value - the length of the mutated data, 0 when the mutator is out
+of mutations, or -1 on error
+}
+
+\api{
+int mutate\_input\_part(void * mutator\_state, int input\_part, char * buffer, size\_t buffer\_length)
+}{
+This function is similar to the \texttt{mutate} function, however it allows the
+user to specify which part of the input should be mutated.  For some of the
+fuzzer applications, it may be necessary to split the input up into separate
+pieces that are mutated independently.  In these cases, the mutator can be given
+multiple inputs and asked for mutations of the input parts individually.  One
+example user of this API is the network driver, where each input is a separate
+network packet sent to the target process.
+}{
+\item mutator\_state - a mutator specific structure previously created by the
+create() function.
+\item input\_part - an index into the list of inputs that a mutator is mutating.
+\item buffer - a buffer to which the mutated input will be written
+\item buffer\_length - the size of the passed in buffer argument
+\item return value - the length of the mutated data, 0 when the mutator is out
+of mutations, or -1 on error or if the specified input\_part index is larger the
+number of input parts that the mutator has.
 }
 
 
@@ -144,6 +180,26 @@ mutator will be capable of an infinite number of mutations.
 create() function.
 \item return value - the number of possible mutations with this mutator.  If
 this number can't be predicted or is infinite, -1 will be returned.
+}
+
+
+\api{void get\_input\_info(void * mutator\_state, int * num\_inputs, size\_t **input\_sizes)
+}{
+This function will retrieve information about the number of inputs and the size
+of each input that is managed by a mutator.
+For most of the simple mutators, they will only be given
+a single input buffer.  However, some of the more complicated mutators, such as
+the manager mutator, will manage several input buffers and mutate them
+independently with the \texttt{mutate\_input\_part} function.  This function
+will return the number of inputs that a mutator is mutating and the sizes of
+each of those inputs.
+}{
+\item mutator\_state - a mutator specific structure previously created by the
+create() function.
+\item num\_inputs - a pointer to an integer which will be used to return the
+number of inputs that a mutator has.
+\item input\_sizes - a pointer to a size\_t array that will be used to return
+the size of each of the inputs.
 }
 
 
