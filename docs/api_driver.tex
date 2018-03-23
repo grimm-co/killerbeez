@@ -89,6 +89,8 @@ create function.
 \item length - a pointer to an integer that will be set to the length of the
 returned buffer.
 \item return value - on success this function will return a buffer containing
-the last input that was tested, or NULL on failure.
+the last input that was tested, or NULL on failure.  This pointer should not be
+freed by the caller, and is only valid until the next call to
+\texttt{test\_next\_input}.
 }
 

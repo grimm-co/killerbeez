@@ -80,8 +80,8 @@ Guidance on this will be specified by the mutator specific documentation.
 create() function.
 \item buffer - a buffer to which the mutated input will be written
 \item buffer\_length - the size of the passed in buffer argument
-\item return value - the length of the mutated data, 0 when the mutator is out
-of mutations, or -1 on error
+\item return value - the length of the mutated data on success, 0 when the
+mutator is out of mutations, or -1 on error
 }
 
 \api{
@@ -96,8 +96,8 @@ instead of the \texttt{mutate} function.
 create() function.
 \item buffer - a buffer to which the mutated input will be written
 \item buffer\_length - the size of the passed in buffer argument
-\item return value - the length of the mutated data, 0 when the mutator is out
-of mutations, or -1 on error
+\item return value - the length of the mutated data on success, 0 when the
+mutator is out of mutations, or -1 on error
 }
 
 \api{
@@ -116,9 +116,9 @@ create() function.
 \item input\_part - an index into the list of inputs that a mutator is mutating.
 \item buffer - a buffer to which the mutated input will be written
 \item buffer\_length - the size of the passed in buffer argument
-\item return value - the length of the mutated data, 0 when the mutator is out
-of mutations, or -1 on error or if the specified input\_part index is larger the
-number of input parts that the mutator has.
+\item return value - the length of the mutated data on success, 0 when the
+mutator is out of mutations, or -1 on error or if the specified input\_part
+index is larger the number of input parts that the mutator has.
 }
 
 
@@ -185,10 +185,9 @@ this number can't be predicted or is infinite, -1 will be returned.
 
 \api{void get\_input\_info(void * mutator\_state, int * num\_inputs, size\_t **input\_sizes)
 }{
-This function will retrieve information about the number of inputs and the size
-of each input that is managed by a mutator.
-For most of the simple mutators, they will only be given
-a single input buffer.  However, some of the more complicated mutators, such as
+This function will retrieve the number of inputs and the size of each input that
+is managed by a mutator.  For most of the simple mutators, they will only be
+given a single input.  However, some of the more complicated mutators, such as
 the manager mutator, will manage several input buffers and mutate them
 independently with the \texttt{mutate\_input\_part} function.  This function
 will return the number of inputs that a mutator is mutating and the sizes of
