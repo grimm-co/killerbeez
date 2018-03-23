@@ -1,0 +1,61 @@
+This section describes the structures used throughout the API.  For each of the
+top level components, there is a structure which defines the available functions
+in that component.  This allows for a common interface among all of the
+available implementations of a component.
+
+\vbox{\lstinputlisting[
+  label={lst:mutatort},
+  caption={\texttt{mutator\_t} struct definition},
+  language=C,
+  captionpos=b
+  ]{files/mutator_t.c}
+}
+
+The \texttt{mutator\_t} structure, shown in Listing \ref{lst:mutatort}, defines
+all of the common interfaces for each mutator.  The definitions of each of the
+function pointers in the \texttt{mutator\_t} structure is described in Section
+\ref{mutator}.
+
+\vbox{\lstinputlisting[
+  label={lst:drivert},
+  caption={\texttt{driver\_t} struct definition},
+  language=C,
+  captionpos=b
+  ]{files/driver_t.c}
+}
+
+The \texttt{driver\_t} structure, shown in Listing \ref{lst:drivert}, defines
+all of the common interfaces for each driver.  The definitions of each of the
+function pointers in the \texttt{driver\_t} structure is described in Section
+\ref{driver}.  The last field in the struct, \texttt{state} holds a pointer to
+the implementation specific driver state structure.  This field should only be
+used when calling each of the driver's functions.
+
+\vbox{\lstinputlisting[
+  label={lst:instrumentationt},
+  caption={\texttt{instrumentation\_t} struct definition},
+  language=C,
+  captionpos=b
+  ]{files/instrumentation_t.c}
+}
+
+The \texttt{instrumentation\_t} structure, shown in Listing
+\ref{lst:instrumentationt}, defines all of the common interfaces for each
+instrumentation.  The definitions of each of the function pointers in the
+\texttt{instrumentation\_t} structure is described in Section
+\ref{instrumentation}.
+
+\vbox{\lstinputlisting[
+  label={lst:instrumentationedget},
+  caption={\texttt{instrumentation\_edge\_t} struct definition},
+  language=C,
+  captionpos=b
+  ]{files/instrumentation_edge_t.c}
+}
+
+The \texttt{instrumentation\_edge\_t} structure, shown in Listing
+\ref{lst:instrumentationedget}, is used to return a list of basic block
+addresses which make up each edge in the fuzzed program's path.  This list is
+returned from the \texttt{get\_edges} method as described in Section
+\ref{instrumentation}.
+
