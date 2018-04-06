@@ -6,10 +6,8 @@ typedef struct mutator
 
   int(*mutate)(void * mutator_state, char * buffer,
     size_t buffer_length);
-  int(*mutate_thread_safe)(void * mutator_state, char * buffer,
-    size_t buffer_length);
-  int(*mutate_input_part)(void * mutator_state, int input_part,
-    char * buffer, size_t buffer_length);
+  int(*mutate_extended)(void * mutator_state, char * buffer,
+    size_t buffer_length, uint64_t flags);
 
   char * (*get_state)(void * mutator_state);
   void(*free_state)(char * state);
