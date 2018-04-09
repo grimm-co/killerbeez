@@ -109,7 +109,8 @@ multiple inputs and asked for mutations of the input parts individually.  One
 example user of this API is the network driver, where each input is a separate
 network packet sent to the target process.  When this flag is set, the index of
 the input part to mutate should be included in the lowest 16-bits of the flags
-parameter.
+parameter.  For instance, to mutate the fifth input buffer, set flags to \\
+\texttt{(MUTATE\_MULTIPLE\_INPUTS | 5)}.
 \end{itemize}
 \item return value - the length of the mutated data on success, 0 when the
 mutator is out of mutations, or -1 on error
