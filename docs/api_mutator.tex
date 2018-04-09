@@ -100,9 +100,9 @@ should be done. Available flags are:
 \begin{itemize}
 \item \texttt{MUTATE\_THREAD\_SAFE} - The mutator should ensure that the mutations
 are done in a thread safe way.  If the mutator will be accessed via multiple
-concurrent threads, this flags should be set.
+concurrent threads, this flag should be set.
 \item \texttt{MUTATE\_MULTIPLE\_INPUTS} - If the mutator will be handling
-individual input parts, this flags should be used.  For some of the fuzzer
+individual input parts, this flag should be used.  For some of the fuzzer
 applications, it may be necessary to split the input up into separate pieces
 that are mutated independently.  In these cases, the mutator can be given
 multiple inputs and asked for mutations of the input parts individually.  One
