@@ -1,0 +1,2 @@
+In the compiled UTF-late.exe executable, the main function is at offset 0x4540
+(0x404540 address).

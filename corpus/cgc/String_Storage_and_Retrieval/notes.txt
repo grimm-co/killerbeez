@@ -1,0 +1,2 @@
+In the compiled String_Storage_and_Retrieval.exe executable, the main function
+is at offset 0x6ac0 (0x406ac0 address).
