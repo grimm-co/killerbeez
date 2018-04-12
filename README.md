@@ -66,7 +66,18 @@ can be used to generate a PDF, HTML, or various other formats.  PDFs are also
 included so the documentation is easy to read for those who do not have a LaTeX
 typesetting environment set up.
 
-## Having a Problem?
+## Troubleshooting
+Q: The target program doesn't start
+A: Windows Media Player won't automatically play media the first time is run.
+   There's a pop-up which requires you to configure some settings.  Just run it
+   manually once and you should be good to go after that.
+
+Q: I'm getting an error about a pipe timing out
+A: This is related to the instrumentation and the target taking too long to
+   start up.  If running it again doesn't work, try increasing the "timeout" on
+   the -i argument and that should take care of it.
+
+## Still Having a Problem?
 
 Please create an issue on GitHub and we will address it as soon as possible.
 
