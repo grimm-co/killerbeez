@@ -108,8 +108,6 @@ void wmp_cleanup(void * driver_state)
 	wmp_state_t * state = (wmp_state_t *)driver_state;
 	cleanup_process(state);
 
-	if (state->mutator)
-		state->mutator->cleanup(state->mutator_state);
 	free(state->mutate_buffer);
 
 	free(state->path);

@@ -137,8 +137,6 @@ void file_cleanup(void * driver_state)
 	file_state_t * state = (file_state_t *)driver_state;
 	cleanup_process(state);
 
-	if (state->mutator)
-		state->mutator->cleanup(state->mutator_state);
 	free(state->mutate_buffer);
 
 	free(state->path);

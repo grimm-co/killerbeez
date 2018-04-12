@@ -103,8 +103,6 @@ void stdin_cleanup(void * driver_state)
 	stdin_state_t * state = (stdin_state_t *)driver_state;
 	cleanup_process(state);
 
-	if (state->mutator)
-		state->mutator->cleanup(state->mutator_state);
 	free(state->mutate_buffer);
 
 	free(state->path);
