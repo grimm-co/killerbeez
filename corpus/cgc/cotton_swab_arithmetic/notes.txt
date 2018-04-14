@@ -1,0 +1,2 @@
+In the compiled cotton_swab_arithmetic.exe executable, the main function is at
+offset 0x1D30 (0x401D30 address).

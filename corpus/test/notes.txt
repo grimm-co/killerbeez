@@ -1,0 +1,7 @@
+test.c is just a very simple testcase to make sure our instrumentation is
+working as expected.  It looks at the first 4 characters of input, and takes a
+different one for each character matching "ABCD".  If the full string matches
+ABCD, then the test program will crash (by writing to NULL).
+
+In the compiled test.exe executable, the main function is at offset 0x1000
+(0x401000 address).

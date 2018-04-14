@@ -1,0 +1,3 @@
+In the compiled REMATCH_2--Mail_Server--Crackaddr.exe executable, the main
+function is at offset 0x8340 (0x408340 address).  Also, I replaced the random
+seed with 0x11223344 to try to reduce the instability in the code coverage.

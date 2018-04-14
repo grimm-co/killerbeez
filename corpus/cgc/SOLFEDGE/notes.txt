@@ -1,0 +1,2 @@
+In the compiled SOLFEDGE.exe executable, the main function is at offset 0x23E0
+(0x4023E0 address).
