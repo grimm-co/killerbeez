@@ -1,3 +1,11 @@
+//This program helps the user decide which libraries should be instrumented
+//while fuzzing.  This is accomplished by running the target program and
+//recording coverage information on each of the loaded libraries. It then
+//analyzes the coverage information for each library to determine which
+//libraries the coverage information varies based on the input file.  These
+//libraries are most likely the ones that process the input file, and thus the
+//most likely targets for fuzzing.
+
 #include <driver.h>
 #include <driver_factory.h>
 #include <instrumentation.h>

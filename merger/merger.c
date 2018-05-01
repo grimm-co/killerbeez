@@ -1,3 +1,9 @@
+//This program merges multiple sets of instrumentation data into one
+//instrumentation state.  The resulting instrumentation state will include the
+//tracked coverage from all of the input instrumentation states. This allows
+//multiple instances of the fuzzer to share instrumentation data, and ignore
+//paths that the other fuzzer found.
+
 #include <instrumentation.h>
 #include <instrumentation_factory.h>
 #include <utils.h>
