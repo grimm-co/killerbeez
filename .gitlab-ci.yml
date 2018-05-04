@@ -1,0 +1,12 @@
+release:
+  script:
+    - C:\killerbeez\release.bat
+  tags:
+    - windows
+  only:
+    - web
+    - triggers
+  artifacts:
+    paths:
+      - release\killerbeez-*.zip
+    expire_in: 1 week
