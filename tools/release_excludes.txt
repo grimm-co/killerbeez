@@ -3,3 +3,4 @@
 .ipdb\
 .lib\
 .pdb\
+.manifest\
