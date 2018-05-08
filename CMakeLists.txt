@@ -14,8 +14,8 @@ SET( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/../build/killerbeez/ )
 LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/../build/killerbeez/)
 endif (WIN32)
 
-include_directories (${CMAKE_SOURCE_DIR}/../utils/jansson/)
-include_directories (${CMAKE_SOURCE_DIR}/../utils/utils/)
+include_directories (${CMAKE_SOURCE_DIR}/../killerbeez-utils/jansson/)
+include_directories (${CMAKE_SOURCE_DIR}/../killerbeez-utils/utils/)
 
 add_subdirectory(driver)
 add_subdirectory(fuzzer)

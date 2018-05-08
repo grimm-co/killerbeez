@@ -43,13 +43,13 @@ To build Killerbeez on Windows you will need Microsoft Visual Studio 2017, Cygwi
 
     ```
     cd %WORKDIR%
-    git clone https://github.com/grimm-co/killerbeez.git fuzzer
-    git clone https://github.com/grimm-co/killerbeez-mutators.git mutators
-    git clone https://github.com/grimm-co/killerbeez-utils utils
+    git clone https://github.com/grimm-co/Killerbeez.git
+    git clone https://github.com/grimm-co/killerbeez-mutators.git
+    git clone https://github.com/grimm-co/killerbeez-utils.git
     ```
 
 7. Build Killerbeez
-  + In order to build the fuzzer, you will first need to build the dependencies. Open the repositories `utils` and `mutators`  within Visual Studio (File -> Open -> CMake..) and build using (CMake -> Build All). Once they are built, you can build the `fuzzer` project in the same way. Ensure that all of the projects are using the same build profile (Windows vs Linux, debug vs release, x86 vs x64).  If successful, you'll see an aggregate `build/` directory in the root of your working directory.  In it, the compiled executables and libraries from all three projects will be found in folders named after the architecture (x64) and build type (i.e. Debug). 
+  + In order to build the fuzzer, you will first need to build the dependencies. Open the repositories `killerbeez-utils` and `killerbeez-mutators`  within Visual Studio (File -> Open -> CMake..) and build using (CMake -> Build All). Once they are built, you can build the `Killerbeez` project in the same way. Ensure that all of the projects are using the same build profile (Windows vs Linux, debug vs release, x86 vs x64).  If successful, you'll see an aggregate `build/` directory in the root of your working directory.  In it, the compiled executables and libraries from all three projects will be found in folders named after the architecture (x64) and build type (i.e. Debug). 
   + The fuzzer.exe executable can be found at `%WORKDIR%\build\x64\Debug\killerbeez\fuzzer.exe`
   
 #### Quickstart and Examples
