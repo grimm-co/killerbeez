@@ -159,12 +159,16 @@ int wmp_test_input(void * driver_state, char * input, size_t length)
 	state->start_time = time(NULL);
 
 	//Wait for it to be done
-	while (1)
-	{
-		Sleep(33);
-		status = doneProcessingInput(state);
-		if(status > 0)
-			break;
+	if (state->instrumentation && state->instrumentation->wait_for_target_completion) {
+		state->instrumentation->wait_for_target_completion(state->instrumentation_state, state->timeout);
+	} else {
+		while (1)
+		{
+			Sleep(33);
+			status = doneProcessingInput(state);
+			if (status > 0)
+				break;
+		}
 	}
 	return 0;
 }
