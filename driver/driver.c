@@ -38,7 +38,7 @@ void generic_wait_for_process_completion(HANDLE process, int timeout, instrument
 	{
 		if(generic_done_processing_input(process, start_time, timeout) > 0)
 			break;
-		if (instrumentation && instrumentation->is_target_done && instrumentation->is_target_done(instrumentation_state))
+		if (instrumentation && instrumentation->is_process_done && instrumentation->is_process_done(instrumentation_state))
 			break;
 		Sleep(5);
 	}

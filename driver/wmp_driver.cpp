@@ -162,8 +162,8 @@ int wmp_test_input(void * driver_state, char * input, size_t length)
 	{
 		if (doneProcessingInput(state) > 0)
 			break;
-		if (state->instrumentation && state->instrumentation->is_target_done &&
-			state->instrumentation->is_target_done(state->instrumentation_state))
+		if (state->instrumentation && state->instrumentation->is_process_done &&
+			state->instrumentation->is_process_done(state->instrumentation_state))
 			break;
 		Sleep(50);
 	}

@@ -758,7 +758,7 @@ static int finish_fuzz_round(dynamorio_state_t * state) {
 	return ret;
 }
 
-int dynamorio_is_target_done(void * instrumentation_state)
+int dynamorio_is_process_done(void * instrumentation_state)
 {
 	dynamorio_state_t * state = (dynamorio_state_t *)instrumentation_state;
 	DWORD num_bytes_available;
