@@ -39,19 +39,23 @@
 #include <stdio.h>
 #include <fcntl.h>
 
-#define UNKNOWN_MODULE_ID USHRT_MAX
-
-static uint verbose;
 
 #define NOTIFY(level, fmt, ...) do {          \
     if (verbose >= (level))                   \
         dr_fprintf(STDERR, fmt, __VA_ARGS__); \
 } while (0)
 
+//////////////////////////////////////////////////////////////////////////////////////
+// Enums and Struct Definitions //////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+#define UNKNOWN_MODULE_ID USHRT_MAX
 #define OPTION_MAX_LENGTH MAXIMUM_PATH
 
 #define COVERAGE_BB 0
 #define COVERAGE_EDGE 1
+
+#define NUM_THREAD_MODULE_CACHE 8
 
 typedef struct _target_module_t {
 	char module_name[MAXIMUM_PATH];
@@ -83,13 +87,12 @@ typedef struct _winafl_option_t {
 	bool thread_coverage;
 	bool per_module_coverage;
 } winafl_option_t;
-static winafl_option_t options;
-
-#define NUM_THREAD_MODULE_CACHE 8
 
 typedef struct _winafl_data_t {
 	module_entry_t *cache[NUM_THREAD_MODULE_CACHE];
 	file_t  log;
+	bool instrumentation_enabled;
+	bool exception_hit;
 
 	//Because we instrument the code once, and multiple threads
 	//all access that code.  We point the instrumented code at this area
@@ -100,21 +103,37 @@ typedef struct _winafl_data_t {
 	//The real coverage info area (when per-module coverage is off)
 	unsigned char *afl_area;
 } winafl_data_t;
-static winafl_data_t winafl_data;
 
-static int winafl_tls_field;
+typedef struct _debug_data_t {
+	int pre_hanlder_called;
+	int post_handler_called;
+} debug_data_t;
 
 typedef struct _fuzz_target_t {
 	reg_t xsp;            /* stack level at entry to the fuzz target */
 	app_pc func_pc;
 	int iteration;
 } fuzz_target_t;
+
+enum {
+	NUDGE_TERMINATE_PROCESS = 1,
+	NUDGE_DONE_PROCESSING_INPUT = 2,
+};
+
+//////////////////////////////////////////////////////////////////////////////////////
+// Global Variables //////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
+static uint verbose;
+
+static winafl_option_t options;
+
+static winafl_data_t winafl_data;
+
+static int winafl_tls_field;
+
 static fuzz_target_t fuzz_target;
 
-typedef struct _debug_data_t {
-	int pre_hanlder_called;
-	int post_handler_called;
-} debug_data_t;
 static debug_data_t debug_data;
 
 static module_table_t *module_table;
@@ -122,16 +141,21 @@ static client_id_t client_id;
 
 static volatile bool go_native;
 
+static HANDLE pipe = NULL;
+
+//////////////////////////////////////////////////////////////////////////////////////
+// Function Prototypes ///////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
+
 static void event_exit(void);
 static void event_thread_exit(void *drcontext);
 
-static HANDLE pipe = NULL;
+static void setup_shm_and_tls_regions_for_coverage(void *drcontext);
+static void read_start_fuzz_command();
 
-enum {
-	NUDGE_TERMINATE_PROCESS = 1,
-	NUDGE_DONE_PROCESSING_INPUT = 2,
-};
-
+//////////////////////////////////////////////////////////////////////////////////////
+// Function Definitions //////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////
 
 /**
  * This function calculates the number of modules in a linked list of modules.
@@ -237,6 +261,7 @@ static bool onexception(void *drcontext, dr_exception_t *excpt) {
 			dr_fprintf(winafl_data.log, "crashed\n");
 		}
 		else {
+			winafl_data.exception_hit = true;
 			WriteFile(pipe, "C", 1, &num_written, NULL);
 		}
 		dr_exit_process(1);
@@ -272,6 +297,15 @@ static void event_thread_init(void *drcontext)
 			thread_data[1] = winafl_data.fake_afl_area;
 	}
 	drmgr_set_tls_field(drcontext, winafl_tls_field, thread_data);
+
+	//If we haven't set a target module, then just enable instrumentation now
+	if (!options.fuzz_module[0]) {
+		if (!winafl_data.instrumentation_enabled) {
+			winafl_data.instrumentation_enabled = true;
+			read_start_fuzz_command();
+		}
+		setup_shm_and_tls_regions_for_coverage(drcontext);
+	}
 }
 
 /**
@@ -671,12 +705,8 @@ instrument_verbose_edge_coverage(void *drcontext, void *tag, instrlist_t *bb, in
  */
 static void pre_fuzz_handler(void *wrapcxt, INOUT void **user_data)
 {
-	char command = 0;
 	int i;
-	DWORD num_read;
 	void *drcontext;
-	char buffer[256];
-	target_module_t * cur;
 
 	if (options.debug_mode || options.write_log)
 		dr_fprintf(winafl_data.log, "pre_fuzz_handler started\n");
@@ -685,8 +715,37 @@ static void pre_fuzz_handler(void *wrapcxt, INOUT void **user_data)
 	dr_mcontext_t *mc = drwrap_get_mcontext_ex(wrapcxt, DR_MC_ALL);
 	drcontext = drwrap_get_drcontext(wrapcxt);
 
+	//Save the PC and stack
 	fuzz_target.xsp = mc->xsp;
 	fuzz_target.func_pc = target_to_fuzz;
+
+	//save or restore arguments
+	if (fuzz_target.iteration == 0) {
+		for (i = 0; i < options.num_fuz_args; i++) {
+			options.func_args[i] = drwrap_get_arg(wrapcxt, i);
+		}
+	}
+	else {
+		for (i = 0; i < options.num_fuz_args; i++) {
+			drwrap_set_arg(wrapcxt, i, options.func_args[i]);
+		}
+	}
+
+	//Wait for the fuzzer to tell us to start
+	read_start_fuzz_command();
+
+	//Setup the SHM and TLS regions before we start tracking coverage
+	setup_shm_and_tls_regions_for_coverage(drcontext);
+
+	if (options.debug_mode || options.write_log)
+		dr_fprintf(winafl_data.log, "pre_fuzz_handler finished\n");
+}
+
+static void read_start_fuzz_command()
+{
+	char command = 0;
+	DWORD num_read;
+	char buffer[256];
 
 	//Wait for orders from the fuzzer
 	if (!options.debug_mode) {
@@ -707,18 +766,11 @@ static void pre_fuzz_handler(void *wrapcxt, INOUT void **user_data)
 	else {
 		debug_data.pre_hanlder_called++;
 	}
+}
 
-	//save or restore arguments
-	if (fuzz_target.iteration == 0) {
-		for (i = 0; i < options.num_fuz_args; i++) {
-			options.func_args[i] = drwrap_get_arg(wrapcxt, i);
-		}
-	}
-	else {
-		for (i = 0; i < options.num_fuz_args; i++) {
-			drwrap_set_arg(wrapcxt, i, options.func_args[i]);
-		}
-	}
+static void setup_shm_and_tls_regions_for_coverage(void *drcontext)
+{
+	target_module_t * cur;
 
 	if (options.write_log)
 		dr_fprintf(winafl_data.log, "Initializing shm area\n");
@@ -750,9 +802,6 @@ static void pre_fuzz_handler(void *wrapcxt, INOUT void **user_data)
 		else
 			thread_data[1] = winafl_data.afl_area;
 	}
-
-	if (options.debug_mode || options.write_log)
-		dr_fprintf(winafl_data.log, "pre_fuzz_handler finished\n");
 }
 
 /**
@@ -911,6 +960,7 @@ static void event_module_load(void *drcontext, const module_data_t *info, bool l
  */
 static void event_exit(void)
 {
+	DWORD num_written;
 	if (options.debug_mode) {
 		if (debug_data.pre_hanlder_called == 0) {
 			dr_fprintf(winafl_data.log, "WARNING: Target function was never called. Incorrect target_offset?\n");
@@ -925,6 +975,11 @@ static void event_exit(void)
 		dr_fprintf(winafl_data.log, "Coverage map follows:\n");
 		dump_winafl_data();
 		dr_close_file(winafl_data.log);
+	}
+
+	if (!options.fuzz_module[0] && !winafl_data.exception_hit) {
+		//if we're not using the pre/post fuzz handler functions, we should let the fuzzer know we didn't crash
+		WriteFile(pipe, "K", 1, &num_written, NULL);
 	}
 
 	/* destroy module table */
@@ -1123,14 +1178,14 @@ static void options_init(client_id_t id, int argc, const char *argv[])
 	options.verbose_edges = false;
 	options.debug_mode = false;
 	options.write_log = false;
-	options.thread_coverage = false;
+	options.thread_coverage = true;
 	options.per_module_coverage = false;
 	options.coverage_kind = COVERAGE_EDGE;
 	options.target_modules = NULL;
 	options.fuzz_module[0] = 0;
 	options.fuzz_method[0] = 0;
 	options.fuzz_offset = 0;
-	options.fuzz_iterations = 1000;
+	options.fuzz_iterations = 1;
 	options.func_args = NULL;
 	options.num_fuz_args = 0;
 	options.callconv = DRWRAP_CALLCONV_DEFAULT;
@@ -1151,8 +1206,8 @@ static void options_init(client_id_t id, int argc, const char *argv[])
 		}
 		else if (strcmp(token, "-nudge_kills") == 0)
 			options.nudge_kills = true;
-		else if (strcmp(token, "-thread_coverage") == 0)
-			options.thread_coverage = true;
+		else if (strcmp(token, "-no-thread_coverage") == 0)
+			options.thread_coverage = false;
 		else if (strcmp(token, "-per_module_coverage") == 0)
 			options.per_module_coverage = true;
 		else if (strcmp(token, "-debug") == 0)
@@ -1246,6 +1301,11 @@ static void options_init(client_id_t id, int argc, const char *argv[])
 	if (options.num_fuz_args) {
 		options.func_args = (void **)dr_global_alloc(options.num_fuz_args * sizeof(void *));
 	}
+
+	if (strlen(options.fuzz_module) == 0 && strlen(options.fuzz_method) == 0 && options.fuzz_offset == 0
+		&& options.fuzz_iterations != 1) {
+		USAGE_CHECK(false, "If fuzz_module is specified, then either fuzz_method or fuzz_offset must be as well");
+	}
 }
 
 /**
@@ -1291,6 +1351,9 @@ DR_EXPORT void dr_client_main(client_id_t id, int argc, const char *argv[])
 
 	if (options.nudge_kills)
 		drx_register_soft_kills(event_soft_kill);
+
+	winafl_data.instrumentation_enabled = false;
+	winafl_data.exception_hit = false;
 
 	if (options.thread_coverage || options.coverage_kind == COVERAGE_EDGE) {
 		size = MAP_SIZE;
