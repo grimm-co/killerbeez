@@ -702,7 +702,7 @@ static void create_target_process(dynamorio_state_t * state, char* cmd_line, cha
  * @return - returns -1 on error, -2 when in edge mode, or the results of
  * has_new_coverage/has_new_coverage_per_module functions
  */
-static int finish_fuzz_round(dynamorio_state_t * state, int wait) {
+static int finish_fuzz_round(dynamorio_state_t * state) {
 	DWORD num_bytes_available;
 	char result;
 	DWORD num_read;
@@ -712,10 +712,10 @@ static int finish_fuzz_round(dynamorio_state_t * state, int wait) {
 		return state->last_path_was_new;
 
 	//Determine if the last process hung or not.  If there's nothing in the pipe, then it obviously hung.
-	if (!wait && !PeekNamedPipe(state->pipe_handle, NULL, 0, NULL, &num_bytes_available, NULL))
+	if (!PeekNamedPipe(state->pipe_handle, NULL, 0, NULL, &num_bytes_available, NULL))
 		return -1;
 
-	if (!wait && !num_bytes_available)
+	if (!num_bytes_available)
 	{
 		destroy_target_process(state, 0);
 		state->last_process_status = FUZZ_HANG;
@@ -758,9 +758,14 @@ static int finish_fuzz_round(dynamorio_state_t * state, int wait) {
 	return ret;
 }
 
-void dynamorio_wait_for_target_completion(void * instrumentation_state, int timeout)
+int dynamorio_is_target_done(void * instrumentation_state)
 {
-	finish_fuzz_round(instrumentation_state, 1);
+	dynamorio_state_t * state = (dynamorio_state_t *)instrumentation_state;
+	DWORD num_bytes_available;
+
+	if (!PeekNamedPipe(state->pipe_handle, NULL, 0, NULL, &num_bytes_available, NULL))
+		return 1;
+	return num_bytes_available != 0;
 }
 
 ////////////////////////////////////////////////////////////////
@@ -1362,7 +1367,7 @@ int dynamorio_enable(void * instrumentation_state, HANDLE * process, char * cmd_
 		create_target_process(state, cmd_line, input, input_length);
 	}
 	else //the child is alive and we haven't cleaned up from last round
-		finish_fuzz_round(state, 0);
+		finish_fuzz_round(state);
 
 	*process = state->child_handle;
 
@@ -1472,7 +1477,7 @@ int dynamorio_is_new_path(void * instrumentation_state, int * process_status)
 	dynamorio_state_t * state = (dynamorio_state_t *)instrumentation_state;
 	int ret;
 
-	ret = finish_fuzz_round(state, 0);
+	ret = finish_fuzz_round(state);
 	*process_status = state->last_process_status;
 	return ret;
 }
@@ -1499,7 +1504,7 @@ int dynamorio_get_module_info(void * instrumentation_state, int index, int * is_
 	target_module_t * target_module;
 
 	if (info || is_new) {
-		if (finish_fuzz_round(state, 0) < 0)
+		if (finish_fuzz_round(state) < 0)
 			return -1;
 	}
 
@@ -1540,7 +1545,7 @@ instrumentation_edges_t * dynamorio_get_edges(void * instrumentation_state, int 
 	if (!state->edges) //If they didn't ask for edges ahead of time, we don't have them
 		return NULL;
 
-	if (finish_fuzz_round(state, 0) == -1)
+	if (finish_fuzz_round(state) == -1)
 		return NULL;
 
 	if (!state->per_module_coverage)

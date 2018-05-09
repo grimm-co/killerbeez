@@ -32,20 +32,15 @@ int generic_done_processing_input(HANDLE process, time_t start_time, int timeout
 void generic_wait_for_process_completion(HANDLE process, int timeout, instrumentation_t * instrumentation, void * instrumentation_state)
 {
 	time_t start_time = time(NULL);
-	int status;
 
 	//If the instrumentation has a wait for target completion method, use that instead.
-	if (instrumentation && instrumentation->wait_for_target_completion) {
-		instrumentation->wait_for_target_completion(instrumentation_state, timeout);
-		return;
-	}
-
 	while (1)
 	{
-		Sleep(5);
-		status = generic_done_processing_input(process, start_time, timeout);
-		if (status > 0)
+		if(generic_done_processing_input(process, start_time, timeout) > 0)
 			break;
+		if (instrumentation && instrumentation->is_target_done && instrumentation->is_target_done(instrumentation_state))
+			break;
+		Sleep(5);
 	}
 }
 

@@ -41,7 +41,7 @@ instrumentation_t * instrumentation_factory(char * instrumentation_type)
 		ret->is_new_path = dynamorio_is_new_path;
 		ret->get_module_info = dynamorio_get_module_info;
 		ret->get_edges = dynamorio_get_edges;
-		ret->wait_for_target_completion = dynamorio_wait_for_target_completion;
+		ret->is_target_done = dynamorio_is_target_done;
 	}
 	else
 		FACTORY_ERROR();

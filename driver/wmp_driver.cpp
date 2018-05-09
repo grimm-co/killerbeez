@@ -131,7 +131,6 @@ void wmp_cleanup(void * driver_state)
 int wmp_test_input(void * driver_state, char * input, size_t length)
 {
 	wmp_state_t * state = (wmp_state_t *)driver_state;
-	int status;
 	char cmd_line[256];
 
 	//Write the input to disk
@@ -159,16 +158,14 @@ int wmp_test_input(void * driver_state, char * input, size_t length)
 	state->start_time = time(NULL);
 
 	//Wait for it to be done
-	if (state->instrumentation && state->instrumentation->wait_for_target_completion) {
-		state->instrumentation->wait_for_target_completion(state->instrumentation_state, state->timeout);
-	} else {
-		while (1)
-		{
-			Sleep(33);
-			status = doneProcessingInput(state);
-			if (status > 0)
-				break;
-		}
+	while (1)
+	{
+		if (doneProcessingInput(state) > 0)
+			break;
+		if (state->instrumentation && state->instrumentation->is_target_done &&
+			state->instrumentation->is_target_done(state->instrumentation_state))
+			break;
+		Sleep(50);
 	}
 	return 0;
 }
