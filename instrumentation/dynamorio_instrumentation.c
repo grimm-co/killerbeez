@@ -1,5 +1,6 @@
 #define _CRT_RAND_S
 #include <windows.h>
+#include <Shlwapi.h>
 #include <io.h>
 #include <stdlib.h> 
 
@@ -1009,7 +1010,7 @@ static dynamorio_state_t * copy_state(dynamorio_state_t * original)
 static dynamorio_state_t * setup_options(char * options)
 {
 	dynamorio_state_t * state;
-	size_t i;
+	size_t i, length;
 	target_module_t * target_module;
 	char * temp;
 
@@ -1030,6 +1031,18 @@ static dynamorio_state_t * setup_options(char * options)
 	PARSE_OPTION_INT(state, options, timeout, "timeout", dynamorio_cleanup);
 	PARSE_OPTION_ARRAY(state, options, module_names, num_modules, "coverage_modules", dynamorio_cleanup);
 	PARSE_OPTION_INT(state, options, edges, "edges", dynamorio_cleanup);
+
+	if (!state->num_modules && state->target_path) { //if the user didn't specify a module, we'll pick the executable itself by default
+		state->num_modules = 1;
+		state->module_names = malloc(sizeof(char *));
+		length = strlen(state->target_path) + 1;
+		state->module_names[0] = malloc(length);
+		strncpy(state->module_names[0], PathFindFileName(state->target_path), length);
+		INFO_MSG("No Coverage Module selected, choosing the target executable \"%s\" by default.", state->module_names[0]);
+	}
+
+	if (!state->num_modules)
+		FATAL_MSG("No Coverage Module selected, please specify one with the coverage_modules option.");
 
 	if (state->target_path)
 	{
