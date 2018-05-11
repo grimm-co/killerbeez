@@ -56,7 +56,7 @@ To build Killerbeez on Windows you will need Microsoft Visual Studio 2017, Cygwi
 Once Killerbeez has been built, download a small video file you would like to use as a seed file and you can quickly fuzz Windows Media Player with the below example command.  Be sure to replace the seed file argument `-sf` with the path to the video file you just downloaded.  Note that because `wmplayer.exe` is a 32-bit executable you'll either need to use the 32-bit fuzzer.exe, or manually specify the path to the 32-bit `winafl.dll` with the instrumentation's `winafl_dir` option.
 
 ```
-fuzzer.exe wmp dynamorio nop -n 3 -sf "C:/Users/<user>/Desktop/test.mp4" -d "{\"timeout\":20}" -i "{\"per_module_coverage\": 1,\"timeout\": 2000, \"coverage_modules\":[\"wmp.DLL\"], \"client_params\":\"-thread_coverage -target_module wmplayer.exe -target_offset 0x1F20 -nargs 3\",\"fuzz_iterations\":1, \"target_path\": \"C:\\Program Files (x86)\\Windows Media Player\\wmplayer.exe\"}"
+fuzzer.exe wmp dynamorio nop -n 3 -sf "C:\Users\<user>\Desktop\test.mp4" -d "{\"timeout\":20}" -i "{\"timeout\":5000,\"coverage_modules\":[\"wmp.DLL\"],\"target_path\":\"C:\\Program Files (x86)\\Windows Media Player\\wmplayer.exe\"}"
 ```
 You may need to modify these parameters to match your environment.
 
