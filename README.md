@@ -62,7 +62,10 @@ If you don't want to build the project from source, give the binary release a tr
 | Windows 8.1     | Working      | Experimental |
 | Windows 10      | Experimental | Experimental |
 
-You will also need to install th
+You will also need to install the 2017 Microsoft Visual C++ Redistributable. Please note that if you are running Killerbeez on a 64-bit host, you will need to install both the 64-bit and the 32-bit versions of the redistributable.
+- [64-Bit Redistributable Download](https://aka.ms/vs/15/release/vc_redist.x64.exe)
+- [32-Bit Redistributable Download](https://aka.ms/vs/15/release/vc_redist.x86.exe)
+
 #### Quickstart and Examples
 Once Killerbeez has been built, download a small video file you would like to use as a seed file and you can quickly fuzz Windows Media Player with the below example command.  Be sure to replace the seed file argument `-sf` with the path to the video file you just downloaded.  Note that because `wmplayer.exe` is a 32-bit executable you'll either need to use the 32-bit fuzzer.exe, or manually specify the path to the 32-bit `winafl.dll` with the instrumentation's `winafl_dir` option.
 
