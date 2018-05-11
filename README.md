@@ -53,9 +53,16 @@ To build Killerbeez on Windows you will need Microsoft Visual Studio 2017, Cygwi
   + The fuzzer.exe executable can be found at `%WORKDIR%\build\x64\Debug\killerbeez\fuzzer.exe`
 
 #### Binary Release
-If you don't want to build the project from source, give the binary release a try. The latest release can be found [here](https://github.com/grimm-co/Killerbeez/releases) and they have been tested to work with the following operating systems:
+If you don't want to build the project from source, give the binary release a try. The latest release can be found [here](https://github.com/grimm-co/Killerbeez/releases) and has been tested with the following operating systems:
 
+| Windows Version |    64-Bit    |    32-Bit    | 
+| --------------- | ------------ | ------------ |
+| Windows 7       | Not Working  | Not Working  |
+| Windows 8       | Experimental | Experimental |
+| Windows 8.1     | Working      | Experimental |
+| Windows 10      | Experimental | Experimental |
 
+You will also need to install th
 #### Quickstart and Examples
 Once Killerbeez has been built, download a small video file you would like to use as a seed file and you can quickly fuzz Windows Media Player with the below example command.  Be sure to replace the seed file argument `-sf` with the path to the video file you just downloaded.  Note that because `wmplayer.exe` is a 32-bit executable you'll either need to use the 32-bit fuzzer.exe, or manually specify the path to the 32-bit `winafl.dll` with the instrumentation's `winafl_dir` option.
 
@@ -71,12 +78,12 @@ included so the documentation is easy to read for those who do not have a LaTeX
 typesetting environment set up.
 
 ## Troubleshooting
-Q: The target program doesn't start
+Q: The target program doesn't start   
 A: Windows Media Player won't automatically play media the first time is run.
    There's a pop-up which requires you to configure some settings.  Just run it
    manually once and you should be good to go after that.
 
-Q: I'm getting an error about a pipe timing out
+Q: I'm getting an error about a pipe timing out  
 A: This is related to the instrumentation and the target taking too long to
    start up.  If running it again doesn't work, try increasing the "timeout" on
    the -i argument and that should take care of it.
