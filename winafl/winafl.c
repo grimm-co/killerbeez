@@ -1206,7 +1206,7 @@ static void options_init(client_id_t id, int argc, const char *argv[])
 		}
 		else if (strcmp(token, "-nudge_kills") == 0)
 			options.nudge_kills = true;
-		else if (strcmp(token, "-no-thread_coverage") == 0)
+		else if (strcmp(token, "-no_thread_coverage") == 0)
 			options.thread_coverage = false;
 		else if (strcmp(token, "-per_module_coverage") == 0)
 			options.per_module_coverage = true;
