@@ -51,7 +51,11 @@ To build Killerbeez on Windows you will need Microsoft Visual Studio 2017, Cygwi
 7. Build Killerbeez
   + In order to build the fuzzer, you will first need to build the dependencies. Open the repositories `killerbeez-utils` and `killerbeez-mutators`  within Visual Studio (File -> Open -> CMake..) and build using (CMake -> Build All). Once they are built, you can build the `Killerbeez` project in the same way. Ensure that all of the projects are using the same build profile (Windows vs Linux, debug vs release, x86 vs x64).  If successful, you'll see an aggregate `build/` directory in the root of your working directory.  In it, the compiled executables and libraries from all three projects will be found in folders named after the architecture (x64) and build type (i.e. Debug). 
   + The fuzzer.exe executable can be found at `%WORKDIR%\build\x64\Debug\killerbeez\fuzzer.exe`
-  
+
+#### Binary Release
+If you don't want to build the project from source, give the binary release a try. The latest release can be found [here](https://github.com/grimm-co/Killerbeez/releases) and they have been tested to work with the following operating systems:
+
+
 #### Quickstart and Examples
 Once Killerbeez has been built, download a small video file you would like to use as a seed file and you can quickly fuzz Windows Media Player with the below example command.  Be sure to replace the seed file argument `-sf` with the path to the video file you just downloaded.  Note that because `wmplayer.exe` is a 32-bit executable you'll either need to use the 32-bit fuzzer.exe, or manually specify the path to the 32-bit `winafl.dll` with the instrumentation's `winafl_dir` option.
 
