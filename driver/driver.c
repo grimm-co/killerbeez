@@ -2,6 +2,7 @@
 #include <jansson_helper.h>
 #include <global_types.h>
 #include <utils.h>
+#include "instrumentation.h"
 #include "driver.h"
 
 #include <time.h>
@@ -27,18 +28,23 @@ int generic_done_processing_input(HANDLE process, time_t start_time, int timeout
  * process exiting.
  * @param process - a HANDLE to the fuzzed process
  * @param timeout - The maximum number of seconds to wait before declaring the process done
+ * @param instrumentation - Optionally, an instrumentation struct that should be used to check if the process is
+ * done yet
+ * @param instrumentation_state - if the instrumentation parameter is provided, this parameter should define the
+ * instrumentation state to check if the process is done yet.
  */
-void generic_wait_for_process_completion(HANDLE process, int timeout)
+void generic_wait_for_process_completion(HANDLE process, int timeout, instrumentation_t * instrumentation, void * instrumentation_state)
 {
 	time_t start_time = time(NULL);
-	int status;
 
+	//If the instrumentation has a wait for target completion method, use that instead.
 	while (1)
 	{
-		Sleep(5);
-		status = generic_done_processing_input(process, start_time, timeout);
-		if (status > 0)
+		if(generic_done_processing_input(process, start_time, timeout) > 0)
 			break;
+		if (instrumentation && instrumentation->is_process_done && instrumentation->is_process_done(instrumentation_state))
+			break;
+		Sleep(5);
 	}
 }
 

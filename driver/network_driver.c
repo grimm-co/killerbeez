@@ -350,7 +350,7 @@ static int network_run(network_state_t * state, char ** inputs, size_t * lengths
 	closesocket(sock);
 
 	//Wait for it to be done
-	generic_wait_for_process_completion(state->process, state->timeout);
+	generic_wait_for_process_completion(state->process, state->timeout, state->instrumentation, state->instrumentation_state);
 	return ret;
 }
 
