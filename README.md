@@ -58,7 +58,7 @@ If you don't want to build the project from source, give the binary release a tr
 | Windows Version |    64-Bit    |    32-Bit    | 
 | --------------- | ------------ | ------------ |
 | Windows 7       | Not Working  | Not Working  |
-| Windows 8       | Experimental | Experimental |
+| Windows 8       | Working      | Experimental |
 | Windows 8.1     | Working      | Experimental |
 | Windows 10      | Experimental | Experimental |
 
