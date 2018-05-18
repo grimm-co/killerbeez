@@ -67,7 +67,14 @@ You will also need to install the 2017 Microsoft Visual C++ Redistributable. Ple
 - [32-Bit Redistributable Download](https://aka.ms/vs/15/release/vc_redist.x86.exe)
 
 #### Quickstart and Examples
-Once Killerbeez has been built, download a small video file you would like to use as a seed file and you can quickly fuzz Windows Media Player with the below example command.  Be sure to replace the seed file argument `-sf` with the path to the video file you just downloaded.  Note that because `wmplayer.exe` is a 32-bit executable you'll either need to use the 32-bit fuzzer.exe, or manually specify the path to the 32-bit `winafl.dll` with the instrumentation's `winafl_dir` option.
+Once Killerbeez has been built, download a small video file you would like to use as a seed file and you can quickly fuzz Windows Media Player with the below example command.  Be sure to replace the seed file argument `-sf` with the path to the video file you just downloaded.  Note that because `wmplayer.exe` is a 32-bit executable you'll either need to use the 32-bit fuzzer.exe, or manually specify the path to the 32-bit `winafl.dll` with the instrumentation's `winafl_dir` option. Additionally, the `-target_offset` argument that is passed to the instrumentation will need to be updated depending on your Windows version. In this case we are just using the entry point of wmplayer.exe, below there is a table to use as refrence but it is best to verify the entrypoint of your binary.
+
+| Windows Version | Offset | 
+| --------------- | ------ |
+| Windows 7       | 0x176D |
+| Windows 8       | 0x1BAD |
+| Windows 8.1     | 0x1F00 |
+| Windows 10      | 0x1F20 |
 
 ```
 fuzzer.exe wmp dynamorio nop -n 3 -sf "C:/Users/<user>/Desktop/test.mp4" -d "{\"timeout\":20}" -i "{\"per_module_coverage\": 1,\"timeout\": 2000, \"coverage_modules\":[\"wmp.DLL\"], \"client_params\":\"-thread_coverage -target_module wmplayer.exe -target_offset 0x1F20 -nargs 3\",\"fuzz_iterations\":1, \"target_path\": \"C:\\Program Files (x86)\\Windows Media Player\\wmplayer.exe\"}"
