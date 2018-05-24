@@ -65,7 +65,7 @@ x64 Visual Studio, stdcall for cdecl or stdcall, and thiscall.
 * `-no_thread_coverage` - With this option enabled, all threads of the target
 program will track coverage.  By default, only the thread that hits the target
 function will track coverage.
-* `-covtype - the type of coverage being recorded. Supported options are bb for
+* `-covtype` - the type of coverage being recorded. Supported options are bb for
 basic block coverage or edge for edge coverage.  Edge coverage is the default.
 * `-write_log` - A debug option that writes a log file to the current directory
 with debug information on the DynamoRIO plugin's status.
