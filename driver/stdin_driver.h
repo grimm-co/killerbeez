@@ -22,6 +22,9 @@ struct stdin_state
 	//The handle to the fuzzed process instance
 	HANDLE process;
 
+	//command line of the fuzzed process
+	char * cmd_line;
+
 	//The instrumentation module
 	instrumentation_t * instrumentation;
 
