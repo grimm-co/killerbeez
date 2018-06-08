@@ -304,6 +304,7 @@ char * none_help(void)
 	return strdup(
 		"none - No instrumentation (using debugging to detect crashes)\n"
 		"Options:\n"
-		"\ttimeout               The number of milliseconds to wait for the target process to finish\n"
+		"\tNone\n"
+		"\n"
 	);
 }
