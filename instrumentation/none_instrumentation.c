@@ -29,6 +29,7 @@ static int debugging_loop(thread_arguments_t * args)
 	DEBUG_EVENT de;
 	DWORD cont, child_pid;
 	none_state_t * state = args->state;
+	int process_running;
 
 	//Create the child process, mark it as running, and let the main thread know we're done
 	if (start_process_and_write_to_stdin_flags(args->cmd_line, args->stdin_input, args->stdin_length, &state->child_handle, DEBUG_ONLY_THIS_PROCESS)) {
@@ -39,29 +40,29 @@ static int debugging_loop(thread_arguments_t * args)
 		return 1;
 	}
 	free(args);
-	state->process_running = 1;
+	process_running = 1;
 	release_semaphore(state->process_creation_semaphore); //Let the main thread know we've created the process and are done with args
 
 	//Loop while debugging and look for process exits and exceptions
 	child_pid = GetProcessId(state->child_handle);
 	state->last_status = FUZZ_HANG;
 	memset(&de, 0, sizeof(DEBUG_EVENT));
-	while (state->process_running && WaitForDebugEvent(&de, INFINITE))
+	while (process_running && WaitForDebugEvent(&de, INFINITE))
 	{
 		cont = DBG_CONTINUE;
-		if (de.dwProcessId == child_pid && state->process_running) {
+		if (de.dwProcessId == child_pid && process_running) {
 			if (de.dwDebugEventCode == EXCEPTION_DEBUG_EVENT)
 			{
 				if (!de.u.Exception.dwFirstChance || de.u.Exception.ExceptionRecord.ExceptionCode != EXCEPTION_BREAKPOINT) {
 					state->last_status = FUZZ_CRASH;
 					cont = DBG_EXCEPTION_NOT_HANDLED;
-					state->process_running = 0;
+					process_running = 0;
 				}
 			}
 			else if (de.dwDebugEventCode == EXIT_PROCESS_DEBUG_EVENT)
 			{
 				state->last_status = FUZZ_NONE;
-				state->process_running = 0;
+				process_running = 0;
 			}
 		}
 
@@ -82,13 +83,14 @@ static int debugging_loop(thread_arguments_t * args)
  * @param state - The none_state_t object containing this instrumentation's state
  */
 static void destroy_target_process(none_state_t * state) {
-	state->process_running = 0;
 	if (state->child_handle) {
 		TerminateProcess(state->child_handle, 0);
 		CloseHandle(state->child_handle);
 		state->child_handle = NULL;
 	}
 	if (state->debug_thread_handle) {
+		//We don't need to explicitly stop the debug thread, it will see
+		//the debug event from killing the child process and exit
 		WaitForSingleObject(state->debug_thread_handle, INFINITE);
 		CloseHandle(state->debug_thread_handle);
 		state->debug_thread_handle = NULL;
@@ -124,8 +126,8 @@ static int create_target_process(none_state_t * state, char* cmd_line, char * st
 
 	if (take_semaphore(state->process_creation_semaphore)) {
 		//Run it twice, so even in the race condition where the debug thread starts the child process between
-		destroy_target_process(state); //when we try to kill the child process and when we kill the debug thread
-		destroy_target_process(state); //that the process still gets killed
+		destroy_target_process(state); //when we try to kill the child process and when we kill the debug thread,
+		destroy_target_process(state); //the process still gets killed
 		return 1;
 	}
 

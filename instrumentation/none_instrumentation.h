@@ -18,7 +18,6 @@ struct none_state
 
 	HANDLE child_handle;
 	HANDLE debug_thread_handle;
-	int process_running;
 	semaphore_t process_creation_semaphore;
 
 	int finished_last_run;
