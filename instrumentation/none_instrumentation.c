@@ -89,8 +89,12 @@ static void destroy_target_process(none_state_t * state) {
 		state->child_handle = NULL;
 	}
 	if (state->debug_thread_handle) {
-		//We don't need to explicitly stop the debug thread, it will see
-		//the debug event from killing the child process and exit
+		//We don't need to explicitly stop the debug thread, it will see the debug event from killing
+		//the child process and exit.  Note that there is still a race condition between these two if
+		//statements that if the debug thread creates the child process while the main thread is between
+		//them, the main thread will wait forever for the debug thread to end.  However, this can only
+		//happen if taking/waiting on the process_creation_semaphore failed in create_target_process,
+		//so it's not a huge problem and it's hard to fix when semaphores can't be trusted to work.
 		WaitForSingleObject(state->debug_thread_handle, INFINITE);
 		CloseHandle(state->debug_thread_handle);
 		state->debug_thread_handle = NULL;
