@@ -84,8 +84,10 @@ static int debugging_loop(thread_arguments_t * args)
 static void destroy_target_process(none_state_t * state) {
 	if (state->child_handle) {
 		state->last_child_hung = is_process_alive(state->child_handle);
-		if(state->last_child_hung)
+		//If the process hung, then make sure the debug thread finishes its debug loop
+		if(state->last_child_hung)//otherwise we'll be waiting for it forever
 			state->process_running = 0;
+
 		TerminateProcess(state->child_handle, 0);
 		CloseHandle(state->child_handle);
 		state->child_handle = NULL;
