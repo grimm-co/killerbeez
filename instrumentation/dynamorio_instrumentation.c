@@ -660,11 +660,6 @@ static void create_target_process(dynamorio_state_t * state, char* cmd_line, cha
 
 	state->pipe_handle = create_pipe(state->pipe_name, state->timeout);
 
-	//Verify winafl.dll exists
-	snprintf(buffer, sizeof(buffer) - 1, "%s\\winafl.dll", state->winafl_dir);
-	if(access(buffer, 0))
-		FATAL_MSG("Failed to find the winafl.dll in %s.  Use the winafl_dir option to modify the directory to look for winafl.dll", state->winafl_dir);
-
 	//Create the child process
 	dr_cmd = alloc_printf(
 		"%s\\drrun.exe -pidfile %s -no_follow_children -c \"%s\\winafl.dll\" %s -fuzzer_id %s -- %s",
@@ -1029,6 +1024,7 @@ static dynamorio_state_t * setup_options(char * options)
 	size_t i, length;
 	target_module_t * target_module;
 	char * temp;
+	char buffer[MAX_PATH];
 
 	state = copy_state(NULL);
 	if (!state)
@@ -1082,6 +1078,11 @@ static dynamorio_state_t * setup_options(char * options)
 	if (!state->winafl_dir) { //if the user didn't specify a winafl directory, try to automatically determine one
 		state->winafl_dir = add_architecture_to_path(state->default_winafl_dir, state->target_path);
 	}
+
+	//Verify winafl.dll exists
+	snprintf(buffer, sizeof(buffer) - 1, "%s\\winafl.dll", state->winafl_dir);
+	if (access(buffer, 0))
+		FATAL_MSG("Failed to find the winafl.dll in %s.  Use the winafl_dir option to modify the directory to look for winafl.dll", state->winafl_dir);
 
 	//printf("Modules (%zu):\n", state->num_modules);
 	for (i = 0; i < state->num_modules; i++)
