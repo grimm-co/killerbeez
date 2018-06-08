@@ -82,8 +82,12 @@ static int debugging_loop(thread_arguments_t * args)
  * @param state - The none_state_t object containing this instrumentation's state
  */
 static void destroy_target_process(none_state_t * state) {
-	state->process_running = 0;
 	if (state->child_handle) {
+		state->last_child_hung = is_process_alive(state->child_handle);
+		//If the process hung, then make sure the debug thread finishes its debug loop
+		if(state->last_child_hung)//otherwise we'll be waiting for it forever
+			state->process_running = 0;
+
 		TerminateProcess(state->child_handle, 0);
 		CloseHandle(state->child_handle);
 		state->child_handle = NULL;
@@ -111,6 +115,8 @@ static int create_target_process(none_state_t * state, char* cmd_line, char * st
 	args->stdin_length = stdin_length;
 
 	state->finished_last_run = 0;
+	state->last_child_hung = 0;
+	state->last_status = -1;
 	state->debug_thread_handle = CreateThread(
 		NULL,           // default security attributes
 		0,              // default stack size
@@ -124,8 +130,8 @@ static int create_target_process(none_state_t * state, char* cmd_line, char * st
 
 	if (take_semaphore(state->process_creation_semaphore)) {
 		//Run it twice, so even in the race condition where the debug thread starts the child process between
-		destroy_target_process(state); //when we try to kill the child process and when we kill the debug thread
-		destroy_target_process(state); //that the process still gets killed
+		destroy_target_process(state); //when we try to kill the child process and when we kill the debug thread,
+		destroy_target_process(state); //the process still gets killed
 		return 1;
 	}
 
@@ -153,12 +159,6 @@ void * none_create(char * options, char * state)
 	if (!none_state)
 		return NULL;
 	memset(none_state, 0, sizeof(none_state_t));
-	none_state->timeout = 250;
-
-	//Parse options
-	if (options) {
-		PARSE_OPTION_INT(none_state, options, timeout, "timeout", none_cleanup);
-	}
 
 	none_state->process_creation_semaphore = create_semaphore(0, 1);
 	if (!none_state->process_creation_semaphore) {
@@ -287,7 +287,10 @@ int none_is_new_path(void * instrumentation_state, int * process_status)
 	}
 	if (state->last_status < 0)
 		return -1;
-	*process_status = state->last_status;
+	if(state->last_child_hung)
+		*process_status = FUZZ_HANG;
+	else
+		*process_status = state->last_status;
 	return 0; //We don't gather instrumentation data, so we can't ever tell if we hit a new path.
 }
 
@@ -301,6 +304,7 @@ char * none_help(void)
 	return strdup(
 		"none - No instrumentation (using debugging to detect crashes)\n"
 		"Options:\n"
-		"\ttimeout               The number of milliseconds to wait for the target process to finish\n"
+		"\tNone\n"
+		"\n"
 	);
 }
