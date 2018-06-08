@@ -58,7 +58,7 @@ Once Killerbeez has been built, download a small video file you would like to us
 ```
 fuzzer.exe wmp dynamorio nop -n 3 -sf "C:\Users\<user>\Desktop\test.mp4" -d "{\"timeout\":20}" -i "{\"timeout\":5000,\"coverage_modules\":[\"wmp.DLL\"],\"target_path\":\"C:\\Program Files (x86)\\Windows Media Player\\wmplayer.exe\"}"
 ```
-You may need to modify these parameters to match your environment.
+You may need to modify these parameters to match your environment.  In order to speed up fuzzing, it may be useful to enable persistence mode.  See PersistenceMode.md for instructions.
 
 ## Documentation
 Documentation can be found in the docs folder.  It's written in LaTeX which
