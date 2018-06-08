@@ -13,14 +13,13 @@ char * none_help(void);
 
 struct none_state
 {
-	//Options
-	int timeout;
-
 	HANDLE child_handle;
 	HANDLE debug_thread_handle;
+	int process_running;
 	semaphore_t process_creation_semaphore;
 
 	int finished_last_run;
 	int last_status;
+	int last_child_hung;
 };
 typedef struct none_state none_state_t;
