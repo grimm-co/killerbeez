@@ -55,7 +55,7 @@ To build Killerbeez on Windows you will need Microsoft Visual Studio 2017, Cygwi
 #### Quickstart and Examples
 Let's start by fuzzing a test program first, to keep things simple.
 ```
-fuzzer.exe file dynamorio radamsa -n 3 -sf "C:\\%WORKDIR%\Killerbeez\corpus\test\inputs\input.txt" -d "{\"timeout\":20, \"path\":\"C:\\%WORKDIR%\\Killerbeez\\corpus\\test\\test.exe\"}" -i "{\"per_module_coverage\": 1, \"coverage_modules\":[\"test.exe\"], \"timeout\": 2000, \"client_params\":\"-thread_coverage -target_module test.exe -target_offset 0x1000 -nargs 3\",\"fuzz_iterations\":1, \"target_path\": \"C:\\%WORKDIR%\\Killerbeez\\corpus\\test\\test.exe\"}"
+fuzzer.exe file dynamorio radamsa -n 20 -sf "%WORKDIR%\Killerbeez\corpus\test\inputs\input.txt" -d "{\"timeout\":20,\"path\":\"%WORKDIR%\\Killerbeez\\corpus\\test\\test.exe\",\"arguments\":\"@@\"}" -i "{\"coverage_modules\":[\"test.exe\"],\"timeout\":2000,\"target_path\":\"%WORKDIR%\\Killerbeez\\corpus\\test\\test.exe\"}"
 ```
 
 For the next example, download a small video file you would like to use as a seed file and you can quickly fuzz Windows Media Player with the below example command.  Be sure to replace the seed file argument `-sf` with the path to the video file you just downloaded.  Note that because `wmplayer.exe` is a 32-bit executable you'll either need to use the 32-bit fuzzer.exe, or manually specify the path to the 32-bit `winafl.dll` with the instrumentation's `winafl_dir` option.
