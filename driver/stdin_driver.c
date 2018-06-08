@@ -25,6 +25,8 @@ static void cleanup_process(stdin_state_t * state);
 static stdin_state_t * setup_options(char * options)
 {
 	stdin_state_t * state;
+	size_t cmd_length;
+
 	state = (stdin_state_t *)malloc(sizeof(stdin_state_t));
 	if (!state)
 		return NULL;
@@ -40,11 +42,17 @@ static stdin_state_t * setup_options(char * options)
 	PARSE_OPTION_INT(state, options, timeout, "timeout", stdin_cleanup);
 	PARSE_OPTION_DOUBLE(state, options, input_ratio, "ratio", stdin_cleanup);
 
-	if (!state->path || !file_exists(state->path) || state->input_ratio <= 0)
+	cmd_length = (state->path ? strlen(state->path) : 0) + (state->arguments ? strlen(state->arguments) : 0) + 2;
+	state->cmd_line = (char *)malloc(cmd_length);
+
+	//Validate the options
+	if (!state->path || !state->cmd_line || !file_exists(state->path) || state->input_ratio <= 0)
 	{
 		stdin_cleanup(state);
 		return NULL;
 	}
+
+	snprintf(state->cmd_line, cmd_length, "%s %s", state->path, state->arguments ? state->arguments : "");
 
 	return state;
 }
@@ -104,9 +112,9 @@ void stdin_cleanup(void * driver_state)
 	cleanup_process(state);
 
 	free(state->mutate_buffer);
-
 	free(state->path);
 	free(state->arguments);
+	free(state->cmd_line);
 	free(state);
 }
 
@@ -121,14 +129,12 @@ void stdin_cleanup(void * driver_state)
 int stdin_test_input(void * driver_state, char * input, size_t length)
 {
 	stdin_state_t * state = (stdin_state_t *)driver_state;
-	char cmd_line[8192];
 
 	//Start the process and give it our input
-	snprintf(cmd_line, sizeof(cmd_line) - 1, "%s %s", state->path, state->arguments ? state->arguments : "");
 	if (state->instrumentation)
 	{
 		//Have the instrumentation start the new process, since it needs to do so in a custom environment
-		state->instrumentation->enable(state->instrumentation_state, &state->process, cmd_line, input, length);
+		state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, input, length);
 	}
 	else
 	{
@@ -136,7 +142,7 @@ int stdin_test_input(void * driver_state, char * input, size_t length)
 		cleanup_process(state);
 
 		//Start the new process
-		if (start_process_and_write_to_stdin(cmd_line, input, length, &state->process))
+		if (start_process_and_write_to_stdin(state->cmd_line, input, length, &state->process))
 		{
 			cleanup_process(state);
 			return -1;
