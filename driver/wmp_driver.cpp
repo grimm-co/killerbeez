@@ -43,13 +43,13 @@ static wmp_state_t * setup_options(char * options)
 	state->timeout = 2;
 	state->input_ratio = 2.0;
 
-	if (!options || !strlen(options))
-		return state;
-
-	PARSE_OPTION_STRING(state, options, path, "path", wmp_cleanup);
-	PARSE_OPTION_STRING(state, options, extension, "extension", wmp_cleanup);
-	PARSE_OPTION_INT(state, options, timeout, "timeout", wmp_cleanup);
-	PARSE_OPTION_DOUBLE(state, options, input_ratio, "ratio", wmp_cleanup);
+	if (options && strlen(options))
+	{
+		PARSE_OPTION_STRING(state, options, path, "path", wmp_cleanup);
+		PARSE_OPTION_STRING(state, options, extension, "extension", wmp_cleanup);
+		PARSE_OPTION_INT(state, options, timeout, "timeout", wmp_cleanup);
+		PARSE_OPTION_DOUBLE(state, options, input_ratio, "ratio", wmp_cleanup);
+	}
 
 	//Create a test filename to write the fuzz file to
 	state->test_filename = get_temp_filename(state->extension);
