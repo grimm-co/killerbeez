@@ -66,7 +66,7 @@ You will also need to install the 2017 Microsoft Visual C++ Redistributable. Ple
 - [64-Bit Redistributable Download](https://aka.ms/vs/15/release/vc_redist.x64.exe)
 - [32-Bit Redistributable Download](https://aka.ms/vs/15/release/vc_redist.x86.exe)
 
-[1] This is due to a compatibility problem with Windows 7 and DynamoRIO see [this issue](https://github.com/DynamoRIO/dynamorio/issues/2658) for more info.
+[1] This is due to a compatibility problem with Windows 7 and DynamoRIO see [this issue](https://github.com/DynamoRIO/dynamorio/issues/2658) for more info.  
 [2] Experimental status means that most of the features are working as expected, and a few are not. 
 #### Quickstart and Examples
 
