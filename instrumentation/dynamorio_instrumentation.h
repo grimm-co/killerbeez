@@ -14,8 +14,9 @@ int dynamorio_set_state(void * instrumentation_state, char * state);
 int dynamorio_enable(void * instrumentation_state, HANDLE * process, char * cmd_line, char * input, size_t input_length);
 int dynamorio_is_new_path(void * instrumentation_state, int * process_status);
 int dynamorio_get_module_info(void * instrumentation_state, int index, int * is_new, char ** module_name, char ** info, int * size);
-char * dynamorio_help(void);
 instrumentation_edges_t * dynamorio_get_edges(void * instrumentation_state, int index);
+int dynamorio_is_process_done(void * instrumentation_state);
+char * dynamorio_help(void);
 
 void dynamorio_print_state(void * instrumentation_state);
 

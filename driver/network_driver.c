@@ -24,6 +24,8 @@
 static network_state_t * setup_options(char * options)
 {
 	network_state_t * state;
+	size_t cmd_length;
+
 	state = (network_state_t *)malloc(sizeof(network_state_t));
 	if (!state)
 		return NULL;
@@ -44,11 +46,16 @@ static network_state_t * setup_options(char * options)
 	PARSE_OPTION_DOUBLE(state, options, input_ratio, "ratio", network_cleanup);
 	PARSE_OPTION_INT_ARRAY(state, options, sleeps, sleeps_count, "sleeps", network_cleanup);
 
-	if (!state->path || !file_exists(state->path) || !state->target_ip || !state->target_port || state->input_ratio <= 0)
+	cmd_length = (state->path ? strlen(state->path) : 0) + (state->arguments ? strlen(state->arguments) : 0) + 2;
+	state->cmd_line = (char *)malloc(cmd_length);
+
+	if (!state->path || !state->cmd_line || !file_exists(state->path) || !state->target_ip || !state->target_port || state->input_ratio <= 0)
 	{
 		network_cleanup(state);
 		return NULL;
 	}
+
+	snprintf(state->cmd_line, cmd_length, "%s %s", state->path, state->arguments ? state->arguments : "");
 
 	return state;
 }
@@ -156,6 +163,7 @@ void network_cleanup(void * driver_state)
 	
 	free(state->path);
 	free(state->arguments);
+	free(state->cmd_line);
 	free(state->target_ip);
 	free(state->sleeps);
 	free(state);
@@ -301,16 +309,14 @@ static int is_port_listening(int port, int udp)
 static int network_run(network_state_t * state, char ** inputs, size_t * lengths, size_t inputs_count)
 {
 	SOCKET sock;
-	char cmd_line[8192];
 	size_t i;
 	int listening = 0, ret = 0;
 
 	//Start the process and give it our input
-	snprintf(cmd_line, sizeof(cmd_line), "%s %s", state->path, state->arguments ? state->arguments : "");
 	if (state->instrumentation)
 	{
 		//Have the instrumentation start the new process, since it needs to do so in a custom environment
-		state->instrumentation->enable(state->instrumentation_state, &state->process, cmd_line, NULL, 0);
+		state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0);
 	}
 	else
 	{
@@ -318,7 +324,7 @@ static int network_run(network_state_t * state, char ** inputs, size_t * lengths
 		cleanup_process(state);
 
 		//Start the new process
-		if (start_process_and_write_to_stdin(cmd_line, NULL, 0, &state->process))
+		if (start_process_and_write_to_stdin(state->cmd_line, NULL, 0, &state->process))
 		{
 			cleanup_process(state);
 			return -1;
@@ -350,7 +356,7 @@ static int network_run(network_state_t * state, char ** inputs, size_t * lengths
 	closesocket(sock);
 
 	//Wait for it to be done
-	generic_wait_for_process_completion(state->process, state->timeout);
+	generic_wait_for_process_completion(state->process, state->timeout, state->instrumentation, state->instrumentation_state);
 	return ret;
 }
 

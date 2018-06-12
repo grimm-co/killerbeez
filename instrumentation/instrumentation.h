@@ -55,5 +55,6 @@ struct instrumentation
 	//Optional
 	int (*get_module_info)(void * instrumentation_state, int index, int * is_new, char ** module_name, char ** info, int * size);
 	instrumentation_edges_t * (*get_edges)(void * instrumentation_state, int index);
+	int(*is_process_done)(void * instrumentation_state);
 };
 typedef struct instrumentation instrumentation_t;

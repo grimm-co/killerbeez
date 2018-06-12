@@ -29,6 +29,9 @@ struct wmp_state
 	//The handle to the wmplayer.exe instance
 	HANDLE process;
 
+	//command line of the fuzzed process
+	char * cmd_line;
+
 	//time wmplayer.exe started
 	time_t start_time;
 

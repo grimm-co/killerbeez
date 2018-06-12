@@ -8,14 +8,6 @@
 #include <utils.h>
 #include <jansson_helper.h>
 
-typedef struct
-{
-	none_state_t * state; //the none_state_t object containing this instrumentation's state
-	char * cmd_line; //the command line of the target process to start
-	char * stdin_input; //input to the STDIN of the target process
-	size_t stdin_length; //the length of the input to write stdin
-} thread_arguments_t;
-
 /**
  * This function creates the target process and debugs it.  This function runs in
  * a separate thread, releasing the process_creation_semaphore once it has created
@@ -24,54 +16,67 @@ typedef struct
  * @param args - A thread_arguments_t object with the thread's arguments in it
  * @return - zero on success, non-zero on failure
 */
-static int debugging_loop(thread_arguments_t * args)
+static int debugging_thread(none_state_t * state)
 {
 	DEBUG_EVENT de;
 	DWORD cont, child_pid;
-	none_state_t * state = args->state;
 
-	//Create the child process, mark it as running, and let the main thread know we're done
-	if (start_process_and_write_to_stdin_flags(args->cmd_line, args->stdin_input, args->stdin_length, &state->child_handle, DEBUG_ONLY_THIS_PROCESS)) {
-		free(args);
-		release_semaphore(state->process_creation_semaphore);
-		state->child_handle = NULL;
-		ERROR_MSG("Failed to create process with command line: %s\n", args->cmd_line);
-		return 1;
-	}
-	free(args);
-	state->process_running = 1;
-	release_semaphore(state->process_creation_semaphore); //Let the main thread know we've created the process and are done with args
-
-	//Loop while debugging and look for process exits and exceptions
-	child_pid = GetProcessId(state->child_handle);
-	state->last_status = FUZZ_HANG;
-	memset(&de, 0, sizeof(DEBUG_EVENT));
-	while (state->process_running && WaitForDebugEvent(&de, INFINITE))
+	while (1)
 	{
-		cont = DBG_CONTINUE;
-		if (de.dwProcessId == child_pid && state->process_running) {
-			if (de.dwDebugEventCode == EXCEPTION_DEBUG_EVENT)
-			{
-				if (!de.u.Exception.dwFirstChance || de.u.Exception.ExceptionRecord.ExceptionCode != EXCEPTION_BREAKPOINT) {
-					state->last_status = FUZZ_CRASH;
-					cont = DBG_EXCEPTION_NOT_HANDLED;
+		//Wait for the main thread to tell us to go
+		take_semaphore(state->fuzz_round_semaphore);
+
+		//Create the child process, mark it as running, and let the main thread know we're done
+		if (start_process_and_write_to_stdin_flags(state->thread_args.cmd_line, state->thread_args.stdin_input,
+				state->thread_args.stdin_length, &state->child_handle, DEBUG_ONLY_THIS_PROCESS)) {
+			release_semaphore(state->process_creation_semaphore);
+			state->child_handle = NULL;
+			ERROR_MSG("Failed to create process with command line: %s\n", state->thread_args.cmd_line);
+			return 1;
+		}
+		state->process_running = 1;
+
+		//Let the main thread know we've created the process
+		release_semaphore(state->process_creation_semaphore);
+
+		//Loop while debugging and look for process exits and exceptions
+		child_pid = GetProcessId(state->child_handle);
+		state->last_status = FUZZ_HANG;
+		memset(&de, 0, sizeof(DEBUG_EVENT));
+		while (state->process_running && WaitForDebugEvent(&de, INFINITE))
+		{
+			cont = DBG_CONTINUE;
+			if (de.dwProcessId == child_pid && state->process_running) {
+				if (de.dwDebugEventCode == EXCEPTION_DEBUG_EVENT)
+				{
+					if (!de.u.Exception.dwFirstChance || de.u.Exception.ExceptionRecord.ExceptionCode != EXCEPTION_BREAKPOINT) {
+						state->last_status = FUZZ_CRASH;
+						cont = DBG_EXCEPTION_NOT_HANDLED;
+						state->process_running = 0;
+
+						//Once we know the result, kill the process to speed things up
+						TerminateProcess(state->child_handle, 0);
+					}
+				}
+				else if (de.dwDebugEventCode == EXIT_PROCESS_DEBUG_EVENT)
+				{
+					state->last_status = FUZZ_NONE;
 					state->process_running = 0;
 				}
 			}
-			else if (de.dwDebugEventCode == EXIT_PROCESS_DEBUG_EVENT)
-			{
-				state->last_status = FUZZ_NONE;
-				state->process_running = 0;
+
+			if (!ContinueDebugEvent(de.dwProcessId, de.dwThreadId, cont)) {
+				ERROR_MSG("ContinueDebugEvent: Failed to check child process health");
+				state->last_status = -1;
+				release_semaphore(state->results_ready_semaphore);
+				return -1;
 			}
+
+			memset(&de, 0, sizeof(DEBUG_EVENT));
 		}
 
-		if (!ContinueDebugEvent(de.dwProcessId, de.dwThreadId, cont)) {
-			ERROR_MSG("ContinueDebugEvent: Failed to check child process health");
-			state->last_status = -1;
-			return -1;
-		}
-
-		memset(&de, 0, sizeof(DEBUG_EVENT));
+		//Let the main thread know we've finished looking at the current fuzzed process' debug events
+		release_semaphore(state->results_ready_semaphore);
 	}
 
 	return 0;
@@ -82,16 +87,21 @@ static int debugging_loop(thread_arguments_t * args)
  * @param state - The none_state_t object containing this instrumentation's state
  */
 static void destroy_target_process(none_state_t * state) {
-	state->process_running = 0;
 	if (state->child_handle) {
+		state->last_child_hung = is_process_alive(state->child_handle);
+		//If the process hung, then make sure the debug thread finishes its debug loop
+		if(state->last_child_hung)//otherwise we'll be waiting for it forever
+			state->process_running = 0;
+
 		TerminateProcess(state->child_handle, 0);
 		CloseHandle(state->child_handle);
 		state->child_handle = NULL;
-	}
-	if (state->debug_thread_handle) {
-		WaitForSingleObject(state->debug_thread_handle, INFINITE);
-		CloseHandle(state->debug_thread_handle);
-		state->debug_thread_handle = NULL;
+
+		//Wait for the debug thread to be done with the child.  We need to wait
+		//here, since we don't want the results_ready_semaphore to becoming stale
+		//because the none instrumentation user did not read the results of a previous
+		//fuzzed process
+		take_semaphore(state->results_ready_semaphore);
 	}
 }
 
@@ -104,35 +114,21 @@ static void destroy_target_process(none_state_t * state) {
  * @return - zero on success, non-zero on failure.
  */
 static int create_target_process(none_state_t * state, char* cmd_line, char * stdin_input, size_t stdin_length) {
-	thread_arguments_t * args = malloc(sizeof(thread_arguments_t));
-	args->state = state;
-	args->cmd_line = cmd_line;
-	args->stdin_input = stdin_input;
-	args->stdin_length = stdin_length;
 
+	//Reset the state for this fuzz process
 	state->finished_last_run = 0;
-	state->debug_thread_handle = CreateThread(
-		NULL,           // default security attributes
-		0,              // default stack size
-		(LPTHREAD_START_ROUTINE)debugging_loop, // thread function
-		args,           // thread argument
-		0,              // default creation flags
-		NULL            // record the thread handle
-	);
-	if (!state->debug_thread_handle)
-		return 1;
+	state->last_child_hung = 0;
+	state->last_status = -1;
 
-	if (take_semaphore(state->process_creation_semaphore)) {
-		//Run it twice, so even in the race condition where the debug thread starts the child process between
-		destroy_target_process(state); //when we try to kill the child process and when we kill the debug thread
-		destroy_target_process(state); //that the process still gets killed
-		return 1;
-	}
+	//Tell the debug thread to start a new process
+	state->thread_args.cmd_line = cmd_line;
+	state->thread_args.stdin_input = stdin_input;
+	state->thread_args.stdin_length = stdin_length;
+	release_semaphore(state->fuzz_round_semaphore);
 
-	if (!state->child_handle) { //This will only be true if the debug thread failed to create the target process
-		destroy_target_process(state); //Thus, we should make sure to kill the debug thread
+	//Wait for the debug thread to finish creating the new process
+	if (take_semaphore(state->process_creation_semaphore) || !state->child_handle)
 		return 1;
-	}
 	return 0;
 }
 
@@ -153,15 +149,11 @@ void * none_create(char * options, char * state)
 	if (!none_state)
 		return NULL;
 	memset(none_state, 0, sizeof(none_state_t));
-	none_state->timeout = 250;
 
-	//Parse options
-	if (options) {
-		PARSE_OPTION_INT(none_state, options, timeout, "timeout", none_cleanup);
-	}
-
+	none_state->fuzz_round_semaphore = create_semaphore(0, 1);
 	none_state->process_creation_semaphore = create_semaphore(0, 1);
-	if (!none_state->process_creation_semaphore) {
+	none_state->results_ready_semaphore = create_semaphore(0, 1);
+	if (!none_state->fuzz_round_semaphore || !none_state->process_creation_semaphore || !none_state->results_ready_semaphore) {
 		none_cleanup(none_state);
 		return NULL;
 	}
@@ -171,6 +163,20 @@ void * none_create(char * options, char * state)
 		none_cleanup(none_state);
 		return NULL;
 	}
+
+	none_state->debug_thread_handle = CreateThread(
+		NULL,           // default security attributes
+		0,              // default stack size
+		(LPTHREAD_START_ROUTINE)debugging_thread, // thread function
+		none_state,     // thread argument
+		0,              // default creation flags
+		NULL            // record the thread handle
+	);
+	if (!none_state->debug_thread_handle) {
+		none_cleanup(none_state);
+		return NULL;
+	}
+
 	return none_state;
 }
 
@@ -182,8 +188,20 @@ void * none_create(char * options, char * state)
 void none_cleanup(void * instrumentation_state)
 {
 	none_state_t * state = (none_state_t *)instrumentation_state;
+
 	destroy_target_process(state);
-	destroy_semaphore(state->process_creation_semaphore);
+	if (state->debug_thread_handle) {
+		TerminateThread(state->debug_thread_handle, 0);
+		CloseHandle(state->debug_thread_handle);
+		state->debug_thread_handle = NULL;
+	}
+
+	if(state->fuzz_round_semaphore)
+		destroy_semaphore(state->fuzz_round_semaphore);
+	if (state->process_creation_semaphore)
+		destroy_semaphore(state->process_creation_semaphore);
+	if (state->results_ready_semaphore)
+		destroy_semaphore(state->results_ready_semaphore);
 	free(state);
 }
 
@@ -287,7 +305,10 @@ int none_is_new_path(void * instrumentation_state, int * process_status)
 	}
 	if (state->last_status < 0)
 		return -1;
-	*process_status = state->last_status;
+	if(state->last_child_hung)
+		*process_status = FUZZ_HANG;
+	else
+		*process_status = state->last_status;
 	return 0; //We don't gather instrumentation data, so we can't ever tell if we hit a new path.
 }
 
@@ -301,6 +322,7 @@ char * none_help(void)
 	return strdup(
 		"none - No instrumentation (using debugging to detect crashes)\n"
 		"Options:\n"
-		"\ttimeout               The number of milliseconds to wait for the target process to finish\n"
+		"\tNone\n"
+		"\n"
 	);
 }
