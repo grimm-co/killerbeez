@@ -55,12 +55,12 @@ To build Killerbeez on Windows you will need Microsoft Visual Studio 2017, Cygwi
 #### Binary Release
 If you don't want to build the project from source, give the binary release a try. The latest release can be found [here](https://github.com/grimm-co/Killerbeez/releases) and has been tested with the following operating systems:
 
-| Windows Version|   WMP Version  |    64-Bit        |    32-Bit        | 
-| -------------- | ---------------| ------------     | ---------------  |
-| Windows 7      | 12.0.7601      | Not Working [1]  | Not Working [1]  |
-| Windows 8      | 12.0.9200      | Working          | Experimental [2] |
-| Windows 8.1    | 12.0.9600      | Working          | Experimental [2] |
-| Windows 10     | 12.0.17134     | Experimental [2] | Experimental [2] |
+| Windows Version|    64-Bit        |    32-Bit        | 
+| -------------- | ------------     | ---------------  |
+| Windows 7      | Not Working [1]  | Not Working [1]  |
+| Windows 8      | Working          | Experimental [2] |
+| Windows 8.1    | Working          | Experimental [2] |
+| Windows 10     | Experimental [2] | Experimental [2] |
 
 You will also need to install the 2017 Microsoft Visual C++ Redistributable. Please note that if you are running Killerbeez on a 64-bit host, you will need to install both the 64-bit and the 32-bit versions of the redistributable.
 - [64-Bit Redistributable Download](https://aka.ms/vs/15/release/vc_redist.x64.exe)
