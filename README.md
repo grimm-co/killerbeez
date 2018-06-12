@@ -55,10 +55,10 @@ To build Killerbeez on Windows you will need Microsoft Visual Studio 2017, Cygwi
 #### Binary Release
 If you don't want to build the project from source, give the binary release a try. The latest release can be found [here](https://github.com/grimm-co/Killerbeez/releases) and has been tested with the following operating systems:
 
-| Windows Version|   WMP Version  |    64-Bit    |    32-Bit    | 
-| -------------- | ---------------| ------------ | ------------ |
-| Windows 7      | 12.0.7601      | Not Working  | Not Working  |
-| Windoes 8      | 12.0.9200      | Working      | Experimental |
+| Windows Version|   WMP Version  |    64-Bit        |    32-Bit       | 
+| -------------- | ---------------| ------------     | ------------    |
+| Windows 7      | 12.0.7601      | Not Working [1]  | Not Working [1] |
+| Windows 8      | 12.0.9200      | Working      | Experimental |
 | Windows 8.1    | 12.0.9600      | Working      | Experimental |
 | Windows 10     | 12.0.17134     | Experimental | Experimental |
 
@@ -66,6 +66,7 @@ You will also need to install the 2017 Microsoft Visual C++ Redistributable. Ple
 - [64-Bit Redistributable Download](https://aka.ms/vs/15/release/vc_redist.x64.exe)
 - [32-Bit Redistributable Download](https://aka.ms/vs/15/release/vc_redist.x86.exe)
 
+[1] This is due to a compatability problem with Windows 7 and DynamoRIO see [this issue](https://github.com/DynamoRIO/dynamorio/issues/2658) for more info.
 #### Quickstart and Examples
 Once Killerbeez has been built, download a small video file you would like to use as a seed file and you can quickly fuzz Windows Media Player with the below example command.  Be sure to replace the seed file argument `-sf` with the path to the video file you just downloaded.  Note that because `wmplayer.exe` is a 32-bit executable you'll either need to use the 32-bit fuzzer.exe, or manually specify the path to the 32-bit `winafl.dll` with the instrumentation's `winafl_dir` option. Additionally, the `-target_offset` argument that is passed to the instrumentation will need to be updated depending on your Windows version. In this case we are just using the entry point of wmplayer.exe, below there is a table to use as refrence but it is best to verify the entrypoint of your binary.
 
