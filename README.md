@@ -72,7 +72,7 @@ You will also need to install the 2017 Microsoft Visual C++ Redistributable. Ple
 
 Let's start by fuzzing a test program first, to keep things simple.
 ```
-ddfuzzer.exe file dynamorio radamsa -n 20 -sf "%WORKDIR%\Killerbeez\corpus\test\inputs\input.txt" -d "{\"timeout\":20,\"path\":\"%WORKDIR%\\Killerbeez\\corpus\\test\\test.exe\",\"arguments\":\"@@\"}" -i "{\"coverage_modules\":[\"test.exe\"],\"timeout\":2000,\"target_path\":\"%WORKDIR%\\Killerbeez\\corpus\\test\\test.exe\"}"
+fuzzer.exe file dynamorio radamsa -n 20 -sf "%WORKDIR%\Killerbeez\corpus\test\inputs\input.txt" -d "{\"timeout\":20,\"path\":\"%WORKDIR%\\Killerbeez\\corpus\\test\\test.exe\",\"arguments\":\"@@\"}" -i "{\"coverage_modules\":[\"test.exe\"],\"timeout\":2000,\"target_path\":\"%WORKDIR%\\Killerbeez\\corpus\\test\\test.exe\"}"
 ```
 
 For the next example, download a small video file you would like to use as a seed file and you can quickly fuzz Windows Media Player with the below example command.  Be sure to replace the seed file argument `-sf` with the path to the video file you just downloaded.  Note that because `wmplayer.exe` is a 32-bit executable you'll either need to use the 32-bit fuzzer.exe, or manually specify the path to the 32-bit `winafl.dll` with the instrumentation's `winafl_dir` option. Additionally, the `-target_offset` argument that is passed to the instrumentation will need to be updated depending on your Windows version. In this case we are just using the entry point of wmplayer.exe, below there is a table to use as reference but it is best to verify the entry point of your binary.
