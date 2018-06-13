@@ -49,7 +49,7 @@ To build Killerbeez on Windows you will need Microsoft Visual Studio 2017, Cygwi
     ```
 
 7. Build Killerbeez
-  + The fuzzer should automatically build the dependencies. Open the repository `Killerbeez` within Visual Studio (File -> Open -> CMake..) and build it using (CMake -> Build All).  If successful, you'll see an aggregate `build/` directory in the root of your working directory.  In it, the compiled executables and libraries from all three projects will be found in folders named after the architecture (e.g. x64) and build type (e.g. Debug). 
+  + Open the repository `Killerbeez` within Visual Studio (File -> Open -> CMake..) and build it using (CMake -> Build All).  This should build the fuzzer and its dependencies from the other repos.  If successful, you'll see an aggregate `build/` directory in the root of your working directory.  In it, the compiled executables and libraries from all three projects will be found in folders named after the architecture (e.g. x64) and build type (e.g. Debug). 
   + The fuzzer.exe executable can be found at `%WORKDIR%\build\x64\Debug\killerbeez\fuzzer.exe`
 
 #### Binary Release
