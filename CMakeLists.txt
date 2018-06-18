@@ -22,7 +22,8 @@ endif (WIN32)
 include_directories (${CMAKE_SOURCE_DIR}/../killerbeez-utils/jansson/)
 include_directories (${CMAKE_SOURCE_DIR}/../killerbeez-utils/utils/)
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/../killerbeez-mutators/ ${CMAKE_BINARY_DIR}/../killerbeez-mutators/)
+# compile mutators, which will compile utils
+add_subdirectory(${CMAKE_SOURCE_DIR}/../killerbeez-mutators/ ${CMAKE_BINARY_DIR}/killerbeez-mutators/)
 
 add_subdirectory(driver)
 add_subdirectory(fuzzer)
