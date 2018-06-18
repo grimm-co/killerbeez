@@ -91,7 +91,8 @@ int main(int argc, char ** argv)
 	if (!mutator_directory)
 	{
 		char * mutator_repo_dir = getenv("KILLERBEEZ_MUTATORS");
-		if (mutator_repo_dir) //If the environment variable KILLERBEEZ_MUTATORS is set, try to autodetect the directory based on the repo build path
+		//If the environment variable KILLERBEEZ_MUTATORS is set, try to autodetect the directory based on the repo build path
+		if (mutator_repo_dir) 
 		{
 			mutator_directory = (char *)malloc(MAX_PATH + 1);
 			if (!mutator_directory)
@@ -100,6 +101,8 @@ int main(int argc, char ** argv)
 				return 1;
 			}
 			memset(mutator_directory, 0, MAX_PATH + 1);
+#ifdef _WIN32
+
 #if defined(_M_X64) || defined(__x86_64__)
 #ifdef _DEBUG
 			snprintf(mutator_directory, MAX_PATH, "%s\\..\\build\\x64\\Debug\\mutators\\", mutator_repo_dir);
@@ -112,6 +115,10 @@ int main(int argc, char ** argv)
 #else
 			snprintf(mutator_directory, MAX_PATH, "%s\\..\\build\\X86\\Release\\mutators\\", mutator_repo_dir);
 #endif
+#endif
+
+#else
+			snprintf(mutator_directory, MAX_PATH, "%s/../build/mutators/", mutator_repo_dir);
 #endif
 		}
 		else
