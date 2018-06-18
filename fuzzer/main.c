@@ -6,14 +6,25 @@
 #include <instrumentation_factory.h>
 #include <utils.h>
 
-#include <io.h>
-#include <Shlwapi.h>
+
+#ifdef _WIN32
+	#include <io.h>
+	#include <Shlwapi.h>
+	#define F_OK 00     // for checking if a file is open/writable
+	#define W_OK 02
+#else
+	#include <libgen.h>     // dirname
+	#include <unistd.h>     // access, F_OK, W_OK
+	#include <sys/stat.h>   // mkdir
+	#include <sys/types.h>
+	#include <errno.h>      // output directory creation
+#endif
+
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <time.h>
 
-#define F_OK 00
-#define W_OK 02
 
 /**
  * This function prints out the usage information for the fuzzer and each of the individual components
@@ -190,27 +201,52 @@ int main(int argc, char ** argv)
 
 	if (instrumentation_state_dump_file) {
 		strncpy(filename, instrumentation_state_dump_file, sizeof(filename));
+
+		#ifdef _WIN32
 		PathRemoveFileSpec(filename);
+		#else
+		dirname(filename);
+		#endif
+
 		if (access(filename, W_OK))
 			FATAL_MSG("The provided instrumentation_state_dump_file filename (%s) is not writeable", instrumentation_state_dump_file);
 	}
 	if (mutation_state_dump_file) {
 		strncpy(filename, mutation_state_dump_file, sizeof(filename));
+
+		#ifdef _WIN32
 		PathRemoveFileSpec(filename);
+		#else
+		dirname(filename);
+		#endif
+
 		if (access(filename, W_OK))
 			FATAL_MSG("The provided mutation_state_dump_file filename (%s) is not writeable", mutation_state_dump_file);
 	}
 
-#define create_output_directory(name)                                                \
-	snprintf(filename, sizeof(filename), "%s" name, output_directory);               \
-	if(!CreateDirectory(filename, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) { \
-		FATAL_MSG("Unable to create directory %s", filename);                        \
-		return 1;                                                                    \
-	}
+#ifdef _WIN32
+	#define create_output_directory(name)                                                \
+		snprintf(filename, sizeof(filename), "%s" name, output_directory);               \
+		if(!CreateDirectory(filename, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) { \
+			FATAL_MSG("Unable to create directory %s", filename);                        \
+			return 1;                                                                    \
+		}
+#else
+	#define create_output_directory(name)                                                \
+		snprintf(filename, sizeof(filename), "%s" name, output_directory);               \
+		if (access(filename, F_OK)) {     // -1 on error, sets errno                     \
+			if (errno = ENOENT)        // it doesn't exist                               \
+				mkdir(filename, 0775);                                                   \
+			else {                     // some other error                               \
+				printf("Unable to create directory %s", filename);                       \
+				return 1;                                                                \
+			}                                                                            \
+		} // otherwise, it already exists and we don't need to do anything
+#endif
 
 	//Setup the output directory
-	create_output_directory("");
-	create_output_directory("/crashes");
+	create_output_directory("");			// creates ./output
+	create_output_directory("/crashes");	// creates ./output/crashes and so on
 	create_output_directory("/hangs");
 	create_output_directory("/new_paths");
 
