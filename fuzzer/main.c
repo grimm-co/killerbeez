@@ -108,15 +108,19 @@ int main(int argc, char ** argv)
 #endif
 #else
 #ifdef _DEBUG
-			snprintf(mutator_directory, MAX_PATH, "%s\\..\\build\\Debug\\mutators\\", mutator_repo_dir);
+			snprintf(mutator_directory, MAX_PATH, "%s\\..\\build\\X86\\Debug\\mutators\\", mutator_repo_dir);
 #else
-			snprintf(mutator_directory, MAX_PATH, "%s\\..\\build\\Release\\mutators\\", mutator_repo_dir);
+			snprintf(mutator_directory, MAX_PATH, "%s\\..\\build\\X86\\Release\\mutators\\", mutator_repo_dir);
 #endif
 #endif
 		}
 		else
 		{
+#ifdef _WIN32
 			mutator_directory = filename_relative_to_binary_dir("..\\mutators\\");
+#else
+			mutator_directory = filename_relative_to_binary_dir("../mutators");
+#endif
 		}
 	}
 	
