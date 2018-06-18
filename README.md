@@ -17,7 +17,7 @@ To build Killerbeez on Windows you will need Microsoft Visual Studio 2017, Cygwi
       1. Desktop development with C++
       2. Linux development with C++
       3. Visual C++ tools for CMake
-	
+
 2. Install [Cygwin](https://cygwin.com/install.html).
   + Use `C:\cygwin64` as the installation directory.
   + Make sure the packages `gcc-core`, `make`, `git`, and `wget` are being installed.
@@ -49,16 +49,45 @@ To build Killerbeez on Windows you will need Microsoft Visual Studio 2017, Cygwi
     ```
 
 7. Build Killerbeez
-  + In order to build the fuzzer, you will first need to build the dependencies. Open the repositories `killerbeez-utils` and `killerbeez-mutators`  within Visual Studio (File -> Open -> CMake..) and build using (CMake -> Build All). Once they are built, you can build the `Killerbeez` project in the same way. Ensure that all of the projects are using the same build profile (Windows vs Linux, debug vs release, x86 vs x64).  If successful, you'll see an aggregate `build/` directory in the root of your working directory.  In it, the compiled executables and libraries from all three projects will be found in folders named after the architecture (x64) and build type (i.e. Debug). 
+  + Open the repository `Killerbeez` within Visual Studio (File -> Open -> CMake..) and build it using (CMake -> Build All).  This should build the fuzzer and its dependencies from the other repos.  If successful, you'll see an aggregate `build/` directory in the root of your working directory.  In it, the compiled executables and libraries from all three projects will be found in folders named after the architecture (e.g. x64) and build type (e.g. Debug). 
   + The fuzzer.exe executable can be found at `%WORKDIR%\build\x64\Debug\killerbeez\fuzzer.exe`
-  
+
+#### Binary Release
+If you don't want to build the project from source, give the binary release a try. The latest release can be found [here](https://github.com/grimm-co/Killerbeez/releases) and has been tested with the following operating systems:
+
+| Windows Version|    64-Bit        |    32-Bit        | 
+| -------------- | ------------     | ---------------  |
+| Windows 7      | Not Working [1]  | Not Working [1]  |
+| Windows 8      | Working          | Experimental [2] |
+| Windows 8.1    | Working          | Experimental [2] |
+| Windows 10     | Experimental [2] | Experimental [2] |
+
+You will also need to install the 2017 Microsoft Visual C++ Redistributable. Please note that if you are running Killerbeez on a 64-bit host, you will need to install both the 64-bit and the 32-bit versions of the redistributable.
+- [64-Bit Redistributable Download](https://aka.ms/vs/15/release/vc_redist.x64.exe)
+- [32-Bit Redistributable Download](https://aka.ms/vs/15/release/vc_redist.x86.exe)
+
+[1] This is due to a compatibility problem with Windows 7 and DynamoRIO see [this issue](https://github.com/DynamoRIO/dynamorio/issues/2658) for more info.  
+[2] Experimental status means that most of the features are working as expected, and a few are not. 
 #### Quickstart and Examples
-Once Killerbeez has been built, download a small video file you would like to use as a seed file and you can quickly fuzz Windows Media Player with the below example command.  Be sure to replace the seed file argument `-sf` with the path to the video file you just downloaded.  Note that because `wmplayer.exe` is a 32-bit executable you'll either need to use the 32-bit fuzzer.exe, or manually specify the path to the 32-bit `winafl.dll` with the instrumentation's `winafl_dir` option.
+
+Let's start by fuzzing a test program first, to keep things simple.
+```
+fuzzer.exe file dynamorio radamsa -n 20 -sf "%WORKDIR%\Killerbeez\corpus\test\inputs\input.txt" -d "{\"timeout\":20,\"path\":\"%WORKDIR%\\Killerbeez\\corpus\\test\\test.exe\",\"arguments\":\"@@\"}" -i "{\"coverage_modules\":[\"test.exe\"],\"timeout\":2000,\"target_path\":\"%WORKDIR%\\Killerbeez\\corpus\\test\\test.exe\"}"
+```
+
+For the next example, download a small video file you would like to use as a seed file and you can quickly fuzz Windows Media Player with the below example command.  Be sure to replace the seed file argument `-sf` with the path to the video file you just downloaded.  Note that because `wmplayer.exe` is a 32-bit executable you'll either need to use the 32-bit fuzzer.exe, or manually specify the path to the 32-bit `winafl.dll` with the instrumentation's `winafl_dir` option. Additionally, the `-target_offset` argument that is passed to the instrumentation will need to be updated depending on your Windows version. In this case we are just using the entry point of wmplayer.exe, below there is a table to use as reference but it is best to verify the entry point of your binary.
+
+|   WMP Version   | Offset |
+| --------------- | ------ |
+| 12.0.7601       | 0x176D |
+| 12.0.9200       | 0x1BAD |
+| 12.0.9600       | 0x1F00 |
+| 12.0.17134      | 0x1F20 |
 
 ```
-fuzzer.exe wmp dynamorio nop -n 3 -sf "C:/Users/<user>/Desktop/test.mp4" -d "{\"timeout\":20}" -i "{\"per_module_coverage\": 1,\"timeout\": 2000, \"coverage_modules\":[\"wmp.DLL\"], \"client_params\":\"-thread_coverage -target_module wmplayer.exe -target_offset 0x1F20 -nargs 3\",\"fuzz_iterations\":1, \"target_path\": \"C:\\Program Files (x86)\\Windows Media Player\\wmplayer.exe\"}"
+fuzzer.exe wmp dynamorio nop -n 3 -sf "C:\Users\<user>\Desktop\test.mp4" -d "{\"timeout\":20}" -i "{\"timeout\":5000,\"coverage_modules\":[\"wmp.DLL\"],\"target_path\":\"C:\\Program Files (x86)\\Windows Media Player\\wmplayer.exe\"}"
 ```
-You may need to modify these parameters to match your environment.
+You may need to modify these parameters to match your environment.  In order to speed up fuzzing, it may be useful to enable persistence mode.  See PersistenceMode.md for instructions.
 
 ## Documentation
 Documentation can be found in the docs folder.  It's written in LaTeX which
@@ -67,12 +96,12 @@ included so the documentation is easy to read for those who do not have a LaTeX
 typesetting environment set up.
 
 ## Troubleshooting
-Q: The target program doesn't start
+Q: The target program doesn't start   
 A: Windows Media Player won't automatically play media the first time is run.
    There's a pop-up which requires you to configure some settings.  Just run it
    manually once and you should be good to go after that.
 
-Q: I'm getting an error about a pipe timing out
+Q: I'm getting an error about a pipe timing out  
 A: This is related to the instrumentation and the target taking too long to
    start up.  If running it again doesn't work, try increasing the "timeout" on
    the -i argument and that should take care of it.

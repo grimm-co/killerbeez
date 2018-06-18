@@ -1,5 +1,6 @@
 #define _CRT_RAND_S
 #include <windows.h>
+#include <Shlwapi.h>
 #include <io.h>
 #include <stdlib.h> 
 
@@ -659,11 +660,6 @@ static void create_target_process(dynamorio_state_t * state, char* cmd_line, cha
 
 	state->pipe_handle = create_pipe(state->pipe_name, state->timeout);
 
-	//Verify winafl.dll exists
-	snprintf(buffer, sizeof(buffer) - 1, "%s\\winafl.dll", state->winafl_dir);
-	if(access(buffer, 0))
-		FATAL_MSG("Failed to find the winafl.dll in %s.  Use the winafl_dir option to modify the directory to look for winafl.dll", state->winafl_dir);
-
 	//Create the child process
 	dr_cmd = alloc_printf(
 		"%s\\drrun.exe -pidfile %s -no_follow_children -c \"%s\\winafl.dll\" %s -fuzzer_id %s -- %s",
@@ -756,6 +752,22 @@ static int finish_fuzz_round(dynamorio_state_t * state) {
 	state->last_path_was_new = ret;
 	state->analyzed_last_round = 1;
 	return ret;
+}
+
+/**
+ * Checks if the target process is done fuzzing the inputs yet.  If it has finished, it will have
+ * written the results to the dynamorio instrumentation's pipe.
+ * @param state - The dynamorio_state_t object containing this instrumentation's state
+ * @return - zero if the process has not done testing the fuzzed input, non-zero if the process is done.
+ */
+int dynamorio_is_process_done(void * instrumentation_state)
+{
+	dynamorio_state_t * state = (dynamorio_state_t *)instrumentation_state;
+	DWORD num_bytes_available;
+
+	if (!PeekNamedPipe(state->pipe_handle, NULL, 0, NULL, &num_bytes_available, NULL))
+		return 1;
+	return num_bytes_available != 0;
 }
 
 ////////////////////////////////////////////////////////////////
@@ -1009,9 +1021,10 @@ static dynamorio_state_t * copy_state(dynamorio_state_t * original)
 static dynamorio_state_t * setup_options(char * options)
 {
 	dynamorio_state_t * state;
-	size_t i;
+	size_t i, length;
 	target_module_t * target_module;
 	char * temp;
+	char buffer[MAX_PATH];
 
 	state = copy_state(NULL);
 	if (!state)
@@ -1030,6 +1043,18 @@ static dynamorio_state_t * setup_options(char * options)
 	PARSE_OPTION_INT(state, options, timeout, "timeout", dynamorio_cleanup);
 	PARSE_OPTION_ARRAY(state, options, module_names, num_modules, "coverage_modules", dynamorio_cleanup);
 	PARSE_OPTION_INT(state, options, edges, "edges", dynamorio_cleanup);
+
+	if (!state->num_modules && state->target_path) { //if the user didn't specify a module, we'll pick the executable itself by default
+		state->num_modules = 1;
+		state->module_names = malloc(sizeof(char *));
+		length = strlen(state->target_path) + 1;
+		state->module_names[0] = malloc(length);
+		strncpy(state->module_names[0], PathFindFileName(state->target_path), length);
+		INFO_MSG("No Coverage Module selected, choosing the target executable \"%s\" by default.", state->module_names[0]);
+	}
+
+	if (!state->num_modules)
+		FATAL_MSG("No Coverage Module selected, please specify one with the coverage_modules option.");
 
 	if (state->target_path)
 	{
@@ -1053,6 +1078,11 @@ static dynamorio_state_t * setup_options(char * options)
 	if (!state->winafl_dir) { //if the user didn't specify a winafl directory, try to automatically determine one
 		state->winafl_dir = add_architecture_to_path(state->default_winafl_dir, state->target_path);
 	}
+
+	//Verify winafl.dll exists
+	snprintf(buffer, sizeof(buffer) - 1, "%s\\winafl.dll", state->winafl_dir);
+	if (access(buffer, 0))
+		FATAL_MSG("Failed to find the winafl.dll in %s.  Use the winafl_dir option to modify the directory to look for winafl.dll", state->winafl_dir);
 
 	//printf("Modules (%zu):\n", state->num_modules);
 	for (i = 0; i < state->num_modules; i++)

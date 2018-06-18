@@ -29,6 +29,8 @@ static int is_playing_sound();
 static wmp_state_t * setup_options(char * options)
 {
 	wmp_state_t * state;
+	size_t cmd_length;
+
 	state = (wmp_state_t *)malloc(sizeof(wmp_state_t));
 	if (!state)
 		return NULL;
@@ -41,16 +43,24 @@ static wmp_state_t * setup_options(char * options)
 	state->timeout = 2;
 	state->input_ratio = 2.0;
 
-	if (!options || !strlen(options))
-		return state;
-
-	PARSE_OPTION_STRING(state, options, path, "path", wmp_cleanup);
-	PARSE_OPTION_STRING(state, options, extension, "extension", wmp_cleanup);
-	PARSE_OPTION_INT(state, options, timeout, "timeout", wmp_cleanup);
-	PARSE_OPTION_DOUBLE(state, options, input_ratio, "ratio", wmp_cleanup);
+	if (options && strlen(options))
+	{
+		PARSE_OPTION_STRING(state, options, path, "path", wmp_cleanup);
+		PARSE_OPTION_STRING(state, options, extension, "extension", wmp_cleanup);
+		PARSE_OPTION_INT(state, options, timeout, "timeout", wmp_cleanup);
+		PARSE_OPTION_DOUBLE(state, options, input_ratio, "ratio", wmp_cleanup);
+	}
 
 	//Create a test filename to write the fuzz file to
 	state->test_filename = get_temp_filename(state->extension);
+
+	cmd_length = strlen(state->path) + strlen(state->test_filename) + 10;
+	state->cmd_line = (char *)malloc(cmd_length);
+	if (!state->cmd_line) {
+		wmp_cleanup(state);
+		return NULL;
+	}
+	snprintf(state->cmd_line, cmd_length, "\"%s\" /play %s", state->path, state->test_filename);
 
 	return state;
 }
@@ -112,6 +122,7 @@ void wmp_cleanup(void * driver_state)
 
 	free(state->path);
 	free(state->extension);
+	free(state->cmd_line);
 	if (state->test_filename)
 	{
 		unlink(state->test_filename);
@@ -131,18 +142,15 @@ void wmp_cleanup(void * driver_state)
 int wmp_test_input(void * driver_state, char * input, size_t length)
 {
 	wmp_state_t * state = (wmp_state_t *)driver_state;
-	int status;
-	char cmd_line[256];
 
 	//Write the input to disk
 	write_buffer_to_file(state->test_filename, input, length);
 
 	//Start the process and give it our input
-	snprintf(cmd_line, sizeof(cmd_line) - 1, "\"%s\" /play %s", state->path, state->test_filename);
 	if (state->instrumentation)
 	{
 		//Have the instrumentation start the new process, since it needs to do so in a custom environment
-		state->instrumentation->enable(state->instrumentation_state, &state->process, cmd_line, NULL, 0);
+		state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0);
 	}
 	else
 	{
@@ -150,7 +158,7 @@ int wmp_test_input(void * driver_state, char * input, size_t length)
 		cleanup_process(state);
 
 		//Start the new process
-		if (start_process_and_write_to_stdin(cmd_line, input, length, &state->process))
+		if (start_process_and_write_to_stdin(state->cmd_line, input, length, &state->process))
 		{
 			cleanup_process(state);
 			return -1;
@@ -161,10 +169,12 @@ int wmp_test_input(void * driver_state, char * input, size_t length)
 	//Wait for it to be done
 	while (1)
 	{
-		Sleep(33);
-		status = doneProcessingInput(state);
-		if(status > 0)
+		if (doneProcessingInput(state) > 0)
 			break;
+		if (state->instrumentation && state->instrumentation->is_process_done &&
+			state->instrumentation->is_process_done(state->instrumentation_state))
+			break;
+		Sleep(50);
 	}
 	return 0;
 }

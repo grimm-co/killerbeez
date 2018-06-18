@@ -25,6 +25,8 @@ static void cleanup_process(file_state_t * state);
 static file_state_t * setup_options(char * options)
 {
 	file_state_t * state;
+	size_t cmd_length;
+
 	state = (file_state_t *)malloc(sizeof(file_state_t));
 	if (!state)
 		return NULL;
@@ -79,6 +81,15 @@ static file_state_t * setup_options(char * options)
 		}
 		state->arguments = new_arguments;
 	}
+
+	cmd_length = (state->path ? strlen(state->path) : 0) + (state->arguments ? strlen(state->arguments) : 0) + 2;
+	state->cmd_line = (char *)malloc(cmd_length);
+	if (!state->cmd_line)
+	{
+		file_cleanup(state);
+		return NULL;
+	}
+	snprintf(state->cmd_line, cmd_length, "%s %s", state->path, state->arguments ? state->arguments : "");
 
 	return state;
 }
@@ -142,6 +153,7 @@ void file_cleanup(void * driver_state)
 	free(state->path);
 	free(state->extension);
 	free(state->arguments);
+	free(state->cmd_line);
 	if (state->test_filename)
 	{
 		unlink(state->test_filename);
@@ -161,18 +173,15 @@ void file_cleanup(void * driver_state)
 int file_test_input(void * driver_state, char * input, size_t length)
 {
 	file_state_t * state = (file_state_t *)driver_state;
-	char cmd_line[8192];
 
 	//Write the input to disk
 	write_buffer_to_file(state->test_filename, input, length);
 
 	//Start the process and give it our input
-	snprintf(cmd_line, sizeof(cmd_line) - 1, "%s %s", state->path, state->arguments ? state->arguments : "");
-
 	if (state->instrumentation)
 	{
 		//Have the instrumentation start the new process, since it needs to do so in a custom environment
-		state->instrumentation->enable(state->instrumentation_state, &state->process, cmd_line, NULL, 0);
+		state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0);
 	}
 	else
 	{
@@ -180,7 +189,7 @@ int file_test_input(void * driver_state, char * input, size_t length)
 		cleanup_process(state);
 
 		//Start the new process
-		if (start_process_and_write_to_stdin(cmd_line, NULL, 0, &state->process))
+		if (start_process_and_write_to_stdin(state->cmd_line, NULL, 0, &state->process))
 		{
 			cleanup_process(state);
 			return -1;
@@ -188,7 +197,7 @@ int file_test_input(void * driver_state, char * input, size_t length)
 	}
 
 	//Wait for it to be done
-	generic_wait_for_process_completion(state->process, state->timeout);
+	generic_wait_for_process_completion(state->process, state->timeout, state->instrumentation, state->instrumentation_state);
 	return 0;
 }
 

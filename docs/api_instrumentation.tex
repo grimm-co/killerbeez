@@ -185,3 +185,16 @@ the requested index was not found.  Otherwise, an instrumentation\_edges\_t poin
 that contains an array of basic block edges that were hit in the most recent
 instrumentation run.  The returned pointer should be freed by the caller.
 }
+
+\api{int is\_process\_done(void * instrumentation\_state)
+}{
+This function is optional and not required for the fuzzer to work.  It is used
+by the driver to determine if an instrumented process has finished being fuzzed.
+It is particularly useful for instrumentations that support the ability to fuzz
+more than one input per process, such as the DynamoRIO instrumentation.
+}{
+\item instrumentation\_state - an instrumentation specific structure previously
+created by the create() function.
+\item return value - zero if the process has finished being fuzzed, non-zero
+otherwise.
+}
