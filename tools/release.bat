@@ -4,7 +4,7 @@ REM      : cd killerbeez-mutators; ..\Killerbeez\tools\release
 REM      : cd killerbeez-utils; ..\Killerbeez\tools\release
 
 if "%RADAMSA_URL%" == "" (
-  set RADAMSA_URL=https://github.com/aoh/radamsa.git
+  set RADAMSA_URL=https://gitlab.com/akihe/radamsa.git
 )
 if "%KILLERBEEZ_URL%" == "" (
   set KILLERBEEZ_URL=https://github.com/grimm-co/Killerbeez.git
