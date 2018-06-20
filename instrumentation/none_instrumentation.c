@@ -110,6 +110,7 @@ static void destroy_target_process(none_state_t * state) {
 		take_semaphore(state->results_ready_semaphore);
 	}
 }
+#endif
 
 /**
  * This function starts the fuzzed process
@@ -126,6 +127,7 @@ static int create_target_process(none_state_t * state, char* cmd_line, char * st
 	state->last_child_hung = 0;
 	state->last_status = -1;
 
+	#ifdef _WIN32
 	//Tell the debug thread to start a new process
 	state->thread_args.cmd_line = cmd_line;
 	state->thread_args.stdin_input = stdin_input;
@@ -135,9 +137,14 @@ static int create_target_process(none_state_t * state, char* cmd_line, char * st
 	//Wait for the debug thread to finish creating the new process
 	if (take_semaphore(state->process_creation_semaphore) || !state->child_handle)
 		return 1;
+
+	#else
+	// naive approach of fork/execve for now; TODO: rip afl's forkserver
+	
+	#endif
+	
 	return 0;
 }
-#endif
 
 /**
  * This function ends the fuzzed process (if it wasn't previously ended).
