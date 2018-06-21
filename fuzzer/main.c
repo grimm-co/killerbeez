@@ -329,8 +329,11 @@ int main(int argc, char ** argv)
 	//Copy the input, mutate it, and run the fuzzed program
 	for (iteration = 0; iteration < num_iterations; iteration++)
 	{
+		int len = 10;
 		DEBUG_MSG("Fuzzing the %d iteration", iteration);
+
 		fuzz_result = driver->test_next_input(driver->state);
+
 		if (fuzz_result < 0)
 		{
 			if(fuzz_result == -2)

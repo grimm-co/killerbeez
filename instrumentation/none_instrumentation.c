@@ -5,6 +5,7 @@
 #include <sys/types.h> // pid_t
 #include <string.h> // strdup
 #include <unistd.h> // fork 
+#include <wordexp.h>
 #endif
 #include <stdlib.h>
 
@@ -147,16 +148,19 @@ static int create_target_process(none_state_t * state, char* cmd_line, char * st
 	// create the process
 	// naive approach of fork/execve for now; TODO: rip afl's forkserver
 
+	if (!cmd_line) return 0; // TODO: why is this NULL on the first iteration?
+
 	pid_t pid = fork();
 	
-	char * str_array[2] = {0};
-	str_array[0] = "date\0";
+	wordexp_t w;
 
-	DEBUG_MSG(cmd_line);
+	// TODO: may want flags
+	wordexp(cmd_line, &w, 0);
+
 	if (pid == 0) // child
 	{
-		// execve("/bin/date", str_array, NULL);
-	} else {
+		execv(w.we_wordv[0], w.we_wordv);
+	} else { // parent
 		state->child_handle = pid;
 	}
 	
