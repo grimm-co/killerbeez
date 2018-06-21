@@ -6,6 +6,8 @@
 #include <string.h> // strdup
 #include <unistd.h> // fork 
 #include <wordexp.h>
+#include <sys/types.h> // kill
+#include <signal.h>    // kill
 #endif
 #include <stdlib.h>
 
@@ -112,6 +114,9 @@ static void destroy_target_process(none_state_t * state) {
 		//because the none instrumentation user did not read the results of a previous
 		//fuzzed process
 		take_semaphore(state->results_ready_semaphore);
+		#else
+		kill(state->child_handle, SIGKILL);
+		state->child_handle = NULL; // TODO: windows can set handles to NULL. what is equivalent for PIDs?
 		#endif
 	}
 }
@@ -154,11 +159,13 @@ static int create_target_process(none_state_t * state, char* cmd_line, char * st
 	
 	wordexp_t w;
 
-	// TODO: may want flags
+	// TODO: may want flags eg no expand
 	wordexp(cmd_line, &w, 0);
 
 	if (pid == 0) // child
 	{
+		// TODO: jeffball says that you can pass in "environ" as the env
+		// TODO: execv expects argv to be null-terminated. i am unsure if wordv is.
 		execv(w.we_wordv[0], w.we_wordv);
 	} else { // parent
 		state->child_handle = pid;
