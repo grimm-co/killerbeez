@@ -140,6 +140,14 @@ static int create_target_process(none_state_t * state, char* cmd_line, char * st
 
 	#else
 	// naive approach of fork/execve for now; TODO: rip afl's forkserver
+	fork();
+
+	if (pid = 0) // child
+	{
+		execve(filename, argv, envp);
+	} else { // parent
+		state->child_handle = pid;
+	}
 	
 	#endif
 	
@@ -193,6 +201,7 @@ void * none_create(char * options, char * state)
 		return NULL;
 	}
 
+	// TODO: can this be moved up out of the ifdef, so we don't need to repeat it below in the linux portion?
 	if (state && none_set_state(none_state, state))
 	{
 		none_cleanup(none_state);
@@ -211,6 +220,19 @@ void * none_create(char * options, char * state)
 		none_cleanup(none_state);
 		return NULL;
 	}
+	#else
+	// set state if one was passed in
+	// set_state might fail, so check for that
+	if (state && none_set_state(none_state, state))
+	{
+		none_cleanup(none_state);
+		return NULL;
+	}
+
+	// create the child process
+	if ( create_target_process( none_state, none_state->thread_args.cmd_line,
+			none_state->thread_args.stdin_input, none_state->thread_args.stdin_length ) )
+		return -1;
 
 	#endif
 	return none_state;
