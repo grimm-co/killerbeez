@@ -4,6 +4,7 @@
 #else
 #include <sys/types.h> // pid_t
 #include <string.h> // strdup
+#include <unistd.h> // fork 
 #endif
 #include <stdlib.h>
 
@@ -87,6 +88,7 @@ static int debugging_thread(none_state_t * state)
 
 	return 0;
 }
+#endif
 
 /**
  * This function terminates the fuzzed process.
@@ -99,6 +101,7 @@ static void destroy_target_process(none_state_t * state) {
 		if(state->last_child_hung)//otherwise we'll be waiting for it forever
 			state->process_running = 0;
 
+		#ifdef _WIN32
 		TerminateProcess(state->child_handle, 0);
 		CloseHandle(state->child_handle);
 		state->child_handle = NULL;
@@ -108,9 +111,9 @@ static void destroy_target_process(none_state_t * state) {
 		//because the none instrumentation user did not read the results of a previous
 		//fuzzed process
 		take_semaphore(state->results_ready_semaphore);
+		#endif
 	}
 }
-#endif
 
 /**
  * This function starts the fuzzed process
@@ -127,11 +130,13 @@ static int create_target_process(none_state_t * state, char* cmd_line, char * st
 	state->last_child_hung = 0;
 	state->last_status = -1;
 
-	#ifdef _WIN32
-	//Tell the debug thread to start a new process
+	// update cmd args
 	state->thread_args.cmd_line = cmd_line;
 	state->thread_args.stdin_input = stdin_input;
 	state->thread_args.stdin_length = stdin_length;
+
+	#ifdef _WIN32
+	//Tell the debug thread to start a new process
 	release_semaphore(state->fuzz_round_semaphore);
 
 	//Wait for the debug thread to finish creating the new process
@@ -139,13 +144,19 @@ static int create_target_process(none_state_t * state, char* cmd_line, char * st
 		return 1;
 
 	#else
+	// create the process
 	// naive approach of fork/execve for now; TODO: rip afl's forkserver
-	fork();
 
-	if (pid = 0) // child
+	pid_t pid = fork();
+	
+	char * str_array[2] = {0};
+	str_array[0] = "date\0";
+
+	DEBUG_MSG(cmd_line);
+	if (pid == 0) // child
 	{
-		execve(filename, argv, envp);
-	} else { // parent
+		// execve("/bin/date", str_array, NULL);
+	} else {
 		state->child_handle = pid;
 	}
 	
@@ -232,7 +243,7 @@ void * none_create(char * options, char * state)
 	// create the child process
 	if ( create_target_process( none_state, none_state->thread_args.cmd_line,
 			none_state->thread_args.stdin_input, none_state->thread_args.stdin_length ) )
-		return -1;
+		return NULL;
 
 	#endif
 	return none_state;
@@ -345,14 +356,12 @@ int none_enable(void * instrumentation_state, HANDLE * process, char * cmd_line,
 int none_enable(void * instrumentation_state, pid_t * process, char * cmd_line, char * input, size_t input_length)
 #endif
 {
-	#ifdef _WIN32
 	none_state_t * state = (none_state_t *)instrumentation_state;
 	if(state->child_handle)
 		destroy_target_process(state);
 	if (create_target_process(state, cmd_line, input, input_length))
 		return -1;
 	*process = state->child_handle;
-	#endif
 	return 0;
 }
 
