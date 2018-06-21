@@ -4,7 +4,7 @@ REM      : cd killerbeez-mutators; ..\Killerbeez\tools\release
 REM      : cd killerbeez-utils; ..\Killerbeez\tools\release
 
 if "%RADAMSA_URL%" == "" (
-  set RADAMSA_URL=https://github.com/aoh/radamsa.git
+  set RADAMSA_URL=https://gitlab.com/akihe/radamsa.git
 )
 if "%KILLERBEEZ_URL%" == "" (
   set KILLERBEEZ_URL=https://github.com/grimm-co/Killerbeez.git
@@ -40,8 +40,6 @@ if not exist dynamorio (
 
 call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x86
 
-call :compile killerbeez-utils || exit /b 1
-call :compile killerbeez-mutators || exit /b 1
 call :compile Killerbeez || exit /b 1
 
 set oldpath=%path%
@@ -54,8 +52,6 @@ call :package X86
 
 call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
 
-call :compile killerbeez-utils || exit /b 1
-call :compile killerbeez-mutators || exit /b 1
 call :compile Killerbeez || exit /b 1
 
 set oldpath=%path%
