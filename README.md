@@ -25,12 +25,12 @@ To build Killerbeez on Windows you will need Microsoft Visual Studio 2017, Cygwi
   
 3. Create a working directory to store all of the Killerbeez components, for example `WORKDIR=C:\killerbeez`
 
-4. Build [Radamsa](https://github.com/aoh/radamsa).
+4. Build [Radamsa](https://gitlab.com/akihe/radamsa).
   + Clone the Radamsa repository into %WORKDIR% from a Cygwin terminal and build: 
  
         ```
         cd /cydrive/c/killerbeez
-        git clone https://github.com/aoh/radamsa.git
+        git clone https://gitlab.com/akihe/radamsa.git
         cd radamsa
         make
         ```
