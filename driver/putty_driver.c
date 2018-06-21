@@ -34,28 +34,26 @@ static putty_state_t * setup_options(char * options)
 	//Setup defaults
 	state->timeout = 2;
 	state->input_ratio = 2.0;
-
 	//Parse the options
-	PARSE_OPTION_STRING(state, options, path, "path", putty_cleanup);
-	PARSE_OPTION_STRING(state, options, arguments, "arguments", putty_cleanup);
-	PARSE_OPTION_INT(state, options, timeout, "timeout", putty_cleanup);
-	PARSE_OPTION_INT(state, options, target_port, "port", putty_cleanup);
-	PARSE_OPTION_STRING(state, options, target_ip, "ip", putty_cleanup);
-	PARSE_OPTION_INT(state, options, target_udp, "udp", putty_cleanup);
-	PARSE_OPTION_INT(state, options, skip_putty_check, "skip_putty_check", putty_cleanup);
-	PARSE_OPTION_DOUBLE(state, options, input_ratio, "ratio", putty_cleanup);
-	PARSE_OPTION_INT_ARRAY(state, options, sleeps, sleeps_count, "sleeps", putty_cleanup);
+	PARSE_OPTION_STRING(state, options, path, "path", network_cleanup);
+	PARSE_OPTION_STRING(state, options, arguments, "arguments", network_cleanup);
+	PARSE_OPTION_INT(state, options, timeout, "timeout", network_cleanup);
+	PARSE_OPTION_INT(state, options, lport, "port", network_cleanup);
+	PARSE_OPTION_STRING(state, options, ip, "ip", network_cleanup);
+	PARSE_OPTION_DOUBLE(state, options, input_ratio, "ratio", network_cleanup);
+	PARSE_OPTION_INT_ARRAY(state, options, sleeps, sleeps_count, "sleeps", network_cleanup);
 
-	cmd_length = (state->path ? strlen(state->path) : 0) + (state->arguments ? strlen(state->arguments) : 0) + 2;
-	state->cmd_line = (char *)malloc(cmd_length);
-
-	if (!state->path || !state->cmd_line || !file_exists(state->path) || !state->target_ip || !state->target_port || state->input_ratio <= 0)
-	{
-		putty_cleanup(state);
-		return NULL;
-	}
-
-	snprintf(state->cmd_line, cmd_length, "%s %s", state->path, state->arguments ? state->arguments : "");
+	//Test Values
+	state->path = strdup("C:/Program Files/PuTTY/plink.exe");
+	state->cmd_line = strdup("C:/Program Files/PuTTY/plink.exe -telnet -P 9999 localhost");
+	
+	//if (!state->path || !state->cmd_line || !file_exists(state->path) || !state->target_ip || !state->target_port || state->input_ratio <= 0)
+	//{
+	//	network_cleanup(state);
+	//	return NULL;
+	//}
+	// Build the cmd line
+	//snprintf(state->cmd_line, cmd_length, "%s %s", state->path, state->arguments ? state->arguments : "");
 
 	return state;
 }
@@ -73,7 +71,6 @@ void * putty_create(char * options, instrumentation_t * instrumentation, void * 
 {
 	WSADATA wsaData;
 	putty_state_t * state;
-	int i;
 
 	//This driver requires at least the path to the program to run. Make sure we either have both a mutator and state
 	if (!options || !strlen(options) || (mutator && !mutator_state) || (!mutator && mutator_state)) //or neither
@@ -83,23 +80,22 @@ void * putty_create(char * options, instrumentation_t * instrumentation, void * 
 		ERROR_MSG("WSAStartup Failed\n");
 		return NULL;
 	}
-	
+
 	state = setup_options(options);
 	if (!state)
 		return NULL;
-
 	if (mutator)
 	{
 		mutator->get_input_info(mutator_state, &state->num_inputs, &state->mutate_buffer_lengths);
 		if (state->sleeps && state->num_inputs != state->sleeps_count)
 		{
-			putty_cleanup(state);
+			network_cleanup(state);
 			return NULL;
 		}
 
 		state->mutate_buffers = malloc(sizeof(char *) * state->num_inputs);
 		if (!state->mutate_buffers) {
-			putty_cleanup(state);
+			network_cleanup(state);
 			return NULL;
 		}
 
@@ -109,10 +105,10 @@ void * putty_create(char * options, instrumentation_t * instrumentation, void * 
 		memset(state->mutate_buffers, 0, sizeof(char *) * state->num_inputs);
 		for (i = 0; i < state->num_inputs; i++)
 		{
-			if(setup_mutate_buffer(state->input_ratio, state->mutate_buffer_lengths[i], &state->mutate_buffers[i],
+			if (setup_mutate_buffer(state->input_ratio, state->mutate_buffer_lengths[i], &state->mutate_buffers[i],
 				&state->mutate_buffer_lengths[i]))
 			{
-				putty_cleanup(state);
+				network_cleanup(state);
 				return NULL;
 			}
 			state->mutate_last_sizes[i] = -1;
@@ -154,147 +150,33 @@ void putty_cleanup(void * driver_state)
 	putty_state_t * state = (putty_state_t *)driver_state;
 	int i;
 
+	//stop the fuzzed process
 	cleanup_process(state);
-	for(i = 0; state->mutate_buffers && i < state->num_inputs; i++)
+	//Cleanup mutator stuff
+	for (i = 0; state->mutate_buffers && i < state->num_inputs; i++)
 		free(state->mutate_buffers[i]);
 	free(state->mutate_buffers);
 	free(state->mutate_buffer_lengths);
 	free(state->mutate_last_sizes);
-	
+	//Clean up driver specific options
 	free(state->path);
 	free(state->arguments);
+	free(state->ip);
 	free(state->cmd_line);
-	free(state->target_ip);
 	free(state->sleeps);
+	//Clean up the struct holding it all
 	free(state);
 }
 
 /**
- * This function creates a socket and (when using TCP) connects it to the fuzzed program.
+ * This function creates a socket and waits for a client to connect.
  * @param state - the putty_state_t object that represents the current state of the driver
  * @param sock - a pointer to a SOCKET used to return the created socket
  * @return - non-zero on error, zero on success
  */
-static int connect_to_target(putty_state_t * state, SOCKET * sock)
+static int start_listener(putty_state_t * state, SOCKET * sock)
 {
-	struct sockaddr_in addr;
-
-	if(state->target_udp)
-		*sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	else
-		*sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (*sock == INVALID_SOCKET)
-		return 1;
-
-	if (!state->target_udp)
-	{
-		addr.sin_family = AF_INET;
-		addr.sin_addr.s_addr = inet_addr(state->target_ip);
-		addr.sin_port = htons(state->target_port);
-		if (connect(*sock, (const struct sockaddr *)&addr, sizeof(addr)) == SOCKET_ERROR) {
-			closesocket(*sock);
-			return 1;
-		}
-	}
-
-	return 0;
-}
-
-/**
- * This function sends the provided buffer on the arleady connected TCP socket
- * @param sock - a pointer to a connected TCP SOCKET to send the buffer on
- * @param buffer - the buffer to send
- * @param length - the length of the buffer parameter
- * @return - non-zero on error, zero on success
- */
-static int send_tcp_input(SOCKET * sock, char * buffer, size_t length)
-{
-	int result;
-	size_t total_read = 0;
-
-	result = 1;
-	while (total_read < length && result > 0)
-	{
-		result = send(*sock, buffer + total_read, length - total_read, 0);
-		if (result > 0)
-			total_read += result;
-		else if (result < 0) //Error, then break
-			total_read = -1;
-	}
-
-	return total_read != length;
-}
-
-/**
- * This function sends the provided buffer on the UDP socket
- * @param state - the putty_state_t object that represents the current state of the driver
- * @param sock - a pointer to a UDP SOCKET to send the buffer on
- * @param buffer - the buffer to send
- * @param length - the length of the buffer parameter
- * @return - non-zero on error, zero on success
- */
-static int send_udp_input(putty_state_t * state, SOCKET * sock, char * buffer, size_t length)
-{
-	struct sockaddr_in addr;
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr(state->target_ip);
-	addr.sin_port = htons(state->target_port);
-	if (sendto(*sock, buffer, length, 0, (const struct sockaddr *)&addr, sizeof(addr)) == SOCKET_ERROR)
-		return 1;
-	return 0;
-}
-
-/**
- * This function determines if there is a program listening on the specified port on the local computer
- * @param port - the port number to check
- * @param udp - whether the specified port is udp (1) or tcp (0)
- * @return - 1 if the port is listening, 0 if the port is not listening, or -1 on error
- */
-static int is_port_listening(int port, int udp)
-{
-	MIB_TCPTABLE * tcp_table;
-	MIB_UDPTABLE * udp_table;
-	DWORD i, size = 0;
-
-	if (udp) {
-		if (GetUdpTable(NULL, &size, TRUE) != ERROR_INSUFFICIENT_BUFFER)
-			return -1;
-		udp_table = malloc(size);
-		if (!udp_table)
-			return -1;
-		if (GetUdpTable(udp_table, &size, TRUE) != NO_ERROR) {
-			free(udp_table);
-			return -1;
-		}
-		for (i = 0; i < udp_table->dwNumEntries; i++) {
-			if (udp_table->table[i].dwLocalPort == htons(port))
-			{
-				free(udp_table);
-				return 1;
-			}
-		}
-		free(udp_table);
-
-	} else {
-		if (GetTcpTable(NULL, &size, TRUE) != ERROR_INSUFFICIENT_BUFFER)
-			return -1;
-		tcp_table = malloc(size);
-		if (!tcp_table)
-			return -1;
-		if (GetTcpTable(tcp_table, &size, TRUE) != NO_ERROR) {
-			free(tcp_table);
-			return -1;
-		}
-		for (i = 0; i < tcp_table->dwNumEntries; i++) {
-			if (tcp_table->table[i].dwState == MIB_TCP_STATE_LISTEN && tcp_table->table[i].dwLocalPort == htons(port))
-			{
-				free(tcp_table);
-				return 1;
-			}
-		}
-		free(tcp_table);
-	}
-	return 0;
+	
 }
 
 /**
@@ -308,56 +190,7 @@ static int is_port_listening(int port, int udp)
  */
 static int putty_run(putty_state_t * state, char ** inputs, size_t * lengths, size_t inputs_count)
 {
-	SOCKET sock;
-	size_t i;
-	int listening = 0, ret = 0;
-
-	//Start the process and give it our input
-	if (state->instrumentation)
-	{
-		//Have the instrumentation start the new process, since it needs to do so in a custom environment
-		state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0);
-	}
-	else
-	{
-		//kill any previous processes so they release the file we're gonna write to
-		cleanup_process(state);
-
-		//Start the new process
-		if (start_process_and_write_to_stdin(state->cmd_line, NULL, 0, &state->process))
-		{
-			cleanup_process(state);
-			return -1;
-		}
-	}
-
-	//Wait for the port to be listening
-	while (!state->skip_putty_check && listening == 0) {
-		listening = is_port_listening(state->target_port, state->target_udp);
-		if(listening == 0)
-			Sleep(5);
-	}
-	if(listening < 0)
-		return -1;
-
-	if (connect_to_target(state, &sock))
-		return -1;
-	for (i = 0; i < inputs_count; i++)
-	{
-		if (state->sleeps && state->sleeps[i] != 0)
-			Sleep(state->sleeps[i]);
-		if (state->target_udp && send_udp_input(state, &sock, inputs[i], lengths[i])
-			|| (!state->target_udp && send_tcp_input(&sock, inputs[i], lengths[i])))
-		{
-			ret = -1;
-			break;
-		}
-	}
-	closesocket(sock);
-
-	//Wait for it to be done
-	generic_wait_for_process_completion(state->process, state->timeout, state->instrumentation, state->instrumentation_state);
-	return ret;
+	
 }
 
 /**
@@ -370,21 +203,7 @@ static int putty_run(putty_state_t * state, char ** inputs, size_t * lengths, si
  */
 int putty_test_input(void * driver_state, char * input, size_t length)
 {
-	putty_state_t * state = (putty_state_t *)driver_state;
-	char ** inputs;
-	size_t * input_lengths;
-	size_t i, inputs_count;
-	int ret = -1;
 
-	if (decode_mem_array(input, &inputs, &input_lengths, &inputs_count))
-		return -1;
-	if (inputs_count)
-		ret = putty_run(state, inputs, input_lengths, inputs_count);
-	for (i = 0; i < inputs_count; i++)
-		free(inputs[i]);
-	free(inputs);
-	free(input_lengths);
-	return ret;
 }
 
 /**
@@ -395,24 +214,7 @@ int putty_test_input(void * driver_state, char * input, size_t length)
  */
 int putty_test_next_input(void * driver_state)
 {
-	putty_state_t * state = (putty_state_t *)driver_state;
-	int i, ret;
-
-	if (!state->mutator)
-		return -1;
 	
-	memset(state->mutate_last_sizes, 0, sizeof(int) * state->num_inputs);
-	for (i = 0; i < state->num_inputs; i++)
-	{
-		state->mutate_last_sizes[i] = state->mutator->mutate_extended(state->mutator_state,
-			state->mutate_buffers[i], state->mutate_buffer_lengths[i], MUTATE_MULTIPLE_INPUTS | i);
-		if (state->mutate_last_sizes[i] < 0)
-			return -1;
-		else if (state->mutate_last_sizes[i] == 0)
-			return -2;
-	}
-	ret = putty_run(state, state->mutate_buffers, state->mutate_last_sizes, state->num_inputs);
-	return ret;
 }
 
 /**
@@ -426,17 +228,7 @@ int putty_test_next_input(void * driver_state)
  */
 char * putty_get_last_input(void * driver_state, int * length)
 {
-	putty_state_t * state = (putty_state_t *)driver_state;
-	int i;
-
-	if (!state->mutate_buffers)
-		return NULL;
-	for (i = 0; i < state->num_inputs; i++)
-	{
-		if (state->mutate_last_sizes[i] <= 0)
-			return NULL;
-	}
-	return encode_mem_array(state->mutate_buffers, state->mutate_last_sizes, state->num_inputs, length);
+	
 }
 
 /**
@@ -447,19 +239,7 @@ char * putty_get_last_input(void * driver_state, int * length)
 char * putty_help(void)
 {
 	return strdup(
-		"putty - putty driver (Sends mutated input over the putty to the target process)\n"
-		"Required Options:\n"
-		"\tip                    The target IP to connect to\n"
-		"\tpath                  The path to the target process\n"
-		"\tport                  The target port to connect to\n"
-		"Optional Options:\n"
-		"\targuments             Arguments to pass to the target process\n"
-		"\ttimeout               The maximum number of seconds to wait for the target process to finish\n"
-		"\tratio                 The ratio of mutation buffer size to input size when given a mutator\n"
-		"\tskip_putty_check    Whether or not to wait for the specified port to be listening on the localhost\n"
-		"\t                      prior to connecting to the target program\n"
-		"\tsleeps                An array of milliseconds to wait between each input being sent to the target program\n"
-		"\tudp                   Whether the fuzzed input should be sent to the target program on UDP (1) or TCP (0)\n"
+		"Putty"
 		"\n"
 	);
 }

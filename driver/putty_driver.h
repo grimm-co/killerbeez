@@ -3,24 +3,22 @@
 #include "instrumentation.h"
 #include <global_types.h>
 
-void * network_create(char * options, instrumentation_t * instrumentation, void * instrumentation_state,
+void * putty_create(char * options, instrumentation_t * instrumentation, void * instrumentation_state,
 	mutator_t * mutator, void * mutator_state);
-void network_cleanup(void * driver_state);
-int network_test_input(void * driver_state, char * buffer, size_t length);
-int network_test_next_input(void * driver_state);
-char * network_get_last_input(void * driver_state, int * length);
-char * network_help(void);
+void putty_cleanup(void * driver_state);
+int putty_test_input(void * driver_state, char * buffer, size_t length);
+int putty_test_next_input(void * driver_state);
+char * putty_get_last_input(void * driver_state, int * length);
+char * putty_help(void);
 
-struct network_state
+struct putty_state
 {
 	//Options
 	char * path;            //The path to the fuzzed executable
 	char * arguments;       //Arguments to give the binary
 	int timeout;            //Maximum number of seconds to allow the executable to run
-	char * target_ip;       //The IP address to send the fuzzed data to
-	int target_port;        //The port to send the fuzzed data to
-	int target_udp;         //Is the network driver hitting a udp port (1) or tcp port (0)
-	int skip_network_check; //Don't wait for the target_port to be listening
+	char * ip;       //The IP address to send the fuzzed data to
+	int lport;        //The port to send the fuzzed data to
 	double input_ratio;     //the ratio of the maximum input size
 	int * sleeps;           //How many milliseconds to sleep between inputs
 	int sleeps_count;       //The number of items in the sleeps array
@@ -45,4 +43,4 @@ struct network_state
 	size_t * mutate_buffer_lengths;
 	int * mutate_last_sizes;
 };
-typedef struct network_state network_state_t;
+typedef struct putty_state putty_state_t;
