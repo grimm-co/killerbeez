@@ -380,7 +380,6 @@ int none_enable(void * instrumentation_state, pid_t * process, char * cmd_line, 
 }
 
 #ifndef _WIN32
-
 /**
  * Not used in Windows.
  * sets state->last_status when the process crashes, hangs, or exits normally.
@@ -391,12 +390,12 @@ int none_enable(void * instrumentation_state, pid_t * process, char * cmd_line, 
  * @param state - The _state_t object containing this instrumentation's state
  * @return - zero if the process is still running, non-zero if the process is done.
  */
-int none_is_process_done(void * instrumentation_state)
+static int do_check(void * instrumentation_state)
 {
 	none_state_t * state = (none_state_t *)instrumentation_state;
 	int status[1];
 
-	pid_t result = waitpid(state->child_handle, status, 0);
+	pid_t result = waitpid(state->child_handle, status, WNOHANG);
 
 	// ^the third arg should probably be WNOHANG, so that we don't block here,
 	// but rather inside the driver, which calls this in generic_wait_for_process_completion
@@ -416,6 +415,7 @@ int none_is_process_done(void * instrumentation_state)
 		ERROR_MSG("is_process_done failed");
 
 	} else {                   // result is a pid, so the child is dead
+		ERROR_MSG("we got a pid");
 		// check if it exited normally or crashed
 		if (WIFEXITED(*status)) { // 1 if exited normally
 			state->process_running = 0;
@@ -438,6 +438,12 @@ int none_is_process_done(void * instrumentation_state)
 	int last_child_hung;
 	*/
 }
+
+int none_is_process_done(void * instrumentation_state)
+{
+	do_check(instrumentation_state);
+}
+
 #endif
 
 /**
