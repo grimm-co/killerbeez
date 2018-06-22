@@ -7,6 +7,10 @@
 
 #include <time.h>
 
+#ifndef _WIN32
+#include <unistd.h>
+#endif
+
 /**
  * This function determines if the fuzzed process has finished processing the input that was last given to it
  * @param process - a HANDLE to the fuzzed process
@@ -20,15 +24,11 @@ int generic_done_processing_input(HANDLE process, time_t start_time, int timeout
 int generic_done_processing_input(pid_t process, time_t start_time, int timeout)
 #endif
 {
-#ifdef _WIN32
 	int status = is_process_alive(process);
 	if (status == 0)
 		return 1;
 
 	return time(NULL) - start_time > timeout;
-#else
-	return 0;
-#endif
 }
 
 /**
@@ -47,7 +47,6 @@ void generic_wait_for_process_completion(HANDLE process, int timeout, instrument
 void generic_wait_for_process_completion(pid_t process, int timeout, instrumentation_t * instrumentation, void * instrumentation_state)
 #endif
 {
-	#ifdef _WIN32
 	time_t start_time = time(NULL);
 
 	while (1)
@@ -58,9 +57,12 @@ void generic_wait_for_process_completion(pid_t process, int timeout, instrumenta
 		// Does the instrumentation know that the process is done (eg waiting at a GUI)?
 		if (instrumentation && instrumentation->is_process_done && instrumentation->is_process_done(instrumentation_state))
 			break;
+		#ifdef _WIN32
 		Sleep(5);
+		#else
+		usleep(5*1000);
+		#endif
 	}
-	#endif
 }
 
 /**

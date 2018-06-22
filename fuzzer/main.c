@@ -8,16 +8,16 @@
 
 
 #ifdef _WIN32
-	#include <io.h>
-	#include <Shlwapi.h>
-	#define F_OK 00     // for checking if a file is open/writable
-	#define W_OK 02
+#include <io.h>
+#include <Shlwapi.h>
+#define F_OK 00     // for checking if a file is open/writable
+#define W_OK 02
 #else
-	#include <libgen.h>     // dirname
-	#include <unistd.h>     // access, F_OK, W_OK
-	#include <sys/stat.h>   // mkdir
-	#include <sys/types.h>
-	#include <errno.h>      // output directory creation
+#include <libgen.h>     // dirname
+#include <unistd.h>     // access, F_OK, W_OK
+#include <sys/stat.h>   // mkdir
+#include <sys/types.h>
+#include <errno.h>      // output directory creation
 #endif
 
 #include <stdio.h>
