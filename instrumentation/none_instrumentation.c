@@ -117,6 +117,8 @@ static void destroy_target_process(none_state_t * state) {
 		take_semaphore(state->results_ready_semaphore);
 		#else
 		kill(state->child_handle, SIGKILL);
+		int status[1];
+		waitpid(state->child_handle, status, 0);
 		state->child_handle = NULL; // TODO: windows can set handles to NULL. what is equivalent for PIDs?
 		#endif
 	}
