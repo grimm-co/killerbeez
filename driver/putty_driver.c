@@ -11,6 +11,7 @@
 #include <time.h>
 
 //Windows API
+#include <WinSock2.h>
 #include <Shlwapi.h>
 #include <iphlpapi.h>
 #include <process.h>
@@ -176,7 +177,26 @@ void putty_cleanup(void * driver_state)
  */
 static int start_listener(putty_state_t * state, SOCKET * sock)
 {
-	
+	struct sockaddr_in addr;
+	//Create socket (TCP Only right now)
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = inet_addr(state->target_ip);
+	addr.sin_port = htons(state->target_port);
+	//Now bind to the socket
+	iResult = bind(*sock, (SOCKADDR *)& addr, sizeof(addr));
+	if (iResult == SOCKET_ERROR) {
+		printf("Socket failed to bind, error: %d\n", WSAGetLastError());
+		iResult = closesocket(ListenSocket);
+		if (iResult == SOCKET_ERROR)
+			printf("closesocket function failed with error %d\n", WSAGetLastError());
+		return 1;
+	}
+		//Now put the socket into LISTEN state
+	if (listen(*sock, SOMAXCONN) == SOCKET_ERROR) {
+			printf("listen function failed with error: %d\n", WSAGetLastError());
+			return 1;
+	}
+	return 0;
 }
 
 /**
