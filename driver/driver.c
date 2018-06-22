@@ -37,11 +37,12 @@ void generic_wait_for_process_completion(HANDLE process, int timeout, instrument
 {
 	time_t start_time = time(NULL);
 
-	//If the instrumentation has a wait for target completion method, use that instead.
 	while (1)
 	{
+		// Has the process exited or have we timed out yet?
 		if(generic_done_processing_input(process, start_time, timeout) > 0)
 			break;
+		// Does the instrumentation know that the process is done (eg waiting at a GUI)?
 		if (instrumentation && instrumentation->is_process_done && instrumentation->is_process_done(instrumentation_state))
 			break;
 		Sleep(5);
