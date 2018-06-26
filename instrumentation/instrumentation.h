@@ -2,7 +2,9 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#ifdef _WIN32
 #include <Windows.h> // HANDLE
+#endif
 
 #ifdef INSTRUMENTATION_EXPORTS
 #define INSTRUMENTATION_API __declspec(dllexport)
@@ -49,8 +51,12 @@ struct instrumentation
 	void(*free_state)(char * state);
 	int(*set_state)(void * instrumentation_state, char * state);
 
+	#ifdef _WIN32
 	int(*enable)(void * instrumentation_state, HANDLE * process, char * cmd_line, char * input, size_t input_length);
-	int(*is_new_path)(void * instrumentation_state);
+	#else
+	int(*enable)(void * instrumentation_state, pid_t * process, char * cmd_line, char * input, size_t input_length);
+	#endif
+	int(*is_new_path)(void * instrumentation_state, int * process_status);
 	int(*get_fuzz_result)(void * instrumentation_state);
 
 	//Optional

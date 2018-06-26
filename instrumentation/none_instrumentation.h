@@ -1,14 +1,26 @@
 #pragma once
 #include <utils.h>
 
+#ifdef _WIN32
+#include <Windows.h> // HANDLE (winnt.h might work instead)
+#else
+#include <sys/types.h> // pid_t
+#endif
+
 void * none_create(char * options, char * state);
 void none_cleanup(void * instrumentation_state);
 void * none_merge(void * instrumentation_state, void * other_instrumentation_state);
 char * none_get_state(void * instrumentation_state);
 void none_free_state(char * state);
 int none_set_state(void * instrumentation_state, char * state);
+
+#ifdef _WIN32
 int none_enable(void * instrumentation_state, HANDLE * process, char * cmd_line, char * input, size_t input_length);
-int none_is_new_path(void * instrumentation_state);
+#else
+int none_enable(void * instrumentation_state, pid_t * process, char * cmd_line, char * input, size_t input_length);
+#endif
+
+int none_is_new_path(void * instrumentation_state, int * process_status);
 int none_get_fuzz_result(void * instrumentation_state);
 char * none_help(void);
 
@@ -21,8 +33,12 @@ typedef struct
 
 struct none_state
 {
+	#ifdef _WIN32
 	HANDLE child_handle;
 	HANDLE debug_thread_handle;
+	#else
+	pid_t child_handle;
+	#endif
 	int process_running;
 
 	//This semaphore is used to make the debug thread wait until the main

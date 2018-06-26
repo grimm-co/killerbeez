@@ -1,5 +1,10 @@
+#ifdef _WIN32
 #define _CRT_RAND_S
-#include <windows.h>
+#include <Windows.h>
+#else
+#include <sys/types.h> // pid_t
+#include <string.h> // strdup
+#endif
 #include <stdlib.h>
 
 #include "instrumentation.h"
@@ -8,6 +13,7 @@
 #include <utils.h>
 #include <jansson_helper.h>
 
+#ifdef _WIN32
 /**
  * This function creates the target process and debugs it.  This function runs in
  * a separate thread, releasing the process_creation_semaphore once it has created
@@ -131,6 +137,7 @@ static int create_target_process(none_state_t * state, char* cmd_line, char * st
 		return 1;
 	return 0;
 }
+#endif
 
 /**
  * This function ends the fuzzed process (if it wasn't previously ended).
@@ -170,6 +177,7 @@ void * none_create(char * options, char * state)
 		return NULL;
 	memset(none_state, 0, sizeof(none_state_t));
 
+	#ifdef _WIN32
 	none_state->fuzz_round_semaphore = create_semaphore(0, 1);
 	none_state->process_creation_semaphore = create_semaphore(0, 1);
 	none_state->results_ready_semaphore = create_semaphore(0, 1);
@@ -197,6 +205,7 @@ void * none_create(char * options, char * state)
 		return NULL;
 	}
 
+	#endif
 	return none_state;
 }
 
@@ -209,6 +218,7 @@ void none_cleanup(void * instrumentation_state)
 {
 	none_state_t * state = (none_state_t *)instrumentation_state;
 
+	#ifdef _WIN32
 	destroy_target_process(state);
 	if (state->debug_thread_handle) {
 		TerminateThread(state->debug_thread_handle, 0);
@@ -222,6 +232,7 @@ void none_cleanup(void * instrumentation_state)
 		destroy_semaphore(state->process_creation_semaphore);
 	if (state->results_ready_semaphore)
 		destroy_semaphore(state->results_ready_semaphore);
+	#endif
 	free(state);
 }
 
@@ -279,11 +290,13 @@ int none_set_state(void * instrumentation_state, char * state)
 	if (!state)
 		return 1;
 
+	#ifdef _WIN32
 	//If a child process is running when the state is being set
 	destroy_target_process(current_state);//kill it so we don't orphan it
 
 	GET_INT(temp_int, state, current_state->last_status, "last_status", result);
 	current_state->finished_last_run = 1;
+	#endif
 
 	return 0; //No state to set, so just return success
 }
@@ -297,14 +310,20 @@ int none_set_state(void * instrumentation_state, char * state)
  * @input_length - the length of the input parameter
  * returns 0 on success, -1 on failure
  */
+#ifdef _WIN32
 int none_enable(void * instrumentation_state, HANDLE * process, char * cmd_line, char * input, size_t input_length)
+#else
+int none_enable(void * instrumentation_state, pid_t * process, char * cmd_line, char * input, size_t input_length)
+#endif
 {
+	#ifdef _WIN32
 	none_state_t * state = (none_state_t *)instrumentation_state;
 	if(state->child_handle)
 		destroy_target_process(state);
 	if (create_target_process(state, cmd_line, input, input_length))
 		return -1;
 	*process = state->child_handle;
+	#endif
 	return 0;
 }
 

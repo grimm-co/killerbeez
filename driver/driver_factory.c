@@ -1,8 +1,11 @@
 #include "driver_factory.h"
+
+#ifdef _WIN32
 #include "wmp_driver.h"
 #include "stdin_driver.h"
 #include "file_driver.h"
 #include "network_driver.h"
+#endif
 
 #include "instrumentation.h"
 
@@ -72,6 +75,7 @@ DRIVER_API driver_t * driver_all_factory(char * driver_type, char * options, ins
 	mutator_t * mutator, void * mutator_state)
 {
 	driver_t * ret = (driver_t *)malloc(sizeof(driver_t));
+	#ifdef _WIN32
 	if (!strcmp(driver_type, "wmp"))
 	{
 		ret->state = wmp_create(options, instrumentation, instrumentation_state, mutator, mutator_state);
@@ -114,6 +118,7 @@ DRIVER_API driver_t * driver_all_factory(char * driver_type, char * options, ins
 	}
 	else
 		FACTORY_ERROR();
+	#endif
 	return ret;
 }
 
@@ -132,9 +137,11 @@ DRIVER_API char * driver_help(void)
 {
 	char * text, *new_text;
 	text = strdup("Driver Options:\n\n");
+	#ifdef _WIN32
 	APPEND_HELP(text, new_text, stdin_help);
 	APPEND_HELP(text, new_text, file_help);
 	APPEND_HELP(text, new_text, network_help);
 	APPEND_HELP(text, new_text, wmp_help);
+	#endif
 	return text;
 }

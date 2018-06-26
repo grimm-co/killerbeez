@@ -14,13 +14,21 @@
  * @param timeout - The number of seconds to wait before declaring the process done
  * @return - Returns 1 if the fuzzed process is done processing the input, 0 otherwise
  */
+#ifdef _WIN32
 int generic_done_processing_input(HANDLE process, time_t start_time, int timeout)
+#else
+int generic_done_processing_input(pid_t process, time_t start_time, int timeout)
+#endif
 {
+#ifdef _WIN32
 	int status = is_process_alive(process);
 	if (status == 0)
 		return 1;
 
 	return time(NULL) - start_time > timeout;
+#else
+	return 0;
+#endif
 }
 
 /**
@@ -33,8 +41,13 @@ int generic_done_processing_input(HANDLE process, time_t start_time, int timeout
  * @param instrumentation_state - if the instrumentation parameter is provided, this parameter should define the
  * instrumentation state to check if the process is done yet.
  */
+#ifdef _WIN32
 void generic_wait_for_process_completion(HANDLE process, int timeout, instrumentation_t * instrumentation, void * instrumentation_state)
+#else
+void generic_wait_for_process_completion(pid_t process, int timeout, instrumentation_t * instrumentation, void * instrumentation_state)
+#endif
 {
+	#ifdef _WIN32
 	time_t start_time = time(NULL);
 
 	while (1)
@@ -47,6 +60,7 @@ void generic_wait_for_process_completion(HANDLE process, int timeout, instrument
 			break;
 		Sleep(5);
 	}
+	#endif
 }
 
 /**
