@@ -22,7 +22,6 @@
  */
 void usage(char * program_name, char * mutator_directory)
 {
-	char * help_text;
 	printf(
 		"Usage: %s driver_name instrumentation_name mutator_name [options]\n"
 		"\n"
@@ -114,28 +113,25 @@ int main(int argc, char ** argv)
 	// Parse Arguments ///////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define PRINT_HELP(x, y) \
-	x = y;               \
-	if(x) {              \
-		puts(x);         \
-		free(x);         \
-	}
+#define PRINT_HELP(x) \
+		puts(x);      \
+		free(x);         
 
-	if ( argc > 2 && !strcmp("-h", argv[1]) ) // if fuzzer.exe -h
+	// if "fuzzer.exe -h something"
+	if ( argc > 2 && !strcmp("-h", argv[1]) ) 
 	{
-		char * help_text;
-		if (!strcmp("logging",argv[2])) {
-			PRINT_HELP(help_text, logging_help());
-		} else if (!strcmp("driver",argv[2])) {
-			PRINT_HELP(help_text, driver_help());
-		} else if (!strcmp("instrumentation",argv[2])) {
-			PRINT_HELP(help_text, instrumentation_help());
-		} else if (!strcmp("mutators",argv[2])) {
-			PRINT_HELP(help_text, mutator_help(mutator_directory));
+		puts("");
+		if (!strcmp("logging", argv[2])) {
+			PRINT_HELP(logging_help());
+		} else if (!strcmp("driver", argv[2])) {
+			PRINT_HELP(driver_help());
+		} else if (!strcmp("instrumentation", argv[2])) {
+			PRINT_HELP(instrumentation_help());
+		} else if (!strcmp("mutators", argv[2])) {
+			PRINT_HELP(mutator_help(mutator_directory));
 		} else {
-			puts("Unknown help option. Expected <logging, driver, instrumentation, mutators>.\n");
+			printf("Unknown help option \"%s\". Expected <logging, driver, instrumentation, mutators>.\n\n",argv[2]);
 		}
-
 		
 		exit(1);
 	}
