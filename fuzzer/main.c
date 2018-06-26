@@ -40,22 +40,11 @@ void usage(char * program_name, char * mutator_directory)
 		"\t -msf mutator_state_file           Set the file containing that the mutator state should load from\n"
 		"\t -o output_directory               The directory to write files which cause a crash or hang\n"
 		"\t -sf seed_file                     The seed file to use\n"
-		"\n\n",
+		"\n\n"
+		"\n -h <logging, driver, instrumentation, mutators> for more help.\n\n",
 		program_name
 	);
 
-#define PRINT_HELP(x, y) \
-	x = y;               \
-	if(x) {              \
-		puts(x);         \
-		free(x);         \
-	}
-
-	PRINT_HELP(help_text, logging_help());
-	PRINT_HELP(help_text, driver_help());
-	PRINT_HELP(help_text, instrumentation_help());
-	PRINT_HELP(help_text, mutator_help(mutator_directory));
-		
 	exit(1);
 }
 
@@ -124,6 +113,32 @@ int main(int argc, char ** argv)
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Parse Arguments ///////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define PRINT_HELP(x, y) \
+	x = y;               \
+	if(x) {              \
+		puts(x);         \
+		free(x);         \
+	}
+
+	if ( argc > 2 && !strcmp("-h", argv[1]) ) // if fuzzer.exe -h
+	{
+		char * help_text;
+		if (!strcmp("logging",argv[2])) {
+			PRINT_HELP(help_text, logging_help());
+		} else if (!strcmp("driver",argv[2])) {
+			PRINT_HELP(help_text, driver_help());
+		} else if (!strcmp("instrumentation",argv[2])) {
+			PRINT_HELP(help_text, instrumentation_help());
+		} else if (!strcmp("mutators",argv[2])) {
+			PRINT_HELP(help_text, mutator_help(mutator_directory));
+		} else {
+			puts("Unknown help option. Expected <logging, driver, instrumentation, mutators>.\n");
+		}
+
+		
+		exit(1);
+	}
 
 	if (argc < 4)
 	{
