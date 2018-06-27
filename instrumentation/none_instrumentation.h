@@ -8,7 +8,8 @@ char * none_get_state(void * instrumentation_state);
 void none_free_state(char * state);
 int none_set_state(void * instrumentation_state, char * state);
 int none_enable(void * instrumentation_state, HANDLE * process, char * cmd_line, char * input, size_t input_length);
-int none_is_new_path(void * instrumentation_state, int * process_status);
+int none_is_new_path(void * instrumentation_state);
+int none_get_fuzz_result(void * instrumentation_state);
 char * none_help(void);
 
 typedef struct

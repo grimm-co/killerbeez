@@ -1492,14 +1492,16 @@ static int has_new_coverage_per_module(dynamorio_state_t * state)
  * @param process_status - pointer that will be filled with a value representing whether the fuzzed process crashed or hung, or neither
  * @return - 1 if the previously setup process (via the enable function) took a new path, 0 if it did not, or -1 on failure.
  */
-int dynamorio_is_new_path(void * instrumentation_state, int * process_status)
+int dynamorio_is_new_path(void * instrumentation_state)
 {
 	dynamorio_state_t * state = (dynamorio_state_t *)instrumentation_state;
-	int ret;
+	return finish_fuzz_round(state);
+}
 
-	ret = finish_fuzz_round(state);
-	*process_status = state->last_process_status;
-	return ret;
+int dynamorio_get_fuzz_result(void * instrumentation_state)
+{
+	dynamorio_state_t * state = (dynamorio_state_t *)instrumentation_state;
+	return state->last_process_status;
 }
 
 /**

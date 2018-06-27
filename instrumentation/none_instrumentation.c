@@ -296,7 +296,7 @@ int none_enable(void * instrumentation_state, HANDLE * process, char * cmd_line,
  * @param process_status - pointer that will be filled with a value representing whether the fuzzed process crashed or hung, or neither
  * @return - 0 when a new path wasn't detected (as it always won't be with the none instrumentation), or -1 on failure.
  */
-int none_is_new_path(void * instrumentation_state, int * process_status)
+int none_is_new_path(void * instrumentation_state)
 {
 	none_state_t * state = (none_state_t *)instrumentation_state;
 	if (!state->finished_last_run) {
@@ -305,11 +305,18 @@ int none_is_new_path(void * instrumentation_state, int * process_status)
 	}
 	if (state->last_status < 0)
 		return -1;
+
 	if(state->last_child_hung)
-		*process_status = FUZZ_HANG;
-	else
-		*process_status = state->last_status;
+		state->last_status = FUZZ_HANG;
+	// else leave it as whatever it was
+
 	return 0; //We don't gather instrumentation data, so we can't ever tell if we hit a new path.
+}
+
+int none_get_fuzz_result(void * instrumentation_state)
+{
+	none_state_t * state = (none_state_t *)instrumentation_state;
+	return state->last_status;
 }
 
 /**
