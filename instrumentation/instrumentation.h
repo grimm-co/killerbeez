@@ -51,11 +51,11 @@ struct instrumentation
 
 	int(*enable)(void * instrumentation_state, HANDLE * process, char * cmd_line, char * input, size_t input_length);
 	int(*is_new_path)(void * instrumentation_state);
+	int(*get_fuzz_result)(void * instrumentation_state);
 
 	//Optional
 	int (*get_module_info)(void * instrumentation_state, int index, int * is_new, char ** module_name, char ** info, int * size);
 	instrumentation_edges_t * (*get_edges)(void * instrumentation_state, int index);
 	int(*is_process_done)(void * instrumentation_state);
-	int(*get_fuzz_result)(void * instrumentation_state);
 };
 typedef struct instrumentation instrumentation_t;
