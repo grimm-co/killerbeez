@@ -3,6 +3,7 @@
 #include "stdin_driver.h"
 #include "file_driver.h"
 #include "network_driver.h"
+#include "putty_driver.h"
 
 #include "instrumentation.h"
 
@@ -112,6 +113,18 @@ DRIVER_API driver_t * driver_all_factory(char * driver_type, char * options, ins
 		ret->test_next_input = network_test_next_input;
 		ret->get_last_input = network_get_last_input;
 	}
+	else if (!strcmp(driver_type, "putty"))
+	{
+		ret->state = putty_create(options, instrumentation, instrumentation_state, mutator, mutator_state);
+		if (!ret->state) {
+			puts("Factory Error");
+			FACTORY_ERROR();
+			}
+		ret->cleanup = putty_cleanup;
+		ret->test_input = putty_test_input;
+		ret->test_next_input = putty_test_next_input;
+		ret->get_last_input = putty_get_last_input;
+	}
 	else
 		FACTORY_ERROR();
 	return ret;
@@ -135,6 +148,7 @@ DRIVER_API char * driver_help(void)
 	APPEND_HELP(text, new_text, stdin_help);
 	APPEND_HELP(text, new_text, file_help);
 	APPEND_HELP(text, new_text, network_help);
+	APPEND_HELP(text, new_text, putty_help);
 	APPEND_HELP(text, new_text, wmp_help);
 	return text;
 }

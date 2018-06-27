@@ -11,7 +11,7 @@
 #include <time.h>
 
 //Windows API
-#include <WinSock2.h>
+//#include <WinSock2.h>
 #include <Shlwapi.h>
 #include <iphlpapi.h>
 #include <process.h>
@@ -35,27 +35,29 @@ static putty_state_t * setup_options(char * options)
 	//Setup defaults
 	state->timeout = 2;
 	state->input_ratio = 2.0;
+	state->lport = 9999;
+	state->ip = strdup("127.0.0.1");
 	//Parse the options
-	PARSE_OPTION_STRING(state, options, path, "path", network_cleanup);
-	PARSE_OPTION_STRING(state, options, arguments, "arguments", network_cleanup);
-	PARSE_OPTION_INT(state, options, timeout, "timeout", network_cleanup);
-	PARSE_OPTION_INT(state, options, lport, "port", network_cleanup);
-	PARSE_OPTION_STRING(state, options, ip, "ip", network_cleanup);
-	PARSE_OPTION_DOUBLE(state, options, input_ratio, "ratio", network_cleanup);
-	PARSE_OPTION_INT_ARRAY(state, options, sleeps, sleeps_count, "sleeps", network_cleanup);
+	PARSE_OPTION_STRING(state, options, path, "path", putty_cleanup);
+	PARSE_OPTION_STRING(state, options, arguments, "arguments", putty_cleanup);
+	PARSE_OPTION_INT(state, options, timeout, "timeout", putty_cleanup);
+	PARSE_OPTION_INT(state, options, lport, "port", putty_cleanup);
+	PARSE_OPTION_STRING(state, options, ip, "ip", putty_cleanup);
+	PARSE_OPTION_DOUBLE(state, options, input_ratio, "ratio", putty_cleanup);
+	PARSE_OPTION_INT_ARRAY(state, options, sleeps, sleeps_count, "sleeps", putty_cleanup);
 
 	//Test Values
 	state->path = strdup("C:/Program Files/PuTTY/plink.exe");
-	state->cmd_line = strdup("C:/Program Files/PuTTY/plink.exe -telnet -P 9999 localhost");
+	state->cmd_line = strdup("\"C:/Program Files/PuTTY/plink.exe\" -telnet -P 9999 localhost");
 	
 	//if (!state->path || !state->cmd_line || !file_exists(state->path) || !state->target_ip || !state->target_port || state->input_ratio <= 0)
 	//{
-	//	network_cleanup(state);
+	//	putty_cleanup(state);
 	//	return NULL;
 	//}
 	// Build the cmd line
 	//snprintf(state->cmd_line, cmd_length, "%s %s", state->path, state->arguments ? state->arguments : "");
-
+	puts("Completed parse_options()");
 	return state;
 }
 
@@ -70,13 +72,16 @@ static putty_state_t * setup_options(char * options)
 void * putty_create(char * options, instrumentation_t * instrumentation, void * instrumentation_state,
 	mutator_t * mutator, void * mutator_state)
 {
+	puts("Entered create()");
 	WSADATA wsaData;
 	putty_state_t * state;
+	size_t i;
 
 	//This driver requires at least the path to the program to run. Make sure we either have both a mutator and state
-	if (!options || !strlen(options) || (mutator && !mutator_state) || (!mutator && mutator_state)) //or neither
+	if (!options || !strlen(options) || (mutator && !mutator_state) || (!mutator && mutator_state)) { //or neither
+		puts("ERROR: Missing driver options");
 		return NULL;
-
+	}
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData)) {
 		ERROR_MSG("WSAStartup Failed\n");
 		return NULL;
@@ -90,13 +95,13 @@ void * putty_create(char * options, instrumentation_t * instrumentation, void * 
 		mutator->get_input_info(mutator_state, &state->num_inputs, &state->mutate_buffer_lengths);
 		if (state->sleeps && state->num_inputs != state->sleeps_count)
 		{
-			network_cleanup(state);
+			putty_cleanup(state);
 			return NULL;
 		}
 
 		state->mutate_buffers = malloc(sizeof(char *) * state->num_inputs);
 		if (!state->mutate_buffers) {
-			network_cleanup(state);
+			putty_cleanup(state);
 			return NULL;
 		}
 
@@ -109,7 +114,7 @@ void * putty_create(char * options, instrumentation_t * instrumentation, void * 
 			if (setup_mutate_buffer(state->input_ratio, state->mutate_buffer_lengths[i], &state->mutate_buffers[i],
 				&state->mutate_buffer_lengths[i]))
 			{
-				network_cleanup(state);
+				putty_cleanup(state);
 				return NULL;
 			}
 			state->mutate_last_sizes[i] = -1;
@@ -170,6 +175,33 @@ void putty_cleanup(void * driver_state)
 }
 
 /**
+* This function sends the provided buffer on the arleady connected TCP socket
+* @param sock - a pointer to a connected TCP SOCKET to send the buffer on
+* @param buffer - the buffer to send
+* @param length - the length of the buffer parameter
+* @return - non-zero on error, zero on success
+*/
+static int send_tcp_input(SOCKET * sock, char * buffer, size_t length)
+{
+	int result;
+	size_t total_read = 0;
+
+	result = 1;
+	while (total_read < length && result > 0)
+	{
+		result = send(*sock, buffer + total_read, length - total_read, 0);
+		if (result > 0)
+			total_read += result;
+		else if (result < 0) //Error, then break
+			total_read = -1;
+		if (result == SOCKET_ERROR)
+			printf("send() failed with error: %d\n", WSAGetLastError());
+	}
+
+	return total_read != length;
+}
+
+/**
  * This function creates a socket and waits for a client to connect.
  * @param state - the putty_state_t object that represents the current state of the driver
  * @param sock - a pointer to a SOCKET used to return the created socket
@@ -178,24 +210,31 @@ void putty_cleanup(void * driver_state)
 static int start_listener(putty_state_t * state, SOCKET * sock)
 {
 	struct sockaddr_in addr;
+	int iResult = 0;
+	*sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (sock == INVALID_SOCKET) {
+		printf("socket function failed with error: %ld\n", WSAGetLastError());
+		return 1;
+	}
 	//Create socket (TCP Only right now)
 	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr(state->target_ip);
-	addr.sin_port = htons(state->target_port);
+	addr.sin_addr.s_addr = inet_addr(state->ip);
+	addr.sin_port = htons(state->lport);
 	//Now bind to the socket
 	iResult = bind(*sock, (SOCKADDR *)& addr, sizeof(addr));
 	if (iResult == SOCKET_ERROR) {
 		printf("Socket failed to bind, error: %d\n", WSAGetLastError());
-		iResult = closesocket(ListenSocket);
+		iResult = closesocket(sock);
 		if (iResult == SOCKET_ERROR)
 			printf("closesocket function failed with error %d\n", WSAGetLastError());
 		return 1;
 	}
-		//Now put the socket into LISTEN state
+	//Now put the socket into LISTEN state
 	if (listen(*sock, SOMAXCONN) == SOCKET_ERROR) {
-			printf("listen function failed with error: %d\n", WSAGetLastError());
-			return 1;
+		printf("listen function failed with error: %d\n", WSAGetLastError());
+		return 1;
 	}
+
 	return 0;
 }
 
@@ -210,7 +249,57 @@ static int start_listener(putty_state_t * state, SOCKET * sock)
  */
 static int putty_run(putty_state_t * state, char ** inputs, size_t * lengths, size_t inputs_count)
 {
+	SOCKET serverSock;
+	SOCKET clientSock;
+	size_t i;
+	int listening = 0, ret = 0;
+
+	//Start the server socket so the client can connect below:
+	if (start_listener(state, &serverSock)) {
+		return -1;
+	}
+	puts("Started server socket");
+	//Start the process and give it our input
+	if (state->instrumentation)
+	{
+		//Have the instrumentation start the new process, since it needs to do so in a custom environment
+		state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0);
+	}
+	else
+	{
+		//kill any previous processes so they release the file we're gonna write to
+		cleanup_process(state);
+
+		//Start the new process
+		if (start_process_and_write_to_stdin(state->cmd_line, NULL, 0, &state->process))
+		{
+			cleanup_process(state);
+			return -1;
+		}
+	}
+	//Now accept the client connection
+	clientSock = accept(serverSock, NULL, NULL);
+	if (clientSock == INVALID_SOCKET) {
+		printf("accept failed with error: %d\n", WSAGetLastError());
+		return 1;
+	}
+	closesocket(serverSock);
+
+	for (i = 0; i < inputs_count; i++)
+	{
+		if (state->sleeps && state->sleeps[i] != 0)
+			Sleep(state->sleeps[i]);
+		if (send_tcp_input(&clientSock, inputs[i], lengths[i]))
+		{
+			ret = -1;
+			break;
+		}
+	}
+	closesocket(clientSock);
 	
+	//Wait for it to be done
+	generic_wait_for_process_completion(state->process, state->timeout, state->instrumentation, state->instrumentation_state);
+	return ret;
 }
 
 /**
@@ -223,7 +312,21 @@ static int putty_run(putty_state_t * state, char ** inputs, size_t * lengths, si
  */
 int putty_test_input(void * driver_state, char * input, size_t length)
 {
+	putty_state_t * state = (putty_state_t *)driver_state;
+	char ** inputs;
+	size_t * input_lengths;
+	size_t i, inputs_count;
+	int ret = -1;
 
+	if (decode_mem_array(input, &inputs, &input_lengths, &inputs_count)){}
+		return -1;
+	if (inputs_count)
+		ret = putty_run(state, inputs, input_lengths, inputs_count);
+	for (i = 0; i < inputs_count; i++)
+		free(inputs[i]);
+	free(inputs);
+	free(input_lengths);
+	return ret;
 }
 
 /**
@@ -234,7 +337,24 @@ int putty_test_input(void * driver_state, char * input, size_t length)
  */
 int putty_test_next_input(void * driver_state)
 {
-	
+	putty_state_t * state = (putty_state_t *)driver_state;
+	int i, ret;
+
+	if (!state->mutator)
+		return -1;
+
+	memset(state->mutate_last_sizes, 0, sizeof(int) * state->num_inputs);
+	for (i = 0; i < state->num_inputs; i++)
+	{
+		state->mutate_last_sizes[i] = state->mutator->mutate_extended(state->mutator_state,
+			state->mutate_buffers[i], state->mutate_buffer_lengths[i], MUTATE_MULTIPLE_INPUTS | i);
+		if (state->mutate_last_sizes[i] < 0)
+			return -1;
+		else if (state->mutate_last_sizes[i] == 0)
+			return -2;
+	}
+	ret = putty_run(state, state->mutate_buffers, state->mutate_last_sizes, state->num_inputs);
+	return ret;
 }
 
 /**
@@ -248,7 +368,17 @@ int putty_test_next_input(void * driver_state)
  */
 char * putty_get_last_input(void * driver_state, int * length)
 {
-	
+	putty_state_t * state = (putty_state_t *)driver_state;
+	int i;
+
+	if (!state->mutate_buffers)
+		return NULL;
+	for (i = 0; i < state->num_inputs; i++)
+	{
+		if (state->mutate_last_sizes[i] <= 0)
+			return NULL;
+	}
+	return encode_mem_array(state->mutate_buffers, state->mutate_last_sizes, state->num_inputs, length);
 }
 
 /**

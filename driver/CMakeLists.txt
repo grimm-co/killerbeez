@@ -11,6 +11,7 @@ SET(DRIVER_SRC
 	${PROJECT_SOURCE_DIR}/network_driver.c
 	${PROJECT_SOURCE_DIR}/stdin_driver.c
 	${PROJECT_SOURCE_DIR}/wmp_driver.cpp
+	${PROJECT_SOURCE_DIR}/putty_driver.c
 )
 source_group("Library Sources" FILES ${DRIVER_SRC})
 
