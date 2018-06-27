@@ -41,6 +41,6 @@ struct putty_state
 	int num_inputs;
 	char ** mutate_buffers;
 	size_t * mutate_buffer_lengths;
-	int * mutate_last_sizes;
+	size_t * mutate_last_sizes;
 };
 typedef struct putty_state putty_state_t;
