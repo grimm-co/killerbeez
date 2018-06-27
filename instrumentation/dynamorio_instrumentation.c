@@ -1500,6 +1500,7 @@ int dynamorio_is_new_path(void * instrumentation_state)
 int dynamorio_get_fuzz_result(void * instrumentation_state)
 {
 	dynamorio_state_t * state = (dynamorio_state_t *)instrumentation_state;
+	finish_fuzz_round(state);
 	return state->last_process_status;
 }
 
