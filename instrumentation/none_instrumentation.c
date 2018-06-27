@@ -293,7 +293,6 @@ int none_enable(void * instrumentation_state, HANDLE * process, char * cmd_line,
  * not track the fuzzed process's path, so it is unable to determine if the process took a new path.  It will however be
  * able to determine if the process exitted normally, hung, or crashed.
  * @param instrumentation_state - an instrumentation specific state object previously created by the none_create function
- * @param process_status - pointer that will be filled with a value representing whether the fuzzed process crashed or hung, or neither
  * @return - 0 when a new path wasn't detected (as it always won't be with the none instrumentation), or -1 on failure.
  */
 int none_is_new_path(void * instrumentation_state)

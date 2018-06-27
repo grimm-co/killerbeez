@@ -1489,7 +1489,6 @@ static int has_new_coverage_per_module(dynamorio_state_t * state)
  * This function determines whether the process being instrumented has taken a new path.  It should be
  * called after the process has finished processing the tested input.
  * @param instrumentation_state - an instrumentation specific state object previously created by the dynamorio_create function
- * @param process_status - pointer that will be filled with a value representing whether the fuzzed process crashed or hung, or neither
  * @return - 1 if the previously setup process (via the enable function) took a new path, 0 if it did not, or -1 on failure.
  */
 int dynamorio_is_new_path(void * instrumentation_state)
