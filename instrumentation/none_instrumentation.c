@@ -133,7 +133,7 @@ static int create_target_process(none_state_t * state, char* cmd_line, char * st
 }
 
 /**
- * This function ends the fuzzed process (if it wasn't previously ended).:w
+ * This function ends the fuzzed process (if it wasn't previously ended).
  * @param state - The none_state_t object containing this instrumentation's state
  * @return - returns 0 on success or -1 on error
  */
