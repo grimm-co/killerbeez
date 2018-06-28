@@ -132,6 +132,26 @@ static int create_target_process(none_state_t * state, char* cmd_line, char * st
 	return 0;
 }
 
+/**
+ * This function ends the fuzzed process (if it wasn't previously ended).:w
+ * @param state - The none_state_t object containing this instrumentation's state
+ * @return - returns 0 on success or -1 on error
+ */
+static int finish_fuzz_round(none_state_t * state) {
+	if (!state->finished_last_run) {
+		destroy_target_process(state);
+		state->finished_last_run = 1;
+	}
+	if (state->last_status < 0)
+		return -1;
+
+	if(state->last_child_hung)
+		state->last_status = FUZZ_HANG;
+	// else leave it as whatever it was
+
+	return 0;
+}
+
 ////////////////////////////////////////////////////////////////
 // Instrumentation methods /////////////////////////////////////
 ////////////////////////////////////////////////////////////////
@@ -297,24 +317,13 @@ int none_enable(void * instrumentation_state, HANDLE * process, char * cmd_line,
  */
 int none_is_new_path(void * instrumentation_state)
 {
-	none_state_t * state = (none_state_t *)instrumentation_state;
-	if (!state->finished_last_run) {
-		destroy_target_process(state);
-		state->finished_last_run = 1;
-	}
-	if (state->last_status < 0)
-		return -1;
-
-	if(state->last_child_hung)
-		state->last_status = FUZZ_HANG;
-	// else leave it as whatever it was
-
 	return 0; //We don't gather instrumentation data, so we can't ever tell if we hit a new path.
 }
 
 int none_get_fuzz_result(void * instrumentation_state)
 {
 	none_state_t * state = (none_state_t *)instrumentation_state;
+	finish_fuzz_round(state);
 	return state->last_status;
 }
 
