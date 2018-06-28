@@ -11,7 +11,6 @@
 #include <time.h>
 
 //Windows API
-//#include <WinSock2.h>
 #include <Shlwapi.h>
 #include <iphlpapi.h>
 #include <process.h>
@@ -52,10 +51,6 @@ static putty_state_t * setup_options(char * options)
 	state->cmd_line = (char *)malloc(cmd_length);
 	memset(state->cmd_line, 0, cmd_length);
 
-	//Test Values
-	//state->path = strdup("C:/Program Files/PuTTY/plink.exe");
-	//state->cmd_line = strdup("\"C:/Program Files/PuTTY/plink.exe\" -telnet -P 9999 localhost");
-	
 	if (!state->path || !state->cmd_line || !file_exists(state->path) || !state->ip || !state->lport || state->input_ratio <= 0)
 	{
 		putty_cleanup(state);
@@ -63,8 +58,7 @@ static putty_state_t * setup_options(char * options)
 	}
 	//Build the cmd line
 	snprintf(state->cmd_line, cmd_length, "\"%s\" %s", state->path, state->arguments ? state->arguments : "");
-	puts("Completed parse_options()");
-	printf("%s\n", state->cmd_line);
+
 	return state;
 }
 
@@ -79,7 +73,6 @@ static putty_state_t * setup_options(char * options)
 void * putty_create(char * options, instrumentation_t * instrumentation, void * instrumentation_state,
 	mutator_t * mutator, void * mutator_state)
 {
-	puts("Entered create()");
 	WSADATA wsaData;
 	putty_state_t * state;
 	size_t i;
@@ -89,6 +82,7 @@ void * putty_create(char * options, instrumentation_t * instrumentation, void * 
 		puts("ERROR: Missing driver options");
 		return NULL;
 	}
+	//Startup because we gonna use the winsock DLL
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData)) {
 		ERROR_MSG("WSAStartup Failed\n");
 		return NULL;
@@ -106,16 +100,23 @@ void * putty_create(char * options, instrumentation_t * instrumentation, void * 
 			return NULL;
 		}
 
+		//Setup the mutate buffers
+		//allocate space for the array of mutate buffers
 		state->mutate_buffers = malloc(sizeof(char *) * state->num_inputs);
 		if (!state->mutate_buffers) {
 			putty_cleanup(state);
 			return NULL;
 		}
-
-		//Setup the mutate buffers
-		state->mutate_buffers = malloc(sizeof(char *) * state->num_inputs);
-		state->mutate_last_sizes = malloc(sizeof(int) * state->num_inputs);
 		memset(state->mutate_buffers, 0, sizeof(char *) * state->num_inputs);
+
+		//Allocate space for the array containing the sizes the mutate buffers
+		state->mutate_last_sizes = malloc(sizeof(size_t) * state->num_inputs);
+		if (!state->mutate_last_sizes) {
+			putty_cleanup(state);
+			return NULL;
+		}
+		
+		//populate the array of mutate buffers
 		for (i = 0; i < state->num_inputs; i++)
 		{
 			if (setup_mutate_buffer(state->input_ratio, state->mutate_buffer_lengths[i], &state->mutate_buffers[i],
@@ -165,18 +166,21 @@ void putty_cleanup(void * driver_state)
 
 	//stop the fuzzed process
 	cleanup_process(state);
+
 	//Cleanup mutator stuff
 	for (i = 0; state->mutate_buffers && i < state->num_inputs; i++)
 		free(state->mutate_buffers[i]);
 	free(state->mutate_buffers);
 	free(state->mutate_buffer_lengths);
 	free(state->mutate_last_sizes);
+
 	//Clean up driver specific options
 	free(state->path);
 	free(state->arguments);
 	free(state->ip);
 	free(state->cmd_line);
 	free(state->sleeps);
+
 	//Clean up the struct holding it all
 	free(state);
 }
@@ -219,7 +223,7 @@ static int start_listener(putty_state_t * state, SOCKET * sock)
 	struct sockaddr_in addr;
 	int iResult = 0;
 	*sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (sock == INVALID_SOCKET) {
+	if (*sock == INVALID_SOCKET) {
 		printf("socket function failed with error: %ld\n", WSAGetLastError());
 		return 1;
 	}
@@ -265,7 +269,6 @@ static int putty_run(putty_state_t * state, char ** inputs, size_t * lengths, si
 	if (start_listener(state, &serverSock)) {
 		return -1;
 	}
-	puts("Started server socket");
 	//Start the process and give it our input
 	if (state->instrumentation)
 	{
@@ -395,8 +398,20 @@ char * putty_get_last_input(void * driver_state, int * length)
  */
 char * putty_help(void)
 {
+
 	return strdup(
-		"Putty"
+		"putty - putty driver (This driver acts as a server and forces the putty client to connect to be fuzzed)\m"
+		"Required Options:\n"
+		"None - This assumes putty has been installed in it's default location\n"
+		"Optional Options:\n"
+		"\tpath					 The path to plink.exe"
+		"\targuments             Arguments to pass to the target process\n"
+		"\ttimeout               The maximum number of seconds to wait for the target process to finish\n"
+		"\tratio                 The ratio of mutation buffer size to input size when given a mutator\n"
+		"\tip                    The target IP to connect to\n"
+		"\tport                  The target port to connect to\n"
+		"\tratio                 The ratio of mutation buffer size to input size when given a mutator\n"
+		"\tsleeps                An array of milliseconds to wait between each input being sent to the target program\n"
 		"\n"
 	);
 }
