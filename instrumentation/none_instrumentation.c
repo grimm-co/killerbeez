@@ -320,6 +320,12 @@ int none_is_new_path(void * instrumentation_state)
 	return 0; //We don't gather instrumentation data, so we can't ever tell if we hit a new path.
 }
 
+/**
+ * This function will return the result of the fuzz job. It should be called
+ * after the process has finished processing the tested input.
+ * @param instrumentation_state - an instrumentation specific structure previously created by the create() function
+ * @return - either FUZZ_NONE, FUZZ_HANG, or FUZZ_CRASH.
+ */
 int none_get_fuzz_result(void * instrumentation_state)
 {
 	none_state_t * state = (none_state_t *)instrumentation_state;
