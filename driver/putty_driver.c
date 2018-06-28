@@ -37,6 +37,8 @@ static putty_state_t * setup_options(char * options)
 	state->input_ratio = 2.0;
 	state->lport = 9999;
 	state->ip = strdup("127.0.0.1");
+	state->path = strdup("C:/Program Files/PuTTY/plink.exe");
+	state->arguments = strdup("-telnet -P 9999 localhost");
 	//Parse the options
 	PARSE_OPTION_STRING(state, options, path, "path", putty_cleanup);
 	PARSE_OPTION_STRING(state, options, arguments, "arguments", putty_cleanup);
@@ -45,19 +47,24 @@ static putty_state_t * setup_options(char * options)
 	PARSE_OPTION_STRING(state, options, ip, "ip", putty_cleanup);
 	PARSE_OPTION_DOUBLE(state, options, input_ratio, "ratio", putty_cleanup);
 	PARSE_OPTION_INT_ARRAY(state, options, sleeps, sleeps_count, "sleeps", putty_cleanup);
+	
+	cmd_length = (state->path ? strlen(state->path) : 0) + (state->arguments ? strlen(state->arguments) : 0) + 4;
+	state->cmd_line = (char *)malloc(cmd_length);
+	memset(state->cmd_line, 0, cmd_length);
 
 	//Test Values
-	state->path = strdup("C:/Program Files/PuTTY/plink.exe");
-	state->cmd_line = strdup("\"C:/Program Files/PuTTY/plink.exe\" -telnet -P 9999 localhost");
+	//state->path = strdup("C:/Program Files/PuTTY/plink.exe");
+	//state->cmd_line = strdup("\"C:/Program Files/PuTTY/plink.exe\" -telnet -P 9999 localhost");
 	
-	//if (!state->path || !state->cmd_line || !file_exists(state->path) || !state->target_ip || !state->target_port || state->input_ratio <= 0)
-	//{
-	//	putty_cleanup(state);
-	//	return NULL;
-	//}
-	// Build the cmd line
-	//snprintf(state->cmd_line, cmd_length, "%s %s", state->path, state->arguments ? state->arguments : "");
+	if (!state->path || !state->cmd_line || !file_exists(state->path) || !state->ip || !state->lport || state->input_ratio <= 0)
+	{
+		putty_cleanup(state);
+		return NULL;
+	}
+	//Build the cmd line
+	snprintf(state->cmd_line, cmd_length, "\"%s\" %s", state->path, state->arguments ? state->arguments : "");
 	puts("Completed parse_options()");
+	printf("%s\n", state->cmd_line);
 	return state;
 }
 
@@ -224,7 +231,7 @@ static int start_listener(putty_state_t * state, SOCKET * sock)
 	iResult = bind(*sock, (SOCKADDR *)& addr, sizeof(addr));
 	if (iResult == SOCKET_ERROR) {
 		printf("Socket failed to bind, error: %d\n", WSAGetLastError());
-		iResult = closesocket(sock);
+		iResult = closesocket(*sock);
 		if (iResult == SOCKET_ERROR)
 			printf("closesocket function failed with error %d\n", WSAGetLastError());
 		return 1;

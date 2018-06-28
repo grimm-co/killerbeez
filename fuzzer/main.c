@@ -288,8 +288,10 @@ int main(int argc, char ** argv)
 		{
 			if(fuzz_result == -2)
 				WARNING_MSG("The mutator has run out of mutations to test after %d iterations", iteration);
-			else
+			else {
 				ERROR_MSG("ERROR: driver failed to test the target program");
+				printf("%d\n", status);
+			}
 			break;
 		}
 
