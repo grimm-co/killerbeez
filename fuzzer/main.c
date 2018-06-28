@@ -290,7 +290,6 @@ int main(int argc, char ** argv)
 				WARNING_MSG("The mutator has run out of mutations to test after %d iterations", iteration);
 			else
 				ERROR_MSG("ERROR: driver failed to test the target program");
-
 			break;
 		}
 
