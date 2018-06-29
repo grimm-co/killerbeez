@@ -366,7 +366,7 @@ static int network_run(network_state_t * state, char ** inputs, size_t * lengths
  * @param driver_state - a driver specific structure previously created by the network_create function
  * @param input - the input that should be tested
  * @param length - the length of the input parameter
- * @return - 0 on success or -1 on failure
+ * @return - FUZZ_CRASH, FUZZ_HANG, or FUZZ_NONE on success or -1 on failure
  */
 int network_test_input(void * driver_state, char * input, size_t length)
 {
@@ -379,19 +379,23 @@ int network_test_input(void * driver_state, char * input, size_t length)
 	if (decode_mem_array(input, &inputs, &input_lengths, &inputs_count))
 		return -1;
 	if (inputs_count)
-		ret = network_run(state, inputs, input_lengths, inputs_count);
+	{
+		if (!network_run(state, inputs, input_lengths, inputs_count))
+			return -1;
+	}
 	for (i = 0; i < inputs_count; i++)
 		free(inputs[i]);
 	free(inputs);
 	free(input_lengths);
-	return ret;
+
+	return driver_get_fuzz_result(state->instrumentation, state->instrumentation_state);
 }
 
 /**
  * This function will run the fuzzed program with the output of the mutator given during driver
  * creation.  This function blocks until the program has finished processing the input.
  * @param driver_state - a driver specific structure previously created by the network_create function
- * @return - 0 on success, -1 on error, or -2 if the mutator has finished generating inputs
+ * @return - FUZZ_CRASH, FUZZ_HANG, or FUZZ_NONE on success, -1 on error, -2 if the mutator has finished generating inputs
  */
 int network_test_next_input(void * driver_state)
 {

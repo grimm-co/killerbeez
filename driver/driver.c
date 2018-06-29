@@ -49,6 +49,23 @@ void generic_wait_for_process_completion(HANDLE process, int timeout, instrument
 	}
 }
 
+int driver_get_fuzz_result(instrumentation_t * instrumentation, void * instrumentation_state)
+{
+	if (instrumentation)
+	{
+		return instrumentation->get_fuzz_result(instrumentation_state);
+	}
+	else
+	{
+		// How does the null instrumentation on Windows get fuzz results?
+		// Right now, it does not.
+		// So, we can always return FUZZ_NONE.
+		//
+		// TODO: For linux, this should return something real.
+		return FUZZ_NONE;
+	}
+}
+
 
 /**
  * This function will call mutate on the given mutator state to modify the mutator buffer
@@ -61,7 +78,7 @@ void generic_wait_for_process_completion(HANDLE process, int timeout, instrument
  * @param buffer_length - the length of the buffer parameter
  * @param test_input_func - the test_input function to call after mutating the input buffer
  * @param mutate_last_size - this parameter is used to return the size of the mutated input buffer
- * @return - 0 on success, -1 on error, or -2 if the mutator has finished generating inputs
+ * @return - FUZZ_CRASH, FUZZ_HANG, or FUZZ_NONE on success, -1 on error, -2 if the mutator has finished generating inputs
  */
 int generic_test_next_input(void * state, mutator_t * mutator, void * mutator_state, char * buffer, size_t buffer_length,
 	int (*test_input_func)(void * driver_state, char * buffer, size_t length), int * mutate_last_size)

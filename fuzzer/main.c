@@ -63,7 +63,7 @@ int main(int argc, char ** argv)
 	void * instrumentation_state;
 	int seed_length = 0, mutate_length = 0, instrumentation_length = 0, mutator_state_length;
 	time_t fuzz_begin_time;
-	int iteration = 0, status, new_path, fuzz_result;
+	int iteration = 0, fuzz_result, new_path;
 	void * mutator_state = NULL;
 	char filename[MAX_PATH];
 	char filehash[256];
@@ -283,10 +283,10 @@ int main(int argc, char ** argv)
 	for (iteration = 0; iteration < num_iterations; iteration++)
 	{
 		DEBUG_MSG("Fuzzing the %d iteration", iteration);
-		status = driver->test_next_input(driver->state);
-		if (status < 0)
+		fuzz_result = driver->test_next_input(driver->state);
+		if (fuzz_result < 0)
 		{
-			if(status == -2)
+			if(fuzz_result == -2)
 				WARNING_MSG("The mutator has run out of mutations to test after %d iterations", iteration);
 			else
 				ERROR_MSG("ERROR: driver failed to test the target program");
@@ -294,8 +294,6 @@ int main(int argc, char ** argv)
 		}
 
 		new_path = instrumentation->is_new_path(instrumentation_state);
-
-		fuzz_result = instrumentation->get_fuzz_result(instrumentation_state);
 
 		if (new_path < 0)
 		{
