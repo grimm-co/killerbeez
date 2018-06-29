@@ -21,7 +21,7 @@ int none_enable(void * instrumentation_state, pid_t * process, char * cmd_line, 
 int none_is_process_done(void * instrumentation_state);
 #endif
 
-int none_is_new_path(void * instrumentation_state, int * process_status);
+int none_is_new_path(void * instrumentation_state);
 int none_get_fuzz_result(void * instrumentation_state);
 char * none_help(void);
 

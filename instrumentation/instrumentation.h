@@ -56,7 +56,7 @@ struct instrumentation
 	#else
 	int(*enable)(void * instrumentation_state, pid_t * process, char * cmd_line, char * input, size_t input_length);
 	#endif
-	int(*is_new_path)(void * instrumentation_state, int * process_status);
+	int(*is_new_path)(void * instrumentation_state);
 	int(*get_fuzz_result)(void * instrumentation_state);
 
 	//Optional

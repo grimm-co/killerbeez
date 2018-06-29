@@ -346,8 +346,6 @@ int main(int argc, char ** argv)
 			break;
 		}
 
-		new_path = instrumentation->is_new_path(instrumentation_state);
-
 		if (instrumentation) // TODO: removeme when changing the CLI options
 		{
 			new_path = instrumentation->is_new_path(instrumentation_state);
