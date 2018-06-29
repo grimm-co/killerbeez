@@ -19,15 +19,25 @@
  * @return - Returns 1 if the fuzzed process is done processing the input, 0 otherwise
  */
 #ifdef _WIN32
-int generic_done_processing_input(HANDLE process, time_t start_time, int timeout)
+int generic_done_processing_input(int * fuzz_result, HANDLE process, time_t start_time, int timeout)
 #else
-int generic_done_processing_input(pid_t process, time_t start_time, int timeout)
+int generic_done_processing_input(int * fuzz_result, pid_t process, time_t start_time, int timeout)
 #endif
 {
 	int status = is_process_alive(process);
-	if (status == 0)
+	if (status == 2) // process is still alive
+	{
+		*fuzz_result = FUZZ_HANG;
 		return 1;
-
+	} else if (status == 1) { // crashed
+		*fuzz_result = FUZZ_CRASH;
+		return 1;
+	} else if (status == 0) { // we exited cleanly
+		*fuzz_result = FUZZ_NONE;
+		return 1;
+	}
+	
+	// TODO: why not have an explicit timeout function?
 	return time(NULL) - start_time > timeout;
 }
 
@@ -49,14 +59,10 @@ void generic_wait_for_process_completion(int * fuzz_result, pid_t process, int t
 {
 	time_t start_time = time(NULL);
 
-	// make is process alive kill(2)
-	// and reaping the process happens outside of this while loop
-	// and stores the status in the driver state.
-
 	while (1)
 	{
 		// Has the process exited or have we timed out yet?
-		if(generic_done_processing_input(process, start_time, timeout) > 0)
+		if(generic_done_processing_input(fuzz_result, process, start_time, timeout) > 0)
 			break;
 		// Does the instrumentation know that the process is done (eg waiting at a GUI)?
 		if (instrumentation && instrumentation->is_process_done && instrumentation->is_process_done(instrumentation_state))
@@ -76,7 +82,7 @@ void generic_wait_for_process_completion(int * fuzz_result, pid_t process, int t
  * @param instrumentation_state - required to 
  * @return - either FUZZ_NONE, FUZZ_HANG, FUZZ_CRASH, or -1 on error.
  */
-int driver_get_fuzz_result(instrumentation_t * instrumentation, void * instrumentation_state)
+int driver_get_fuzz_result(int * fuzz_result, instrumentation_t * instrumentation, void * instrumentation_state)
 {
 	if (instrumentation)
 	{
@@ -84,12 +90,7 @@ int driver_get_fuzz_result(instrumentation_t * instrumentation, void * instrumen
 	}
 	else
 	{
-		// How does the null instrumentation on Windows get fuzz results?
-		// Right now, it does not.
-		// So, we can always return FUZZ_NONE.
-		//
-		// TODO: For linux, this should return something real.
-		return FUZZ_NONE;
+		return *fuzz_result;
 	}
 }
 

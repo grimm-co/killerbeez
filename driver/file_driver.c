@@ -203,9 +203,9 @@ int file_test_input(void * driver_state, char * input, size_t length)
 	}
 
 	//Wait for it to be done
-	generic_wait_for_process_completion(state->fuzz_result, state->process, state->timeout, state->instrumentation, state->instrumentation_state);
+	generic_wait_for_process_completion(&state->fuzz_result, state->process, state->timeout, state->instrumentation, state->instrumentation_state);
 
-	return driver_get_fuzz_result(state->instrumentation, state->instrumentation_state);
+	return driver_get_fuzz_result(&state->fuzz_result, state->instrumentation, state->instrumentation_state);
 }
 
 /**
