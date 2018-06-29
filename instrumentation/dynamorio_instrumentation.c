@@ -1501,12 +1501,13 @@ int dynamorio_is_new_path(void * instrumentation_state)
  * This function will return the result of the fuzz job. It should be called
  * after the process has finished processing the tested input.
  * @param instrumentation_state - an instrumentation specific structure previously created by the create() function
- * @return - either FUZZ_NONE, FUZZ_HANG, or FUZZ_CRASH.
+ * @return - either FUZZ_NONE, FUZZ_HANG, or FUZZ_CRASH, or -1 on error.
  */
 int dynamorio_get_fuzz_result(void * instrumentation_state)
 {
 	dynamorio_state_t * state = (dynamorio_state_t *)instrumentation_state;
-	finish_fuzz_round(state);
+	if (finish_fuzz_round(state) < 0)
+		return -1;
 	return state->last_process_status;
 }
 
