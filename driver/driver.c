@@ -49,6 +49,13 @@ void generic_wait_for_process_completion(HANDLE process, int timeout, instrument
 	}
 }
 
+/**
+ * This function will fetch the fuzz result if an instrumentation exists, and do nothing if one does not.
+ * TODO: Update this docstring when linux support is added.
+ * @param instrumentation - an instrumentation struct that is used to access the fuzz result
+ * @param instrumentation_state - required to 
+ * @return - either FUZZ_NONE, FUZZ_HANG, FUZZ_CRASH, or -1 on error.
+ */
 int driver_get_fuzz_result(instrumentation_t * instrumentation, void * instrumentation_state)
 {
 	if (instrumentation)

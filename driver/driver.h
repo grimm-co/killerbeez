@@ -30,7 +30,7 @@ typedef struct driver driver_t;
 
 FUNC_PREFIX int generic_done_processing_input(HANDLE process, time_t start_time, int timeout);
 FUNC_PREFIX void generic_wait_for_process_completion(HANDLE process, int timeout, instrumentation_t * instrumentation, void * instrumentation_state);
+FUNC_PREFIX int driver_get_fuzz_result(instrumentation_t * instrumentation, void * instrumentation_state);
 FUNC_PREFIX int generic_test_next_input(void * state, mutator_t * mutator, void * mutator_state, char * buffer, size_t buffer_length,
 	int(*test_input_func)(void * driver_state, char * buffer, size_t length), int * mutate_last_size);
 FUNC_PREFIX int setup_mutate_buffer(double ratio, size_t input_length, char ** buffer, size_t * length);
-FUNC_PREFIX int driver_get_fuzz_result(instrumentation_t * instrumentation, void * instrumentation_state);
