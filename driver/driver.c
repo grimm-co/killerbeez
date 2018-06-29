@@ -42,12 +42,16 @@ int generic_done_processing_input(pid_t process, time_t start_time, int timeout)
  * instrumentation state to check if the process is done yet.
  */
 #ifdef _WIN32
-void generic_wait_for_process_completion(HANDLE process, int timeout, instrumentation_t * instrumentation, void * instrumentation_state)
+void generic_wait_for_process_completion(int * fuzz_result, HANDLE process, int timeout, instrumentation_t * instrumentation, void * instrumentation_state)
 #else
-void generic_wait_for_process_completion(pid_t process, int timeout, instrumentation_t * instrumentation, void * instrumentation_state)
+void generic_wait_for_process_completion(int * fuzz_result, pid_t process, int timeout, instrumentation_t * instrumentation, void * instrumentation_state)
 #endif
 {
 	time_t start_time = time(NULL);
+
+	// make is process alive kill(2)
+	// and reaping the process happens outside of this while loop
+	// and stores the status in the driver state.
 
 	while (1)
 	{
