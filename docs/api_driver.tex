@@ -69,8 +69,9 @@ create function.
 This function uses the mutator given during the driver creation to retrieve the
 next mutated input and test it against the target program.  This function blocks
 execution until the program being fuzzed has finished processing the mutated
-input.  This function is only available if a mutator was given to the driver
-in the \texttt{create} function.
+input. It will report whether the fuzzed process crashed or hung, or neither.
+This function is only available if a mutator was given to the driver in the
+\texttt{create} function.
 }{
 \item driver\_state - a driver specific structure previously created by the
 create function.

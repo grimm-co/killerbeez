@@ -28,6 +28,7 @@ instrumentation_t * instrumentation_factory(char * instrumentation_type)
 		ret->set_state = none_set_state;
 		ret->enable = none_enable;
 		ret->is_new_path = none_is_new_path;
+		ret->get_fuzz_result = none_get_fuzz_result;
 	}
 	else if (!strcmp(instrumentation_type, "dynamorio"))
 	{
@@ -42,6 +43,7 @@ instrumentation_t * instrumentation_factory(char * instrumentation_type)
 		ret->get_module_info = dynamorio_get_module_info;
 		ret->get_edges = dynamorio_get_edges;
 		ret->is_process_done = dynamorio_is_process_done;
+		ret->get_fuzz_result = dynamorio_get_fuzz_result;
 	}
 	else
 		FACTORY_ERROR();

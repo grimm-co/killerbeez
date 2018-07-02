@@ -132,6 +132,26 @@ static int create_target_process(none_state_t * state, char* cmd_line, char * st
 	return 0;
 }
 
+/**
+ * This function ends the fuzzed process (if it wasn't previously ended).
+ * @param state - The none_state_t object containing this instrumentation's state
+ * @return - returns 0 on success or -1 on error
+ */
+static int finish_fuzz_round(none_state_t * state) {
+	if (!state->finished_last_run) {
+		destroy_target_process(state);
+		state->finished_last_run = 1;
+	}
+	if (state->last_status < 0)
+		return -1;
+
+	if(state->last_child_hung)
+		state->last_status = FUZZ_HANG;
+	// else leave it as whatever it was
+
+	return 0;
+}
+
 ////////////////////////////////////////////////////////////////
 // Instrumentation methods /////////////////////////////////////
 ////////////////////////////////////////////////////////////////
@@ -293,23 +313,24 @@ int none_enable(void * instrumentation_state, HANDLE * process, char * cmd_line,
  * not track the fuzzed process's path, so it is unable to determine if the process took a new path.  It will however be
  * able to determine if the process exitted normally, hung, or crashed.
  * @param instrumentation_state - an instrumentation specific state object previously created by the none_create function
- * @param process_status - pointer that will be filled with a value representing whether the fuzzed process crashed or hung, or neither
  * @return - 0 when a new path wasn't detected (as it always won't be with the none instrumentation), or -1 on failure.
  */
-int none_is_new_path(void * instrumentation_state, int * process_status)
+int none_is_new_path(void * instrumentation_state)
+{
+	return 0; //We don't gather instrumentation data, so we can't ever tell if we hit a new path.
+}
+
+/**
+ * This function will return the result of the fuzz job. It should be called
+ * after the process has finished processing the tested input.
+ * @param instrumentation_state - an instrumentation specific structure previously created by the create() function
+ * @return - either FUZZ_NONE, FUZZ_HANG, FUZZ_CRASH, or -1 on error.
+ */
+int none_get_fuzz_result(void * instrumentation_state)
 {
 	none_state_t * state = (none_state_t *)instrumentation_state;
-	if (!state->finished_last_run) {
-		destroy_target_process(state);
-		state->finished_last_run = 1;
-	}
-	if (state->last_status < 0)
-		return -1;
-	if(state->last_child_hung)
-		*process_status = FUZZ_HANG;
-	else
-		*process_status = state->last_status;
-	return 0; //We don't gather instrumentation data, so we can't ever tell if we hit a new path.
+	finish_fuzz_round(state);
+	return state->last_status;
 }
 
 /**
