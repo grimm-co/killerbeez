@@ -273,6 +273,9 @@ int main(int argc, char ** argv)
 			FATAL_MSG("Could not read instrumentation file or empty instrumentation file: %s", instrumentation_state_load_file);
 	}
 	instrumentation = instrumentation_factory(instrumentation_name);
+#ifdef _WIN32
+	// If we're on Linux, then NULL for instrumentation is acceptable.
+	// If we're on Windows, then it is not.
 	if (!instrumentation)
 	{
 		free(instrumentation_state_string);
@@ -284,6 +287,7 @@ int main(int argc, char ** argv)
 		free(instrumentation_state_string);
 		FATAL_MSG("Bad options/state for instrumentation %s", instrumentation_name);
 	}
+#endif
 	free(instrumentation_state_string);
 
 	//Load the seed buffer from a file

@@ -20,6 +20,7 @@ instrumentation_t * instrumentation_factory(char * instrumentation_type)
 {
 	instrumentation_t * ret = (instrumentation_t *)malloc(sizeof(instrumentation_t));
 	memset(ret, 0, sizeof(instrumentation_t));
+	#ifdef _WIN32
 	if (!strcmp(instrumentation_type, "debug"))
 	{
 		ret->create = debug_create;
@@ -35,15 +36,6 @@ instrumentation_t * instrumentation_factory(char * instrumentation_type)
 		ret->is_process_done = debug_is_process_done; // TODO: removeme
 		#endif
 	}
-	#ifndef _WIN32
-	// TODO: change the main fuzzer.exe interface so it's possible to have no instrumentation.
-	// then come back here and rm this else if branch.
-	else if (!strcmp(instrumentation_type, "linux_null_tmp")) 
-	{
-		return NULL;
-	}
-	#endif
-	#ifdef _WIN32
 	else if (!strcmp(instrumentation_type, "dynamorio"))
 	{
 		ret->create = dynamorio_create;
@@ -58,6 +50,14 @@ instrumentation_t * instrumentation_factory(char * instrumentation_type)
 		ret->get_edges = dynamorio_get_edges;
 		ret->is_process_done = dynamorio_is_process_done;
 		ret->get_fuzz_result = dynamorio_get_fuzz_result;
+	}
+	#else 
+	// TODO: change the main fuzzer.exe interface so it's possible to have no instrumentation.
+
+	// Linux doesn't use instrumentation.
+	if (!strcmp(instrumentation_type, "none")) 
+	{
+		return NULL;
 	}
 	#endif
 	else
