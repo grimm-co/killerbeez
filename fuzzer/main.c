@@ -234,10 +234,10 @@ int main(int argc, char ** argv)
 #else
 	#define create_output_directory(name)                                                \
 		snprintf(filename, sizeof(filename), "%s" name, output_directory);               \
-		if (access(filename, F_OK)) {     // -1 on error, sets errno                     \
-			if (errno = ENOENT)        // it doesn't exist                               \
+		if (access(filename, F_OK)) {                                                    \
+			if (errno = ENOENT) {                                                        \
 				mkdir(filename, 0775);                                                   \
-			else {                     // some other error                               \
+			} else {                                                                     \
 				printf("Unable to create directory %s", filename);                       \
 				return 1;                                                                \
 			}                                                                            \
