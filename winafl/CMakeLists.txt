@@ -1,6 +1,5 @@
 cmake_minimum_required (VERSION 2.8.8)
 project (winafl)
-include_directories (${PROJECT_SOURCE_DIR}/)
 
 # Generate the strings for the correct version of DynamoRIO
 if( CMAKE_SIZEOF_VOID_P EQUAL 8 ) # 64-bit

@@ -1,7 +1,6 @@
 cmake_minimum_required (VERSION 2.8.8)
 project (driver)
 
-include_directories (${PROJECT_SOURCE_DIR}/)
 include_directories (${CMAKE_SOURCE_DIR}/instrumentation/)
 
 SET(DRIVER_SRC

@@ -1,6 +1,16 @@
 cmake_minimum_required (VERSION 2.8.8)
 project (killerbeez)
 
+if (UNIX)
+	if(NOT CMAKE_BUILD_TYPE)
+		set(CMAKE_BUILD_TYPE Debug) 	# for gcc -g
+		# Ben recommended target_compile_definitions as an alternative, but I
+		# wasn't sure what to target.  The following works.
+		set(CMAKE_C_FLAGS "-D_DEBUG")	# for _DEBUG ifdefs in utils.h
+		message("WARNING: Building with debug options; performance will be impacted. Try cmake -DCMAKE_BUILD_TYPE=Release ../killerbeez")
+	endif()
+endif(UNIX)
+
 SET ( BUILD_DIRECTORY ${CMAKE_SOURCE_DIR}/../build )
 
 if (WIN32)
@@ -25,10 +35,13 @@ include_directories (${CMAKE_SOURCE_DIR}/../killerbeez-utils/utils/)
 # compile mutators, which will compile utils
 add_subdirectory(${CMAKE_SOURCE_DIR}/../killerbeez-mutators/ ${CMAKE_BINARY_DIR}/killerbeez-mutators/)
 
-add_subdirectory(driver)
-add_subdirectory(fuzzer)
-add_subdirectory(instrumentation)
-add_subdirectory(merger)
-add_subdirectory(picker)
-add_subdirectory(tracer)
-add_subdirectory(winafl)
+add_subdirectory(fuzzer) # instantiates & coordinates other parts
+add_subdirectory(driver) # starts program, feeds input, determines when program is done
+add_subdirectory(instrumentation) # inserts instructions to program to tell whether an input makes the binary take a new path
+
+if (WIN32)
+add_subdirectory(merger) # merges instrumentation data between fuzzer nodes
+add_subdirectory(picker) # picks which libraries of a target program are being used, and worth fuzzing
+add_subdirectory(tracer) # runs through program and records basic block edges
+add_subdirectory(winafl) # parts ripped from winafl for dynamorio
+endif (WIN32)

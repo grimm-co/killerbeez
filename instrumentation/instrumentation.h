@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include <Windows.h>
+#include <Windows.h> // HANDLE
 
 #ifdef INSTRUMENTATION_EXPORTS
 #define INSTRUMENTATION_API __declspec(dllexport)

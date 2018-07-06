@@ -1,7 +1,6 @@
 cmake_minimum_required (VERSION 2.8.8)
 project (instrumentation)
 
-include_directories (${PROJECT_SOURCE_DIR}/)
 set(INSTRUMENTATION_SRC
 	${PROJECT_SOURCE_DIR}/dynamorio_instrumentation.c
 	${PROJECT_SOURCE_DIR}/instrumentation.c
