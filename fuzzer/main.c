@@ -265,29 +265,26 @@ int main(int argc, char ** argv)
 	// Ojbect Setup //////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	if (instrumentation != NULL) // TODO: removeme when changing the CLI options
+	//Load the instrumentation state from disk (if specified, and create the instrumentation
+	if (instrumentation_state_load_file)
 	{
-		//Load the instrumentation state from disk (if specified, and create the instrumentation
-		if (instrumentation_state_load_file)
-		{
-			instrumentation_length = read_file(instrumentation_state_load_file, &instrumentation_state_string);
-			if (instrumentation_length <= 0)
-				FATAL_MSG("Could not read instrumentation file or empty instrumentation file: %s", instrumentation_state_load_file);
-		}
-		instrumentation = instrumentation_factory(instrumentation_name);
-		if (!instrumentation)
-		{
-			free(instrumentation_state_string);
-			FATAL_MSG("Unknown instrumentation '%s'", instrumentation_name);
-		}
-		instrumentation_state = instrumentation->create(instrumentation_options, instrumentation_state_string);
-		if (!instrumentation_state)
-		{
-			free(instrumentation_state_string);
-			FATAL_MSG("Bad options/state for instrumentation %s", instrumentation_name);
-		}
-		free(instrumentation_state_string);
+		instrumentation_length = read_file(instrumentation_state_load_file, &instrumentation_state_string);
+		if (instrumentation_length <= 0)
+			FATAL_MSG("Could not read instrumentation file or empty instrumentation file: %s", instrumentation_state_load_file);
 	}
+	instrumentation = instrumentation_factory(instrumentation_name);
+	if (!instrumentation)
+	{
+		free(instrumentation_state_string);
+		FATAL_MSG("Unknown instrumentation '%s'", instrumentation_name);
+	}
+	instrumentation_state = instrumentation->create(instrumentation_options, instrumentation_state_string);
+	if (!instrumentation_state)
+	{
+		free(instrumentation_state_string);
+		FATAL_MSG("Bad options/state for instrumentation %s", instrumentation_name);
+	}
+	free(instrumentation_state_string);
 
 	//Load the seed buffer from a file
 	if (seed_file)

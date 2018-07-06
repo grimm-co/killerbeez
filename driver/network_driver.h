@@ -44,5 +44,7 @@ struct network_state
 	char ** mutate_buffers;
 	size_t * mutate_buffer_lengths;
 	int * mutate_last_sizes;
+
+	int fuzz_result;
 };
 typedef struct network_state network_state_t;

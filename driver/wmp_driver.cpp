@@ -177,7 +177,7 @@ int wmp_test_input(void * driver_state, char * input, size_t length)
 		Sleep(50);
 	}
 
-	return driver_get_fuzz_result(state->instrumentation, state->instrumentation_state);
+	return driver_get_fuzz_result(&state->fuzz_result, state->instrumentation, state->instrumentation_state);
 }
 
 /**

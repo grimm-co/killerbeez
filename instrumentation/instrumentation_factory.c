@@ -20,7 +20,7 @@ instrumentation_t * instrumentation_factory(char * instrumentation_type)
 {
 	instrumentation_t * ret = (instrumentation_t *)malloc(sizeof(instrumentation_t));
 	memset(ret, 0, sizeof(instrumentation_t));
-	if (!strcmp(instrumentation_type, "none"))
+	if (!strcmp(instrumentation_type, "debug"))
 	{
 		ret->create = debug_create;
 		ret->cleanup = debug_cleanup;

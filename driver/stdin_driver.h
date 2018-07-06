@@ -36,5 +36,7 @@ struct stdin_state
 	char * mutate_buffer;
 	size_t mutate_buffer_length;
 	int mutate_last_size;
+
+	int fuzz_result;
 };
 typedef struct stdin_state stdin_state_t;
