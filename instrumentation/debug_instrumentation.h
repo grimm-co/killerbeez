@@ -18,7 +18,6 @@ int debug_set_state(void * instrumentation_state, char * state);
 int debug_enable(void * instrumentation_state, HANDLE * process, char * cmd_line, char * input, size_t input_length);
 #else
 int debug_enable(void * instrumentation_state, pid_t * process, char * cmd_line, char * input, size_t input_length);
-int debug_is_process_done(void * instrumentation_state);
 #endif
 
 int debug_is_new_path(void * instrumentation_state);
