@@ -8,6 +8,7 @@
 #include <wordexp.h>
 #include <sys/types.h> // kill
 #include <signal.h>    // kill
+#include <sys/wait.h>  // waitpid
 #endif
 #include <stdlib.h>
 
@@ -156,6 +157,9 @@ static int create_target_process(none_state_t * state, char* cmd_line, char * st
 	if (!cmd_line) return 0; // TODO: why is this NULL on the first iteration?
 
 	pid_t pid = fork();
+
+	state->process_running = 1;
+	state->last_status = FUZZ_HANG;
 	
 	wordexp_t w;
 
@@ -269,8 +273,9 @@ void none_cleanup(void * instrumentation_state)
 {
 	none_state_t * state = (none_state_t *)instrumentation_state;
 
-	#ifdef _WIN32
 	destroy_target_process(state);
+
+	#ifdef _WIN32
 	if (state->debug_thread_handle) {
 		TerminateThread(state->debug_thread_handle, 0);
 		CloseHandle(state->debug_thread_handle);
@@ -341,13 +346,11 @@ int none_set_state(void * instrumentation_state, char * state)
 	if (!state)
 		return 1;
 
-	#ifdef _WIN32
 	//If a child process is running when the state is being set
 	destroy_target_process(current_state);//kill it so we don't orphan it
 
 	GET_INT(temp_int, state, current_state->last_status, "last_status", result);
 	current_state->finished_last_run = 1;
-	#endif
 
 	return 0; //No state to set, so just return success
 }
