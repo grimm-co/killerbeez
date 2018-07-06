@@ -2,7 +2,7 @@
 #ifdef _WIN32
 #include "dynamorio_instrumentation.h"
 #endif
-#include "none_instrumentation.h"
+#include "debug_instrumentation.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -22,17 +22,17 @@ instrumentation_t * instrumentation_factory(char * instrumentation_type)
 	memset(ret, 0, sizeof(instrumentation_t));
 	if (!strcmp(instrumentation_type, "none"))
 	{
-		ret->create = none_create;
-		ret->cleanup = none_cleanup;
-		ret->merge = none_merge;
-		ret->get_state = none_get_state;
-		ret->free_state = none_free_state;
-		ret->set_state = none_set_state;
-		ret->enable = none_enable;
-		ret->is_new_path = none_is_new_path;
-		ret->get_fuzz_result = none_get_fuzz_result;
+		ret->create = debug_create;
+		ret->cleanup = debug_cleanup;
+		ret->merge = debug_merge;
+		ret->get_state = debug_get_state;
+		ret->free_state = debug_free_state;
+		ret->set_state = debug_set_state;
+		ret->enable = debug_enable;
+		ret->is_new_path = debug_is_new_path;
+		ret->get_fuzz_result = debug_get_fuzz_result;
 		#ifndef _WIN32
-		ret->is_process_done = none_is_process_done; // TODO: removeme
+		ret->is_process_done = debug_is_process_done; // TODO: removeme
 		#endif
 	}
 	#ifndef _WIN32
@@ -80,7 +80,7 @@ char * instrumentation_help(void)
 {
 	char * text, *new_text;
 	text = strdup("Instrumentation Options:\n\n");
-	APPEND_HELP(text, new_text, none_help);
+	APPEND_HELP(text, new_text, debug_help);
 	#ifdef _WIN32
 	APPEND_HELP(text, new_text, dynamorio_help);
 	#endif

@@ -4,7 +4,7 @@ project (instrumentation)
 set(INSTRUMENTATION_SRC
 	${PROJECT_SOURCE_DIR}/instrumentation.c
 	${PROJECT_SOURCE_DIR}/instrumentation_factory.c
-	${PROJECT_SOURCE_DIR}/none_instrumentation.c
+	${PROJECT_SOURCE_DIR}/debug_instrumentation.c
 )
 if (WIN32)
 	set(INSTRUMENTATION_SRC
