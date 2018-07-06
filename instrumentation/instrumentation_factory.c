@@ -35,6 +35,14 @@ instrumentation_t * instrumentation_factory(char * instrumentation_type)
 		ret->is_process_done = none_is_process_done; // TODO: removeme
 		#endif
 	}
+	#ifndef _WIN32
+	// TODO: change the main fuzzer.exe interface so it's possible to have no instrumentation.
+	// then come back here and rm this else if branch.
+	else if (!strcmp(instrumentation_type, "linux_null_tmp")) 
+	{
+		return NULL;
+	}
+	#endif
 	#ifdef _WIN32
 	else if (!strcmp(instrumentation_type, "dynamorio"))
 	{

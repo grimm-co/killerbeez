@@ -265,26 +265,29 @@ int main(int argc, char ** argv)
 	// Ojbect Setup //////////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	//Load the instrumentation state from disk (if specified, and create the instrumentation
-	if (instrumentation_state_load_file)
+	if (instrumentation != NULL) // TODO: removeme when changing the CLI options
 	{
-		instrumentation_length = read_file(instrumentation_state_load_file, &instrumentation_state_string);
-		if (instrumentation_length <= 0)
-			FATAL_MSG("Could not read instrumentation file or empty instrumentation file: %s", instrumentation_state_load_file);
-	}
-	instrumentation = instrumentation_factory(instrumentation_name);
-	if (!instrumentation)
-	{
+		//Load the instrumentation state from disk (if specified, and create the instrumentation
+		if (instrumentation_state_load_file)
+		{
+			instrumentation_length = read_file(instrumentation_state_load_file, &instrumentation_state_string);
+			if (instrumentation_length <= 0)
+				FATAL_MSG("Could not read instrumentation file or empty instrumentation file: %s", instrumentation_state_load_file);
+		}
+		instrumentation = instrumentation_factory(instrumentation_name);
+		if (!instrumentation)
+		{
+			free(instrumentation_state_string);
+			FATAL_MSG("Unknown instrumentation '%s'", instrumentation_name);
+		}
+		instrumentation_state = instrumentation->create(instrumentation_options, instrumentation_state_string);
+		if (!instrumentation_state)
+		{
+			free(instrumentation_state_string);
+			FATAL_MSG("Bad options/state for instrumentation %s", instrumentation_name);
+		}
 		free(instrumentation_state_string);
-		FATAL_MSG("Unknown instrumentation '%s'", instrumentation_name);
 	}
-	instrumentation_state = instrumentation->create(instrumentation_options, instrumentation_state_string);
-	if (!instrumentation_state)
-	{
-		free(instrumentation_state_string);
-		FATAL_MSG("Bad options/state for instrumentation %s", instrumentation_name);
-	}
-	free(instrumentation_state_string);
 
 	//Load the seed buffer from a file
 	if (seed_file)
@@ -345,11 +348,15 @@ int main(int argc, char ** argv)
 
 		new_path = instrumentation->is_new_path(instrumentation_state);
 
-		if (new_path < 0)
+		if (instrumentation) // TODO: removeme when changing the CLI options
 		{
-			printf("ERROR: instrumentation failed to determine the fuzzed process's fuzz_result\n");
-			break;
-		}
+			new_path = instrumentation->is_new_path(instrumentation_state);
+			if (new_path < 0)
+			{
+				printf("ERROR: instrumentation failed to determine the fuzzed process's fuzz_result\n");
+				break;
+			}
+		} // no instrumentation? no new paths.
 
 		directory = NULL;
 		if (fuzz_result == FUZZ_CRASH)
@@ -410,7 +417,10 @@ int main(int argc, char ** argv)
 
 	//Cleanup everything and exit
 	driver->cleanup(driver->state);
-	instrumentation->cleanup(instrumentation_state);
+
+	if (instrumentation != NULL) // TODO: removeme when changing the CLI options
+		instrumentation->cleanup(instrumentation_state);
+
 	mutator->cleanup(mutator_state);
 	free(driver);
 	free(instrumentation);
