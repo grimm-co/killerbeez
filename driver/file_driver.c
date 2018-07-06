@@ -10,9 +10,15 @@
 #include <stdlib.h>
 #include <time.h>
 
-//Windows API
+#ifdef _WIN32
 #include <Shlwapi.h>
 #include <process.h>
+#else
+#include <string.h> // memset
+#include <sys/types.h> // kill()
+#include <signal.h>
+#include <unistd.h> // unlink
+#endif
 
 static void cleanup_process(file_state_t * state);
 
@@ -213,7 +219,6 @@ int file_test_next_input(void * driver_state)
 	file_state_t * state = (file_state_t *)driver_state;
 	return generic_test_next_input(state, state->mutator, state->mutator_state, state->mutate_buffer,
 		state->mutate_buffer_length, file_test_input, &state->mutate_last_size);
-
 }
 
 /**
@@ -245,8 +250,12 @@ static void cleanup_process(file_state_t * state)
 	//If we have an instrumentation, then the instrumentation will kill the process
 	if (state->process && !state->instrumentation)
 	{
+		#ifdef _WIN32
 		TerminateProcess(state->process, 9);
 		CloseHandle(state->process);
+		#else
+		kill(state->process, SIGKILL);
+		#endif
 		state->process = NULL;
 	}
 }

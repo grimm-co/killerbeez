@@ -245,7 +245,7 @@ int main(int argc, char ** argv)
 #else
 	#define create_output_directory(name)                                                \
 		snprintf(filename, sizeof(filename), "%s" name, output_directory);               \
-		if (access(filename, F_OK)) {                                                    \
+		if (!file_exists(filename)) {                                                    \
 			if (errno = ENOENT) {                                                        \
 				mkdir(filename, 0775);                                                   \
 			} else {                                                                     \
@@ -368,7 +368,7 @@ int main(int argc, char ** argv)
 				if (output_directory) {
 					md5((uint8_t *)mutate_buffer, mutate_length, filehash, sizeof(filehash));
 					snprintf(filename, MAX_PATH, "%s/%s/%s", output_directory, directory, filehash);
-					if (access(filename, F_OK)) //If the file already exists, there's no reason to write it again
+					if (!file_exists(filename)) //If the file already exists, there's no reason to write it again
 						write_buffer_to_file(filename, mutate_buffer, mutate_length);
 				}
 				free(mutate_buffer);
