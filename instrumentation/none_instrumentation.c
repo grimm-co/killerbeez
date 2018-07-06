@@ -379,6 +379,67 @@ int none_enable(void * instrumentation_state, pid_t * process, char * cmd_line, 
 	return 0;
 }
 
+#ifndef _WIN32
+
+/**
+ * Not used in Windows.
+ * sets state->last_status when the process crashes, hangs, or exits normally.
+*/
+
+/**
+ * Checks if the target process is done fuzzing the inputs yet.
+ * @param state - The _state_t object containing this instrumentation's state
+ * @return - zero if the process is still running, non-zero if the process is done.
+ */
+int none_is_process_done(void * instrumentation_state)
+{
+	none_state_t * state = (none_state_t *)instrumentation_state;
+	int status[1];
+
+	pid_t result = waitpid(state->child_handle, status, 0);
+
+	// ^the third arg should probably be WNOHANG, so that we don't block here,
+	// but rather inside the driver, which calls this in generic_wait_for_process_completion
+	// and should handling timing out on its own.
+
+	// however, doing so means that we never get a pid back from waitpid.
+	// (we never hit the else branch below)
+
+	// one possibility, but i think it is not the case:
+	// 		this means that the waitpid in utils.c:is_process_alive might get to it first.
+	// the reason i suspect not is because we never hit the error message for result == -1 below.
+
+	if (result == 0) {         // child is still running
+		return 0;
+	} else if (result == -1) { // error eg waitpid was already called, no children
+
+		ERROR_MSG("is_process_done failed");
+
+	} else {                   // result is a pid, so the child is dead
+		// check if it exited normally or crashed
+		if (WIFEXITED(*status)) { // 1 if exited normally
+			state->process_running = 0;
+			state->finished_last_run = 1;
+			state->last_status = FUZZ_NONE;
+			state->last_child_hung = 0;
+		} else { // nonzero exit code
+			state->process_running = 0;
+			state->finished_last_run = 1;
+			state->last_status = FUZZ_CRASH;
+			state->last_child_hung = 0;
+		}
+		return 1;
+	}
+
+	/*
+	int process_running;
+	// int finished_last_run;
+	int last_status; // not the last status code
+	int last_child_hung;
+	*/
+}
+#endif
+
 /**
  * This function determines whether the process being instrumented has taken a new path.  The none instrumentation does
  * not track the fuzzed process's path, so it is unable to determine if the process took a new path.  It will however be

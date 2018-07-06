@@ -18,6 +18,7 @@ int none_set_state(void * instrumentation_state, char * state);
 int none_enable(void * instrumentation_state, HANDLE * process, char * cmd_line, char * input, size_t input_length);
 #else
 int none_enable(void * instrumentation_state, pid_t * process, char * cmd_line, char * input, size_t input_length);
+int none_is_process_done(void * instrumentation_state);
 #endif
 
 int none_is_new_path(void * instrumentation_state, int * process_status);

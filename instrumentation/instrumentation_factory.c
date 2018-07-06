@@ -31,6 +31,9 @@ instrumentation_t * instrumentation_factory(char * instrumentation_type)
 		ret->enable = none_enable;
 		ret->is_new_path = none_is_new_path;
 		ret->get_fuzz_result = none_get_fuzz_result;
+		#ifndef _WIN32
+		ret->is_process_done = none_is_process_done; // TODO: removeme
+		#endif
 	}
 	#ifdef _WIN32
 	else if (!strcmp(instrumentation_type, "dynamorio"))
