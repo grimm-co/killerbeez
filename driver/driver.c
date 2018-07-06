@@ -25,10 +25,9 @@ int generic_done_processing_input(int * fuzz_result, pid_t process, time_t start
 #endif
 {
 	int status = is_process_alive(process);
-	if (status == 2) // process is still alive
+	if (status == 2) // process is still alive, keep going
 	{
 		*fuzz_result = FUZZ_HANG;
-		return 1;
 	} else if (status == 1) { // crashed
 		*fuzz_result = FUZZ_CRASH;
 		return 1;
