@@ -22,7 +22,6 @@
  */
 void usage(char * program_name, char * mutator_directory)
 {
-	char * help_text;
 	printf(
 		"Usage: %s driver_name instrumentation_name mutator_name [options]\n"
 		"\n"
@@ -40,22 +39,11 @@ void usage(char * program_name, char * mutator_directory)
 		"\t -msf mutator_state_file           Set the file containing that the mutator state should load from\n"
 		"\t -o output_directory               The directory to write files which cause a crash or hang\n"
 		"\t -sf seed_file                     The seed file to use\n"
-		"\n\n",
+		"\n\n"
+		"\n -h <logging, driver, instrumentation, mutators> for more help.\n\n",
 		program_name
 	);
 
-#define PRINT_HELP(x, y) \
-	x = y;               \
-	if(x) {              \
-		puts(x);         \
-		free(x);         \
-	}
-
-	PRINT_HELP(help_text, logging_help());
-	PRINT_HELP(help_text, driver_help());
-	PRINT_HELP(help_text, instrumentation_help());
-	PRINT_HELP(help_text, mutator_help(mutator_directory));
-		
 	exit(1);
 }
 
@@ -75,7 +63,7 @@ int main(int argc, char ** argv)
 	void * instrumentation_state;
 	int seed_length = 0, mutate_length = 0, instrumentation_length = 0, mutator_state_length;
 	time_t fuzz_begin_time;
-	int iteration = 0, status, new_path;
+	int iteration = 0, fuzz_result, new_path;
 	void * mutator_state = NULL;
 	char filename[MAX_PATH];
 	char filehash[256];
@@ -124,6 +112,29 @@ int main(int argc, char ** argv)
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Parse Arguments ///////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define PRINT_HELP(x) \
+		puts(x);      \
+		free(x);         
+
+	// if "fuzzer.exe -h something"
+	if ( argc > 2 && !strcmp("-h", argv[1]) ) 
+	{
+		puts("");
+		if (!strcmp("logging", argv[2])) {
+			PRINT_HELP(logging_help());
+		} else if (!strcmp("driver", argv[2])) {
+			PRINT_HELP(driver_help());
+		} else if (!strcmp("instrumentation", argv[2])) {
+			PRINT_HELP(instrumentation_help());
+		} else if (!strcmp("mutators", argv[2])) {
+			PRINT_HELP(mutator_help(mutator_directory));
+		} else {
+			printf("Unknown help option \"%s\". Expected <logging, driver, instrumentation, mutators>.\n\n",argv[2]);
+		}
+		
+		exit(1);
+	}
 
 	if (argc < 4)
 	{
@@ -272,27 +283,28 @@ int main(int argc, char ** argv)
 	for (iteration = 0; iteration < num_iterations; iteration++)
 	{
 		DEBUG_MSG("Fuzzing the %d iteration", iteration);
-		status = driver->test_next_input(driver->state);
-		if (status < 0)
+		fuzz_result = driver->test_next_input(driver->state);
+		if (fuzz_result < 0)
 		{
-			if(status == -2)
+			if(fuzz_result == -2)
 				WARNING_MSG("The mutator has run out of mutations to test after %d iterations", iteration);
 			else
 				ERROR_MSG("ERROR: driver failed to test the target program");
 			break;
 		}
 
-		new_path = instrumentation->is_new_path(instrumentation_state, &status);
+		new_path = instrumentation->is_new_path(instrumentation_state);
+
 		if (new_path < 0)
 		{
-			printf("ERROR: instrumentation failed to determine the fuzzed process's status\n");
+			printf("ERROR: instrumentation failed to determine the fuzzed process's fuzz_result\n");
 			break;
 		}
 
 		directory = NULL;
-		if (status == FUZZ_CRASH)
+		if (fuzz_result == FUZZ_CRASH)
 			directory = "crashes";
-		else if (status == FUZZ_HANG)
+		else if (fuzz_result == FUZZ_HANG)
 			directory = "hangs";
 		else if (new_path > 0)
 			directory = "new_paths";
