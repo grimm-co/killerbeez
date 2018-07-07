@@ -117,7 +117,7 @@ sent to the fuzzed process
 \item return value - 0 on success, non-zero on failure
 }
 
-\api{int is\_new\_path(void * instrumentation\_state, int * process\_status)
+\api{int is\_new\_path(void * instrumentation\_state)
 }{
 This function will determine whether the process being instrumented has taken a
 new path.  It should be called after the process has finished processing the
@@ -125,10 +125,19 @@ tested input.
 }{
 \item instrumentation\_state - an instrumentation specific structure previously
 created by the create() function
-\item process\_status - pointer that will be filled with a value representing
-whether the fuzzed process crashed or hung, or neither
 \item return value - 1 if the previously setup process (via the enable()
 function) took a new path, 0 if it did not, or -1 on failure
+}
+
+\api{int get\_fuzz\_result(void * instrumentation\_state)
+}{
+This function will return the result of the fuzz job. It should be called
+after the process has finished processing the tested input.
+}{
+\item instrumentation\_state - an instrumentation specific structure previously
+created by the create() function
+\item return value - either \texttt{FUZZ\_NONE}, \texttt{FUZZ\_HANG},
+\texttt{FUZZ\_CRASH}, or -1 on error.
 }
 
 \api{int get\_module\_info(void * instrumentation\_state, int index, int * is\_new,

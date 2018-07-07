@@ -168,7 +168,7 @@ void file_cleanup(void * driver_state)
  * @param driver_state - a driver specific structure previously created by the file_create function
  * @param input - the input that should be tested
  * @param length - the length of the input parameter
- * @return - 0 on success or -1 on failure
+ * @return - FUZZ_CRASH, FUZZ_HANG, or FUZZ_NONE on success or -1 on failure
  */
 int file_test_input(void * driver_state, char * input, size_t length)
 {
@@ -198,14 +198,15 @@ int file_test_input(void * driver_state, char * input, size_t length)
 
 	//Wait for it to be done
 	generic_wait_for_process_completion(state->process, state->timeout, state->instrumentation, state->instrumentation_state);
-	return 0;
+
+	return driver_get_fuzz_result(state->instrumentation, state->instrumentation_state);
 }
 
 /**
  * This function will run the fuzzed program with the output of the mutator given during driver
  * creation.  This function blocks until the program has finished processing the input.
  * @param driver_state - a driver specific structure previously created by the file_create function
- * @return - 0 on success, -1 on error, or -2 if the mutator has finished generating inputs
+ * @return - FUZZ_CRASH, FUZZ_HANG, or FUZZ_NONE on success, -1 on error, -2 if the mutator has finished generating inputs
  */
 int file_test_next_input(void * driver_state)
 {
