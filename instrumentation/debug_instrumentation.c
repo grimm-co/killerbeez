@@ -1,15 +1,5 @@
-#ifdef _WIN32
 #define _CRT_RAND_S
-#include <Windows.h>
-#else
-#include <sys/types.h> // pid_t
-#include <string.h> // strdup
-#include <unistd.h> // fork 
-#include <wordexp.h>
-#include <sys/types.h> // kill
-#include <signal.h>    // kill
-#include <sys/wait.h>  // waitpid
-#endif
+#include <windows.h>
 #include <stdlib.h>
 
 #include "instrumentation.h"
@@ -18,7 +8,6 @@
 #include <utils.h>
 #include <jansson_helper.h>
 
-#ifdef _WIN32
 /**
  * This function creates the target process and debugs it.  This function runs in
  * a separate thread, releasing the process_creation_semaphore once it has created
@@ -92,7 +81,6 @@ static int debugging_thread(debug_state_t * state)
 
 	return 0;
 }
-#endif
 
 /**
  * This function terminates the fuzzed process.
@@ -105,7 +93,6 @@ static void destroy_target_process(debug_state_t * state) {
 		if(state->last_child_hung)//otherwise we'll be waiting for it forever
 			state->process_running = 0;
 
-		#ifdef _WIN32
 		TerminateProcess(state->child_handle, 0);
 		CloseHandle(state->child_handle);
 		state->child_handle = NULL;
@@ -115,12 +102,6 @@ static void destroy_target_process(debug_state_t * state) {
 		//because the none instrumentation user did not read the results of a previous
 		//fuzzed process
 		take_semaphore(state->results_ready_semaphore);
-		#else
-		kill(state->child_handle, SIGKILL);
-		int status[1];
-		waitpid(state->child_handle, status, 0);
-		state->child_handle = NULL; // TODO: windows can set handles to NULL. what is equivalent for PIDs?
-		#endif
 	}
 }
 
@@ -139,46 +120,15 @@ static int create_target_process(debug_state_t * state, char* cmd_line, char * s
 	state->last_child_hung = 0;
 	state->last_status = -1;
 
-	// update cmd args
+	//Tell the debug thread to start a new process
 	state->thread_args.cmd_line = cmd_line;
 	state->thread_args.stdin_input = stdin_input;
 	state->thread_args.stdin_length = stdin_length;
-
-	#ifdef _WIN32
-	//Tell the debug thread to start a new process
 	release_semaphore(state->fuzz_round_semaphore);
 
 	//Wait for the debug thread to finish creating the new process
 	if (take_semaphore(state->process_creation_semaphore) || !state->child_handle)
 		return 1;
-
-	#else
-	// create the process
-	// naive approach of fork/execve for now; TODO: rip afl's forkserver
-
-	if (!cmd_line) return 0; // TODO: why is this NULL on the first iteration?
-
-	pid_t pid = fork();
-
-	state->process_running = 1;
-	state->last_status = FUZZ_HANG;
-	
-	wordexp_t w;
-
-	// TODO: may want flags eg no expand
-	wordexp(cmd_line, &w, 0);
-
-	if (pid == 0) // child
-	{
-		// TODO: jeffball says that you can pass in "environ" as the env
-		// TODO: execv expects argv to be null-terminated. i am unsure if wordv is.
-		execv(w.we_wordv[0], w.we_wordv);
-	} else { // parent
-		state->child_handle = pid;
-	}
-	
-	#endif
-	
 	return 0;
 }
 
@@ -220,7 +170,6 @@ void * debug_create(char * options, char * state)
 		return NULL;
 	memset(debug_state, 0, sizeof(debug_state_t));
 
-	#ifdef _WIN32
 	debug_state->fuzz_round_semaphore = create_semaphore(0, 1);
 	debug_state->process_creation_semaphore = create_semaphore(0, 1);
 	debug_state->results_ready_semaphore = create_semaphore(0, 1);
@@ -229,7 +178,6 @@ void * debug_create(char * options, char * state)
 		return NULL;
 	}
 
-	// TODO: can this be moved up out of the ifdef, so we don't need to repeat it below in the linux portion?
 	if (state && debug_set_state(debug_state, state))
 	{
 		debug_cleanup(debug_state);
@@ -248,21 +196,7 @@ void * debug_create(char * options, char * state)
 		debug_cleanup(debug_state);
 		return NULL;
 	}
-	#else
-	// set state if one was passed in
-	// set_state might fail, so check for that
-	if (state && debug_set_state(debug_state, state))
-	{
-		debug_cleanup(debug_state);
-		return NULL;
-	}
 
-	// create the child process
-	if ( create_target_process( debug_state, debug_state->thread_args.cmd_line,
-			debug_state->thread_args.stdin_input, debug_state->thread_args.stdin_length ) )
-		return NULL;
-
-	#endif
 	return debug_state;
 }
 
@@ -276,8 +210,6 @@ void debug_cleanup(void * instrumentation_state)
 	debug_state_t * state = (debug_state_t *)instrumentation_state;
 
 	destroy_target_process(state);
-
-	#ifdef _WIN32
 	if (state->debug_thread_handle) {
 		TerminateThread(state->debug_thread_handle, 0);
 		CloseHandle(state->debug_thread_handle);
@@ -290,7 +222,6 @@ void debug_cleanup(void * instrumentation_state)
 		destroy_semaphore(state->process_creation_semaphore);
 	if (state->results_ready_semaphore)
 		destroy_semaphore(state->results_ready_semaphore);
-	#endif
 	free(state);
 }
 
@@ -366,11 +297,7 @@ int debug_set_state(void * instrumentation_state, char * state)
  * @input_length - the length of the input parameter
  * returns 0 on success, -1 on failure
  */
-#ifdef _WIN32
 int debug_enable(void * instrumentation_state, HANDLE * process, char * cmd_line, char * input, size_t input_length)
-#else
-int debug_enable(void * instrumentation_state, pid_t * process, char * cmd_line, char * input, size_t input_length)
-#endif
 {
 	debug_state_t * state = (debug_state_t *)instrumentation_state;
 	if(state->child_handle)

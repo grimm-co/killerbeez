@@ -4,11 +4,12 @@ project (instrumentation)
 set(INSTRUMENTATION_SRC
 	${PROJECT_SOURCE_DIR}/instrumentation.c
 	${PROJECT_SOURCE_DIR}/instrumentation_factory.c
-	${PROJECT_SOURCE_DIR}/debug_instrumentation.c
 )
+
 if (WIN32)
 	set(INSTRUMENTATION_SRC
 		${INSTRUMENTATION_SRC}
+		${PROJECT_SOURCE_DIR}/debug_instrumentation.c
 		${PROJECT_SOURCE_DIR}/dynamorio_instrumentation.c
 	)
 endif (WIN32)

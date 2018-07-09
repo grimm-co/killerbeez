@@ -77,8 +77,8 @@ char * instrumentation_help(void)
 {
 	char * text, *new_text;
 	text = strdup("Instrumentation Options:\n\n");
-	APPEND_HELP(text, new_text, debug_help);
 	#ifdef _WIN32
+	APPEND_HELP(text, new_text, debug_help);
 	APPEND_HELP(text, new_text, dynamorio_help);
 	#endif
 	return text;
