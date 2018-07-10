@@ -251,12 +251,13 @@ static void cleanup_process(file_state_t * state)
 	if (state->process && !state->instrumentation)
 	{
 		#ifdef _WIN32
-		TerminateProcess(state->process, 9);
+		TerminateProcess(state->process, SIGKILL);
 		CloseHandle(state->process);
+		state->process = NULL;
 		#else
 		kill(state->process, SIGKILL);
+		state->process = 0;
 		#endif
-		state->process = NULL;
 	}
 }
 

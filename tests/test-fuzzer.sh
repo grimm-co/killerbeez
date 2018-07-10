@@ -129,6 +129,18 @@ then
 		-sf $HOME'/killerbeez/killerbeez/corpus/test/inputs/input.txt' \
 		-d '{"timeout":20, "path":"'$HOME'/killerbeez/killerbeez/corpus/test/test-linux", "arguments":"@@"}'
 	fi
+
+	if [ $KILLERBEEZ_TEST = "stdin" ]
+	then
+		cd $LINUX_BUILD_PATH
+
+		$FUZZER_WITH_GDB \
+		stdin none bit_flip \
+		-n 9 \
+		-l '{"level":0}' \
+		-sf $HOME'/killerbeez/killerbeez/corpus/test/inputs/close.txt' \
+		-d '{"timeout":20, "path":"'$HOME'/killerbeez/killerbeez/corpus/test/test-linux"}'
+	fi
 fi
 
 # successful output should look like:

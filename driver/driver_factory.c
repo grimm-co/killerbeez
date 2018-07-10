@@ -1,9 +1,9 @@
 #include "driver_factory.h"
 
 #include "file_driver.h"
+#include "stdin_driver.h"
 #ifdef _WIN32
 #include "wmp_driver.h"
-#include "stdin_driver.h"
 #include "network_driver.h"
 #endif
 
@@ -85,6 +85,16 @@ DRIVER_API driver_t * driver_all_factory(char * driver_type, char * options, ins
 		ret->test_next_input = file_test_next_input;
 		ret->get_last_input = file_get_last_input;
 	}
+	else if (!strcmp(driver_type, "stdin"))
+	{
+		ret->state = stdin_create(options, instrumentation, instrumentation_state, mutator, mutator_state);
+		if (!ret->state)
+			FACTORY_ERROR();
+		ret->cleanup = stdin_cleanup;
+		ret->test_input = stdin_test_input;
+		ret->test_next_input = stdin_test_next_input;
+		ret->get_last_input = stdin_get_last_input;
+	}
 	#ifdef _WIN32
 	else if (!strcmp(driver_type, "wmp"))
 	{
@@ -96,16 +106,6 @@ DRIVER_API driver_t * driver_all_factory(char * driver_type, char * options, ins
 		ret->test_next_input = wmp_test_next_input;
 		ret->get_last_input = wmp_get_last_input;
 	}
-	else if (!strcmp(driver_type, "stdin"))
-	{
-		ret->state = stdin_create(options, instrumentation, instrumentation_state, mutator, mutator_state);
-		if (!ret->state)
-			FACTORY_ERROR();
-		ret->cleanup = stdin_cleanup;
-		ret->test_input = stdin_test_input;
-		ret->test_next_input = stdin_test_next_input;
-		ret->get_last_input = stdin_get_last_input;
-	}
 	else if (!strcmp(driver_type, "network"))
 	{
 		ret->state = network_create(options, instrumentation, instrumentation_state, mutator, mutator_state);
@@ -116,9 +116,9 @@ DRIVER_API driver_t * driver_all_factory(char * driver_type, char * options, ins
 		ret->test_next_input = network_test_next_input;
 		ret->get_last_input = network_get_last_input;
 	}
+	#endif
 	else
 		FACTORY_ERROR();
-	#endif
 	return ret;
 }
 

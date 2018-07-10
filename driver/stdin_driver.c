@@ -10,9 +10,15 @@
 #include <stdlib.h>
 #include <time.h>
 
+#ifdef _WIN32
 //Windows API
 #include <Shlwapi.h>
 #include <process.h>
+#else // linux
+#include <string.h>    // memset, strlen
+#include <sys/types.h> // kill
+#include <signal.h>    // kill
+#endif
 
 static void cleanup_process(stdin_state_t * state);
 
@@ -197,9 +203,14 @@ static void cleanup_process(stdin_state_t * state)
 	//If we have an instrumentation, then the instrumentation will kill the process
 	if (state->process && !state->instrumentation)
 	{
-		TerminateProcess(state->process, 9);
+		#ifdef _WIN32
+		TerminateProcess(state->process, SIGKILL);
 		CloseHandle(state->process);
 		state->process = NULL;
+		#else
+		kill(state->process, SIGKILL);
+		state->process = 0;
+		#endif
 	}
 }
 
