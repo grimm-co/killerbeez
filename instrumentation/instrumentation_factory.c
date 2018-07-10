@@ -49,9 +49,7 @@ instrumentation_t * instrumentation_factory(char * instrumentation_type)
 		ret->get_fuzz_result = dynamorio_get_fuzz_result;
 	}
 	#else 
-	// TODO: change the main fuzzer.exe interface so it's possible to have no instrumentation.
-
-	// Linux doesn't use instrumentation.
+	// Linux doesn't need to use instrumentation.
 	if (!strcmp(instrumentation_type, "none")) 
 	{
 		return NULL;

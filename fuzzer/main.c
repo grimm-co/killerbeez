@@ -347,7 +347,7 @@ int main(int argc, char ** argv)
 			break;
 		}
 
-		if (instrumentation) // TODO: removeme when changing the CLI options
+		if (instrumentation)
 		{
 			new_path = instrumentation->is_new_path(instrumentation_state);
 			if (new_path < 0)
@@ -417,7 +417,7 @@ int main(int argc, char ** argv)
 	//Cleanup everything and exit
 	driver->cleanup(driver->state);
 
-	if (instrumentation != NULL) // TODO: removeme when changing the CLI options
+	if (instrumentation != NULL)
 		instrumentation->cleanup(instrumentation_state);
 
 	mutator->cleanup(mutator_state);
