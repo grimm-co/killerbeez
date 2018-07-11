@@ -9,8 +9,11 @@ then
 	exit 1
 fi
 
-WINDOWS_BUILD_PATH="/cygdrive/c/killerbeez/build/X86/Debug/killerbeez"
-LINUX_BUILD_PATH="/home/$USER/killerbeez/build/killerbeez"
+WINDOWS_BASE_PATH="/cygdrive/c/killerbeez/"
+WINDOWS_BUILD_PATH=$WINDOWS_BASE_PATH"build/X64/Debug/killerbeez"
+
+LINUX_BASE_PATH="$HOME/killerbeez/"
+LINUX_BUILD_PATH=LINUX_BASE_PATH"build/killerbeez"
 
 FUZZER_WITH_GDB="gdb -q -ex run -ex quit --args ./fuzzer"
 
@@ -24,21 +27,27 @@ case "${unameOut}" in
     *)          machine="UNKNOWN:${unameOut}"
 esac
 
+# test is a 32-bit binary that crashes on ABCD via stdin or in a file passed as argv[1].
+# hang is a 32-bit binary that hangs.
+
 if [ $machine = "Cygwin" ]
 then
-	if [ $KILLERBEEZ_TEST = "none" ]
+	# cygwin permissions are strange, so make sure the executables are executable.
+	chmod +x $WINDOWS_BASE_PATH/killerbeez/corpus/test/test.exe
+	chmod +x $WINDOWS_BASE_PATH/killerbeez/corpus/hang/hang.exe
+
+	if [ $KILLERBEEZ_TEST = "debug" ]
 	then
 		cd $WINDOWS_BUILD_PATH
 
 		./fuzzer.exe \
-		file none bit_flip \
+		file debug bit_flip \
 		-n 9 \
+		-l '{"level":0}' \
 		-sf 'C:\killerbeez\Killerbeez\corpus\test\inputs\close.txt' \
-		\
-		-d '{"timeout":20, "path":"C:\\killerbeez\\Killerbeez\\corpus\\test\\test.exe", "arguments":"@@"}' \
-		\
-		-l '{"level":0}'
+		-d '{"timeout":20, "path":"C:\\killerbeez\\Killerbeez\\corpus\\test\\test.exe", "arguments":"@@"}'
 	fi
+
 	if [ $KILLERBEEZ_TEST = "simple" ]
 	then
 		cd $WINDOWS_BUILD_PATH
@@ -59,37 +68,49 @@ then
 			"target_path": "C:\\killerbeez\\Killerbeez\\corpus\\test\\test.exe"}' \
 		-l '{"level":0}'
 	fi
+
 	if [ $KILLERBEEZ_TEST = "hang" ]
 	then
 		cd $WINDOWS_BUILD_PATH
 
 		./fuzzer \
-		file none bit_flip \
+		file debug bit_flip \
 		-n 1 \
 		-l '{"level":0}' \
 		-sf 'C:\killerbeez\Killerbeez\corpus\test\inputs\input.txt' \
 		-d '{"timeout":3, "path":"C:\\killerbeez\\Killerbeez\\corpus\\hang\\hang.exe", "arguments":"@@"}'
+	fi
+
+	# Tests a single packet via the network driver. If you're sending multiple
+	# packets, you'll need to use the manager mutator instead.
+	if [ $KILLERBEEZ_TEST = "network" ]
+	then
+		cd $WINDOWS_BUILD_PATH
+
+		./fuzzer \
+		network debug bit_flip \
+		-n 10 \
+		-l '{"level":0}' \
+		-sf 'C:\killerbeez\killerbeez\corpus\network\close.txt' \
+		-m '{"mutators":["nop","nop"]}' \
+		-d '{"path":"C:\\killerbeez\\corpus\\network\\x64\\Debug\\server.exe",
+			 "arguments":"-noloop 1 -udp",
+			 "timeout":2,
+			 "ip":"127.0.0.1",
+			 "port":4444,
+			 "udp":1,
+			 "sleeps":[100,100]
+			}'
+		# TODO: update path
 	fi
 fi
 
 
 if [ $machine = "Linux" ]
 then
-
-	if [ $KILLERBEEZ_TEST = "null" ]
-	then
-		cd $LINUX_BUILD_PATH
-
-		$FUZZER_WITH_GDB \
-		file linux_null_tmp bit_flip \
-		-n 9 \
-		-sf $HOME'/killerbeez/killerbeez/corpus/test/inputs/close.txt' \
-		\
-		-d '{"timeout":20, "path":"'$HOME'/killerbeez/killerbeez/corpus/test/test-linux", "arguments":"@@"}' \
-		\
-		-l '{"level":0}' \
-		-m '{"num_bits":1}'
-	fi
+	# cygwin permissions are strange, so make sure the executables are executable.
+	chmod +x $LINUX_BASE_PATH/killerbeez/corpus/test/test.exe
+	chmod +x $LINUX_BASE_PATH/killerbeez/corpus/hang/hang.exe
 
 	if [ $KILLERBEEZ_TEST = "simple" ]
 	then
