@@ -104,7 +104,7 @@ static void destroy_target_process(debug_state_t * state) {
 
 		//Wait for the debug thread to be done with the child.  We need to wait
 		//here, since we don't want the results_ready_semaphore to becoming stale
-		//because the none instrumentation user did not read the results of a previous
+		//because the debug instrumentation user did not read the results of a previous
 		//fuzzed process
 		take_semaphore(state->results_ready_semaphore);
 	}
@@ -232,7 +232,7 @@ void debug_cleanup(void * instrumentation_state)
 
 /**
  * This function merges the coverage information from two instrumentation states.  This will always fail for the
- * none instrumentation, since it does not record instrumentation data.
+ * debug instrumentation, since it does not record instrumentation data.
  * @param instrumentation_state - an instrumentation specific state object previously created by the debug_create function
  * @param other_instrumentation_state - an instrumentation specific state object previously created by the debug_create function
  * @return - An instrumentation specific state object that contains the combination of both of the passed in instrumentation states
@@ -314,11 +314,11 @@ int debug_enable(void * instrumentation_state, HANDLE * process, char * cmd_line
 }
 
 /**
- * This function determines whether the process being instrumented has taken a new path.  The none instrumentation does
+ * This function determines whether the process being instrumented has taken a new path.  The debug instrumentation does
  * not track the fuzzed process's path, so it is unable to determine if the process took a new path.  It will however be
  * able to determine if the process exitted normally, hung, or crashed.
  * @param instrumentation_state - an instrumentation specific state object previously created by the debug_create function
- * @return - 0 when a new path wasn't detected (as it always won't be with the none instrumentation), or -1 on failure.
+ * @return - 0 when a new path wasn't detected (as it always won't be with the debug instrumentation), or -1 on failure.
  */
 int debug_is_new_path(void * instrumentation_state)
 {
@@ -346,7 +346,7 @@ int debug_get_fuzz_result(void * instrumentation_state)
 char * debug_help(void)
 {
 	return strdup(
-		"none - No instrumentation (using debugging to detect crashes)\n"
+		"debug - Windows debug thread \"instrumentation\", only detects crashes\n"
 		"Options:\n"
 		"\tNone\n"
 		"\n"

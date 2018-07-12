@@ -2,14 +2,14 @@ cmake_minimum_required (VERSION 2.8.8)
 project (killerbeez)
 
 if (UNIX)
+	set(CMAKE_C_FLAGS_DEBUG "-D_DEBUG")	# for _DEBUG ifdefs in utils.h
+
 	if(NOT CMAKE_BUILD_TYPE)
 		set(CMAKE_BUILD_TYPE Debug) 	# for gcc -g
-		# Ben recommended target_compile_definitions as an alternative, but I
-		# wasn't sure what to target.  The following works.
-		set(CMAKE_C_FLAGS "-D_DEBUG")	# for _DEBUG ifdefs in utils.h
 		message("WARNING: Building with debug options; performance will be impacted. Try cmake -DCMAKE_BUILD_TYPE=Release ../killerbeez")
 	endif()
 endif(UNIX)
+
 
 SET ( BUILD_DIRECTORY ${CMAKE_SOURCE_DIR}/../build )
 

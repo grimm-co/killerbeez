@@ -138,8 +138,8 @@ DRIVER_API char * driver_help(void)
 	char * text, *new_text;
 	text = strdup("Driver Options:\n\n");
 	APPEND_HELP(text, new_text, file_help);
-	#ifdef _WIN32
 	APPEND_HELP(text, new_text, stdin_help);
+	#ifdef _WIN32
 	APPEND_HELP(text, new_text, network_help);
 	APPEND_HELP(text, new_text, wmp_help);
 	#endif
