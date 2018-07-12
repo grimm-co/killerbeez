@@ -25,6 +25,12 @@ int generic_done_processing_input(int * fuzz_result, pid_t process, time_t start
 #endif
 {
 	int status = is_process_alive(process);
+
+	// Windows and linux implement is_process_alive a little differently.
+#ifdef _WIN32
+	if (status == 0) // the process is dead
+		return 1;
+#else
 	if (status == 2) // process is still alive, keep going
 	{
 		*fuzz_result = FUZZ_HANG;
@@ -35,6 +41,7 @@ int generic_done_processing_input(int * fuzz_result, pid_t process, time_t start
 		*fuzz_result = FUZZ_NONE;
 		return 1;
 	}
+#endif
 	
 	// TODO: why not have an explicit timeout function?
 	return time(NULL) - start_time > timeout;

@@ -52,7 +52,7 @@ static int debugging_thread(debug_state_t * state)
 				{
 					// Not all exceptions are real crashes - we ignore breakpoints being hit and
 					// exceptions that are encountered multiple times
-					if (!de.u.Exception.dwFirstChance ||
+					if (!de.u.Exception.dwFirstChance || // if the debugger has not encountered this exception before
 						(de.u.Exception.ExceptionRecord.ExceptionCode != EXCEPTION_BREAKPOINT &&
 						 de.u.Exception.ExceptionRecord.ExceptionCode != STATUS_WX86_BREAKPOINT)) {
 						state->last_status = FUZZ_CRASH;
