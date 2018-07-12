@@ -1,6 +1,6 @@
 #!/bin/sh
 # For Windows, this assumes you're using Cygwin, and everything is at C:\killerbeez
-# For Linux, this assumes you've installed everything at $HOME/killerbeez.
+# For Linux, this assumes LINUX_BASE_PATH ($HOME/killerbeez/ by default) contains:
 #	killerbeez, killerbeez-mutators, killerbeez-utils
 
 if [ -z "$KILLERBEEZ_TEST" ]
@@ -13,7 +13,7 @@ WINDOWS_BASE_PATH="/cygdrive/c/killerbeez/"
 WINDOWS_BUILD_PATH=$WINDOWS_BASE_PATH"build/X64/Debug/killerbeez"
 
 LINUX_BASE_PATH="$HOME/killerbeez/"
-LINUX_BUILD_PATH=LINUX_BASE_PATH"build/killerbeez"
+LINUX_BUILD_PATH="$LINUX_BASE_PATH/build/killerbeez"
 
 FUZZER_WITH_GDB="gdb -q -ex run -ex quit --args ./fuzzer"
 
@@ -121,7 +121,7 @@ then
 		-n 9 \
 		-sf $HOME'/killerbeez/killerbeez/corpus/test/inputs/close.txt' \
 		\
-		-d '{"timeout":20, "path":"'$HOME'/killerbeez/killerbeez/corpus/test/test-linux", "arguments":"@@"}' \
+		-d '{"timeout":20, "path":"'$LINUX_BASE_PATH'/killerbeez/corpus/test/test-linux", "arguments":"@@"}' \
 		\
 		-l '{"level":0}' \
 		-m '{"num_bits":1}'
@@ -136,7 +136,7 @@ then
 		-n 3 \
 		-l '{"level":0}' \
 		-sf $HOME'/killerbeez/killerbeez/corpus/test/inputs/input.txt' \
-		-d '{"timeout":2, "path":"'$HOME'/killerbeez/killerbeez/corpus/hang/hang-linux", "arguments":"@@"}'
+		-d '{"timeout":2, "path":"'$LINUX_BASE_PATH'/killerbeez/corpus/hang/hang-linux", "arguments":"@@"}'
 	fi
 
 	if [ $KILLERBEEZ_TEST = "radamsa" ]
@@ -148,7 +148,7 @@ then
 		-n 3 \
 		-l '{"level":0}' \
 		-sf $HOME'/killerbeez/killerbeez/corpus/test/inputs/input.txt' \
-		-d '{"timeout":20, "path":"'$HOME'/killerbeez/killerbeez/corpus/test/test-linux", "arguments":"@@"}'
+		-d '{"timeout":20, "path":"'$LINUX_BASE_PATH'/killerbeez/killerbeez/corpus/test/test-linux", "arguments":"@@"}'
 	fi
 
 	if [ $KILLERBEEZ_TEST = "stdin" ]
@@ -159,8 +159,8 @@ then
 		stdin none bit_flip \
 		-n 9 \
 		-l '{"level":0}' \
-		-sf $HOME'/killerbeez/killerbeez/corpus/test/inputs/close.txt' \
-		-d '{"timeout":20, "path":"'$HOME'/killerbeez/killerbeez/corpus/test/test-linux"}'
+		-sf $LINUX_BASE_PATH'/killerbeez/killerbeez/corpus/test/inputs/close.txt' \
+		-d '{"timeout":20, "path":"'$LINUX_BASE_PATH'/killerbeez/killerbeez/corpus/test/test-linux"}'
 	fi
 fi
 
