@@ -361,6 +361,14 @@ static int network_run(network_state_t * state, char ** inputs, size_t * lengths
 	return driver_get_fuzz_result(&state->fuzz_result, state->instrumentation, state->instrumentation_state);
 }
 
+static void network_test_input_cleanup(char ** inputs, size_t inputs_count, size_t * input_lengths)
+{
+	for (size_t i = 0; i < inputs_count; i++)
+		free(inputs[i]);
+	free(inputs);
+	free(input_lengths);
+}
+
 /**
  * This function will run the fuzzed program and test it with the given input. This function
  * blocks until the program has finished processing the input.
@@ -374,7 +382,7 @@ int network_test_input(void * driver_state, char * input, size_t length)
 	network_state_t * state = (network_state_t *)driver_state;
 	char ** inputs;
 	size_t * input_lengths;
-	size_t i, inputs_count;
+	size_t inputs_count;
 
 	if (decode_mem_array(input, &inputs, &input_lengths, &inputs_count))
 		return -1;
@@ -391,13 +399,6 @@ int network_test_input(void * driver_state, char * input, size_t length)
 	return driver_get_fuzz_result(&state->fuzz_result, state->instrumentation, state->instrumentation_state);
 }
 
-static void network_test_input_cleanup(char ** inputs, size_t inputs_count, size_t * input_lengths)
-{
-	for (i = 0; i < inputs_count; i++)
-		free(inputs[i]);
-	free(inputs);
-	free(input_lengths);
-}
 
 /**
  * This function will run the fuzzed program with the output of the mutator given during driver
