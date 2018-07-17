@@ -67,6 +67,7 @@ static file_state_t * setup_options(char * options)
 		pos = new_arguments = state->arguments;
 		while (*pos != 0)
 		{
+			// replace the "@@" in the arguments with the temp filename
 			if (*pos == '@' && *(pos + 1) == '@')
 			{
 				int index = pos - new_arguments;

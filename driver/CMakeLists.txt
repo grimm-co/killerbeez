@@ -10,9 +10,9 @@ SET(DRIVER_SRC
 
 if (WIN32) # TODO: this should be removed when the others are implemented in linux
 	set(DRIVER_SRC
-		${PROJECT_SOURCE_DIR}
+		${DRIVER_SRC}
 		${PROJECT_SOURCE_DIR}/network_driver.c
-		 ${PROJECT_SOURCE_DIR}/wmp_driver.cpp
+		${PROJECT_SOURCE_DIR}/wmp_driver.cpp
 	)
 endif(WIN32)
 

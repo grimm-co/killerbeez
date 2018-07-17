@@ -74,7 +74,7 @@ int main(int argc, char ** argv)
 	void * instrumentation_state;
 	int seed_length = 0, mutate_length = 0, instrumentation_length = 0, mutator_state_length;
 	time_t fuzz_begin_time;
-	int iteration = 0, fuzz_result, new_path;
+	int iteration = 0, fuzz_result = FUZZ_NONE, new_path = 0;
 	void * mutator_state = NULL;
 	char filename[MAX_PATH];
 	char filehash[256];
@@ -268,7 +268,7 @@ int main(int argc, char ** argv)
 			FATAL_MSG("Could not read instrumentation file or empty instrumentation file: %s", instrumentation_state_load_file);
 	}
 	instrumentation = instrumentation_factory(instrumentation_name);
-#ifdef _WIN32
+#ifdef _WIN32 // TODO: remove these
 	// If we're on Linux, then NULL for instrumentation is acceptable.
 	// If we're on Windows, then it is not.
 	if (!instrumentation)

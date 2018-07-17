@@ -310,7 +310,7 @@ static int network_run(network_state_t * state, char ** inputs, size_t * lengths
 {
 	SOCKET sock;
 	size_t i;
-	int listening = 0, ret = 0;
+	int listening = 0;
 
 	//Start the process and give it our input
 	if (state->instrumentation)
@@ -340,7 +340,7 @@ static int network_run(network_state_t * state, char ** inputs, size_t * lengths
 	if(listening < 0)
 		return -1;
 
-	if (connect_to_target(state, &sock))
+	if (connect_to_target(state, &sock)) // opens socket
 		return -1;
 	for (i = 0; i < inputs_count; i++)
 	{
@@ -349,8 +349,8 @@ static int network_run(network_state_t * state, char ** inputs, size_t * lengths
 		if (state->target_udp && send_udp_input(state, &sock, inputs[i], lengths[i])
 			|| (!state->target_udp && send_tcp_input(&sock, inputs[i], lengths[i])))
 		{
-			ret = -1;
-			break;
+			closesocket(sock);
+			return -1;
 		}
 	}
 	closesocket(sock);
@@ -375,21 +375,28 @@ int network_test_input(void * driver_state, char * input, size_t length)
 	char ** inputs;
 	size_t * input_lengths;
 	size_t i, inputs_count;
-	int ret = -1;
 
 	if (decode_mem_array(input, &inputs, &input_lengths, &inputs_count))
 		return -1;
 	if (inputs_count)
 	{
-		if (!network_run(state, inputs, input_lengths, inputs_count))
+		if (network_run(state, inputs, input_lengths, inputs_count) == -1)
+		{
+			network_test_input_cleanup(inputs, inputs_count, input_lengths);
 			return -1;
+		}
 	}
+	network_test_input_cleanup(inputs, inputs_count, input_lengths);
+
+	return driver_get_fuzz_result(&state->fuzz_result, state->instrumentation, state->instrumentation_state);
+}
+
+static void network_test_input_cleanup(char ** inputs, size_t inputs_count, size_t * input_lengths)
+{
 	for (i = 0; i < inputs_count; i++)
 		free(inputs[i]);
 	free(inputs);
 	free(input_lengths);
-
-	return driver_get_fuzz_result(&state->fuzz_result, state->instrumentation, state->instrumentation_state);
 }
 
 /**
@@ -401,7 +408,7 @@ int network_test_input(void * driver_state, char * input, size_t length)
 int network_test_next_input(void * driver_state)
 {
 	network_state_t * state = (network_state_t *)driver_state;
-	int i, ret;
+	int i;
 
 	if (!state->mutator)
 		return -1;
@@ -416,8 +423,11 @@ int network_test_next_input(void * driver_state)
 		else if (state->mutate_last_sizes[i] == 0)
 			return -2;
 	}
-	ret = network_run(state, state->mutate_buffers, state->mutate_last_sizes, state->num_inputs);
-	return ret;
+
+	if(network_run(state, state->mutate_buffers, state->mutate_last_sizes, state->num_inputs) == -1)
+		return -1;
+
+	return driver_get_fuzz_result(&state->fuzz_result, state->instrumentation, state->instrumentation_state);
 }
 
 /**
