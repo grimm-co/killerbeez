@@ -244,7 +244,7 @@ int main(int argc, char ** argv)
 #else
 	#define create_output_directory(name)                                                \
 		snprintf(filename, sizeof(filename), "%s" name, output_directory);               \
-		if (!mkdir(filename, 0775)) {                                                    \
+		if (mkdir(filename, 0775) == -1) {                                               \
 			if (errno != EEXIST)                                                         \
 				FATAL_MSG("Unable to create directory %s", filename);                    \
 		} // otherwise, it already exists and we don't need to do anything
