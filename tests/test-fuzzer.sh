@@ -81,28 +81,6 @@ then
 		-d '{"timeout":3, "path":"C:\\killerbeez\\Killerbeez\\corpus\\hang\\hang.exe", "arguments":"@@"}'
 	fi
 
-	# Tests a single packet via the network driver. If you're sending multiple
-	# packets, you'll need to use the manager mutator instead.
-	if [ $KILLERBEEZ_TEST = "network" ]
-	then
-		cd $WINDOWS_BUILD_PATH
-
-		./fuzzer \
-		network debug bit_flip \
-		-n 10 \
-		-l '{"level":0}' \
-		-sf 'C:\killerbeez\killerbeez\corpus\network\close.txt' \
-		-m '{"mutators":["nop","nop"]}' \
-		-d '{"path":"C:\\killerbeez\\corpus\\network\\x64\\Debug\\server.exe",
-			 "arguments":"-noloop 1 -udp",
-			 "timeout":2,
-			 "ip":"127.0.0.1",
-			 "port":4444,
-			 "udp":1,
-			 "sleeps":[100,100]
-			}'
-		# TODO: update path
-	fi
 fi
 
 
