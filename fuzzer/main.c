@@ -267,22 +267,22 @@ int main(int argc, char ** argv)
 		if (instrumentation_length <= 0)
 			FATAL_MSG("Could not read instrumentation file or empty instrumentation file: %s", instrumentation_state_load_file);
 	}
+
+	// NULL means instrumentation failed to initialize.
 	instrumentation = instrumentation_factory(instrumentation_name);
-#ifdef _WIN32 // TODO: remove these
-	// If we're on Linux, then NULL for instrumentation is acceptable.
-	// If we're on Windows, then it is not.
 	if (!instrumentation)
 	{
 		free(instrumentation_state_string);
 		FATAL_MSG("Unknown instrumentation '%s'", instrumentation_name);
 	}
+
 	instrumentation_state = instrumentation->create(instrumentation_options, instrumentation_state_string);
 	if (!instrumentation_state)
 	{
 		free(instrumentation_state_string);
 		FATAL_MSG("Bad options/state for instrumentation %s", instrumentation_name);
 	}
-#endif
+
 	free(instrumentation_state_string);
 
 	//Load the seed buffer from a file
@@ -292,6 +292,7 @@ int main(int argc, char ** argv)
 		if (seed_length <= 0)
 			FATAL_MSG("Could not read seed file or empty seed file: %s", seed_file);
 	}
+
 	if (!seed_buffer)
 		FATAL_MSG("No seed file or seed id specified.");
 
@@ -317,7 +318,11 @@ int main(int argc, char ** argv)
 	//Create the driver
 	driver = driver_all_factory(driver_name, driver_options, instrumentation, instrumentation_state, mutator, mutator_state);
 	if (!driver)
-		FATAL_MSG("Unknown driver '%s' or bad options: \ndriver options: %s\nmutator options: %s\n", driver_name, driver_options, mutator_options);
+	{
+		FATAL_MSG("Unknown driver '%s' or bad options: \n\n\tdriver options: %s\n\n"\
+			"\tmutator options: %s\n\n\tPass %s -h driver for help.\n", driver_name,
+			driver_options, mutator_options, argv[0]);
+	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Main Fuzz Loop ////////////////////////////////////////////////////////////////////////////////////
