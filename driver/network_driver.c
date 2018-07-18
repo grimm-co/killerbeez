@@ -356,9 +356,8 @@ static int network_run(network_state_t * state, char ** inputs, size_t * lengths
 	closesocket(sock);
 
 	//Wait for it to be done
-	generic_wait_for_process_completion(&state->fuzz_result, state->process, state->timeout, state->instrumentation, state->instrumentation_state);
-
-	return driver_get_fuzz_result(&state->fuzz_result, state->instrumentation, state->instrumentation_state);
+	return generic_wait_for_process_completion(state->process, state->timeout,
+		state->instrumentation, state->instrumentation_state);
 }
 
 static void network_test_input_cleanup(char ** inputs, size_t inputs_count, size_t * input_lengths)
