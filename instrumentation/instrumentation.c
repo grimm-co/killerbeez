@@ -9,6 +9,7 @@ typedef struct fds fds_t;
 
 int fork_server_start(fds_t fds, char * filename, char ** argv, int use_forkserver_library)
 {
+#if 0
   static struct itimerval it;
   int st_pipe[2], ctl_pipe[2];
   int status;
@@ -272,6 +273,7 @@ int fork_server_start(fds_t fds, char * filename, char ** argv, int use_forkserv
   }
 
   FATAL_MSG("Fork server handshake failed");
+#endif
 }
 
 int fork_server_create_process()
