@@ -24,6 +24,8 @@ int generic_done_processing_input(int * fuzz_result, HANDLE process, time_t star
 int generic_done_processing_input(int * fuzz_result, pid_t process, time_t start_time, int timeout)
 #endif
 {
+	// TODO: rm this function
+
 	int status = get_process_status(process);
 
 	// Windows and linux implement get_process_status a little differently.
@@ -31,10 +33,10 @@ int generic_done_processing_input(int * fuzz_result, pid_t process, time_t start
 	if (status == 0) // the process is dead
 		return 1;
 #else
-	if (status == 2) // process is still alive, keep going
+	if (status == 1) // process is still alive, keep going
 	{
 		*fuzz_result = FUZZ_HANG;
-	} else if (status == 1) { // crashed
+	} else if (status == 2) { // crashed
 		*fuzz_result = FUZZ_CRASH;
 		return 1;
 	} else if (status == 0) { // we exited cleanly

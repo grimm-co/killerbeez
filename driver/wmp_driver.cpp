@@ -240,7 +240,7 @@ static int doneProcessingInput(wmp_state_t * state)
 
 	//No audio, check process info as backup
 	status = get_process_status(state->process);
-	if (status == 0)
+	if (status == 0) // process is dead
 		return 1;
 
 	return time(NULL) - state->start_time > state->timeout;
