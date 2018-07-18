@@ -239,7 +239,7 @@ static int doneProcessingInput(wmp_state_t * state)
 		return 1;
 
 	//No audio, check process info as backup
-	status = is_process_alive(state->process);
+	status = get_process_status(state->process);
 	if (status == 0)
 		return 1;
 

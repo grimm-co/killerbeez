@@ -93,7 +93,7 @@ static int debugging_thread(debug_state_t * state)
  */
 static void destroy_target_process(debug_state_t * state) {
 	if (state->child_handle) {
-		state->last_child_hung = is_process_alive(state->child_handle);
+		state->last_child_hung = get_process_status(state->child_handle);
 		//If the process hung, then make sure the debug thread finishes its debug loop
 		if(state->last_child_hung)//otherwise we'll be waiting for it forever
 			state->process_running = 0;

@@ -22,7 +22,7 @@ static void destroy_target_process(return_code_state_t * state)
 {
 	if (state->child_handle) {
 		// TODO: We're changing is_process alive and its interface, so let's come back to this code when that's done.
-		state->last_status = is_process_alive(state->child_handle);
+		state->last_status = get_process_status(state->child_handle);
 
 		kill(state->child_handle, SIGKILL);
 		state->child_handle = 0;

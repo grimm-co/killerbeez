@@ -669,7 +669,7 @@ static void create_target_process(dynamorio_state_t * state, char* cmd_line, cha
 
 	if (!connect_to_pipe(state->pipe_handle, state->pipe_name, state->timeout)) //Connect to the comms pipe
 	{
-		if (!is_process_alive(state->child_handle))
+		if (!get_process_status(state->child_handle))
 			FATAL_MSG("Child process died when started with command line: %s", dr_cmd);
 		else
 			FATAL_MSG("Error communicating with child process with command line: %s", dr_cmd);
@@ -1379,7 +1379,7 @@ int dynamorio_enable(void * instrumentation_state, HANDLE * process, char * cmd_
 	}
 
 	if (!state->child_handle   //if we haven't started the child yet
-		|| !is_process_alive(state->child_handle) //or the child died
+		|| !get_process_status(state->child_handle) //or the child died
 		|| input_length != 0) //or the fuzzer wants to send input on stdin (which doesn't work with persistence mode)
 	{
 		if (state->child_handle)

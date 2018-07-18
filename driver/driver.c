@@ -24,9 +24,9 @@ int generic_done_processing_input(int * fuzz_result, HANDLE process, time_t star
 int generic_done_processing_input(int * fuzz_result, pid_t process, time_t start_time, int timeout)
 #endif
 {
-	int status = is_process_alive(process);
+	int status = get_process_status(process);
 
-	// Windows and linux implement is_process_alive a little differently.
+	// Windows and linux implement get_process_status a little differently.
 #ifdef _WIN32
 	if (status == 0) // the process is dead
 		return 1;
