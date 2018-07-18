@@ -1,8 +1,10 @@
 #include "instrumentation_factory.h"
 #ifdef _WIN32
-#include "dynamorio_instrumentation.h"
-#endif
 #include "debug_instrumentation.h"
+#include "dynamorio_instrumentation.h"
+#else
+#include "return_code_instrumentation.h"
+#endif
 
 #include <string.h>
 #include <stdlib.h>
@@ -49,10 +51,17 @@ instrumentation_t * instrumentation_factory(char * instrumentation_type)
 		ret->get_fuzz_result = dynamorio_get_fuzz_result;
 	}
 	#else 
-	// Linux doesn't need to use instrumentation.
-	if (!strcmp(instrumentation_type, "none")) 
+	if (!strcmp(instrumentation_type, "return_code")) 
 	{
-		return NULL;
+		ret->create = return_code_create;
+		ret->cleanup = return_code_cleanup;
+		ret->merge = return_code_merge;
+		ret->get_state = return_code_get_state;
+		ret->free_state = return_code_free_state;
+		ret->set_state = return_code_set_state;
+		ret->enable = return_code_enable;
+		ret->is_new_path = return_code_is_new_path;
+		ret->get_fuzz_result = return_code_get_fuzz_result;
 	}
 	#endif
 	else

@@ -315,8 +315,7 @@ int debug_enable(void * instrumentation_state, HANDLE * process, char * cmd_line
 
 /**
  * This function determines whether the process being instrumented has taken a new path.  The debug instrumentation does
- * not track the fuzzed process's path, so it is unable to determine if the process took a new path.  It will however be
- * able to determine if the process exitted normally, hung, or crashed.
+ * not track the fuzzed process's path, so it is unable to determine if the process took a new path.
  * @param instrumentation_state - an instrumentation specific state object previously created by the debug_create function
  * @return - 0 when a new path wasn't detected (as it always won't be with the debug instrumentation), or -1 on failure.
  */

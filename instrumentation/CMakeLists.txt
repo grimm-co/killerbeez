@@ -12,6 +12,11 @@ if (WIN32)
 		${PROJECT_SOURCE_DIR}/debug_instrumentation.c
 		${PROJECT_SOURCE_DIR}/dynamorio_instrumentation.c
 	)
+else (WIN32)
+	set(INSTRUMENTATION_SRC
+		${INSTRUMENTATION_SRC}
+		${PROJECT_SOURCE_DIR}/return_code_instrumentation.c
+	)
 endif (WIN32)
 
 source_group("Library Sources" FILES ${INSTRUMENTATION_SRC})

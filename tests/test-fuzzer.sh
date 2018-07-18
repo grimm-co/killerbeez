@@ -15,7 +15,7 @@ WINDOWS_BUILD_PATH=$WINDOWS_BASE_PATH"build/X64/Debug/killerbeez"
 LINUX_BASE_PATH="$HOME/killerbeez/"
 LINUX_BUILD_PATH="$LINUX_BASE_PATH/build/killerbeez"
 
-FUZZER_WITH_GDB="gdb -q -ex run -ex quit --args ./fuzzer"
+FUZZER_WITH_GDB="gdb -q -ex run --args ./fuzzer"
 
 # https://stackoverflow.com/a/3466183
 unameOut="$(uname -s)"
@@ -95,7 +95,7 @@ then
 		cd $LINUX_BUILD_PATH
 
 		$FUZZER_WITH_GDB \
-		file none bit_flip \
+		file return_code bit_flip \
 		-n 9 \
 		-sf $HOME'/killerbeez/killerbeez/corpus/test/inputs/close.txt' \
 		\
@@ -110,7 +110,7 @@ then
 		cd $LINUX_BUILD_PATH
 
 		$FUZZER_WITH_GDB \
-		file none bit_flip \
+		file return_code bit_flip \
 		-n 3 \
 		-l '{"level":0}' \
 		-sf $HOME'/killerbeez/killerbeez/corpus/test/inputs/input.txt' \
@@ -122,7 +122,7 @@ then
 		cd $LINUX_BUILD_PATH
 
 		$FUZZER_WITH_GDB \
-		file none radamsa \
+		file return_code radamsa \
 		-n 3 \
 		-l '{"level":0}' \
 		-sf $HOME'/killerbeez/killerbeez/corpus/test/inputs/input.txt' \
@@ -134,7 +134,7 @@ then
 		cd $LINUX_BUILD_PATH
 
 		$FUZZER_WITH_GDB \
-		stdin none bit_flip \
+		stdin return_code bit_flip \
 		-n 9 \
 		-l '{"level":0}' \
 		-sf $LINUX_BASE_PATH'/killerbeez/killerbeez/corpus/test/inputs/close.txt' \
