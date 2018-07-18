@@ -1,6 +1,7 @@
 #define _CRT_RAND_S
 #include <windows.h>
 #include <stdlib.h>
+#include <ntstatus.h>
 
 #include "instrumentation.h"
 #include "none_instrumentation.h"
@@ -49,7 +50,11 @@ static int debugging_thread(none_state_t * state)
 			if (de.dwProcessId == child_pid && state->process_running) {
 				if (de.dwDebugEventCode == EXCEPTION_DEBUG_EVENT)
 				{
-					if (!de.u.Exception.dwFirstChance || de.u.Exception.ExceptionRecord.ExceptionCode != EXCEPTION_BREAKPOINT) {
+					// Not all exceptions are real crashes - we ignore breakpoints being hit and
+					// exceptions that are encountered multiple times
+					if (!de.u.Exception.dwFirstChance ||
+						(de.u.Exception.ExceptionRecord.ExceptionCode != EXCEPTION_BREAKPOINT &&
+						 de.u.Exception.ExceptionRecord.ExceptionCode != STATUS_WX86_BREAKPOINT)) {
 						state->last_status = FUZZ_CRASH;
 						cont = DBG_EXCEPTION_NOT_HANDLED;
 						state->process_running = 0;
