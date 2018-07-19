@@ -234,7 +234,7 @@ char * return_code_help(void)
 	return strdup(
 		"return_code - Linux return_code \"instrumentation\"\n"
 		"Options:\n"
-		"\tNone\n"
+		"\treturn_code\n"
 		"\n"
 	);
 }
