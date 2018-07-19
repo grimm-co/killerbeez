@@ -138,6 +138,40 @@ it can't determine if a new path was hit.  Instead, it just looks at the return
 code to determine if the process crashed or not.  It's very efficient, however
 this is effectively dumb fuzzing.
 
+To see a crash, we can just change our seed file to be close to the file which
+will cause a crash.  It's cheating, but it works well to demonstrate the
+importance of seed files as well as illustrating what the output of finding a
+crash looks like.  The following commands assume you are still in the directory
+containing ./fuzzer.
+
+```
+echo "ABC@" > test1  # ABC@ is one bit different than ABCD, the crashing input
+./fuzzer file return_code honggfuzz -n 2000 -sf ./test1 -d '{"path":"../../killerbeez/corpus/test/test-linux","arguments":"@@"}'
+```
+
+Which should yield output similar to this:
+
+```
+Thu Jul 19 12:03:11 2018 - INFO     - Logging Started
+Thu Jul 19 12:03:13 2018 - CRITICAL - Found crashes
+Thu Jul 19 12:03:13 2018 - CRITICAL - Found crashes
+Thu Jul 19 12:03:19 2018 - CRITICAL - Found crashes
+Thu Jul 19 12:03:22 2018 - CRITICAL - Found crashes
+Thu Jul 19 12:03:22 2018 - INFO     - Ran 2000 iterations in 11 seconds
+```
+
+Looking in the output/crashes folder, we can see the inputs which were found to
+crash this target and reproduce the crash manually.
+
+```
+$ ls output/crashes/
+2B81D0C867F76051FD33D8690AA2AC68  5220E572A6F9DAAF522EF5C5698EAF4C  59F885D0289BE9A83E711C5E7CFCBE4D  ED5D34C74E59D16BD6D5B3683DB655C3
+$ cat output/crashes/2B81D0C867F76051FD33D8690AA2AC68 ; echo
+ABCDJ
+$ ../../killerbeez/corpus/test/test-linux output/crashes/59F885D0289BE9A83E711C5E7CFCBE4D
+Segmentation fault (core dumped)
+```
+
 ## Documentation
 Documentation can be found in the docs folder.  It's written in LaTeX which
 can be used to generate a PDF, HTML, or various other formats.  PDFs are also
