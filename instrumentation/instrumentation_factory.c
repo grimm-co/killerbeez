@@ -4,6 +4,7 @@
 #include "dynamorio_instrumentation.h"
 #else
 #include "return_code_instrumentation.h"
+#include "linux_ipt_instrumentation.h"
 #endif
 
 #include <string.h>
@@ -64,6 +65,18 @@ instrumentation_t * instrumentation_factory(char * instrumentation_type)
 		ret->is_new_path = return_code_is_new_path;
 		ret->get_fuzz_result = return_code_get_fuzz_result;
 		ret->is_process_done = return_code_is_process_done;
+	}
+	else if (!strcmp(instrumentation_type, "ipt")) 
+	{
+		ret->create = linux_ipt_create;
+		ret->cleanup = linux_ipt_cleanup;
+		ret->merge = linux_ipt_merge;
+		ret->get_state = linux_ipt_get_state;
+		ret->free_state = linux_ipt_free_state;
+		ret->set_state = linux_ipt_set_state;
+		ret->enable = linux_ipt_enable;
+		ret->is_new_path = linux_ipt_is_new_path;
+		ret->get_fuzz_result = linux_ipt_get_fuzz_result;
 	}
 	#endif
 	else

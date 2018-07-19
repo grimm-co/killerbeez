@@ -1,9 +1,10 @@
 #include <fcntl.h>
 #include <stdio.h>
+#include <sys/ioctl.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -312,7 +313,7 @@ void fork_server_init(fds_t * fds, char * target_path, char ** argv, int use_for
 static int send_command(fds_t * fds, char command)
 {
   if (write(fds->fuzzer_to_forksrv, &command, sizeof(command)) != sizeof(command))
-    return -1;
+    return FORKSERVER_ERROR;
   return 0;
 }
 
@@ -320,29 +321,47 @@ static int read_response(fds_t * fds)
 {
   int response;
   if (read(fds->forksrv_to_fuzzer, &response, sizeof(response)) != sizeof(response))
-    return -1;
+    return FORKSERVER_ERROR;
   return response;
 }
 
 int fork_server_exit(fds_t * fds)
 {
-  send_command(fds, EXIT);
+  return send_command(fds, EXIT);
 }
 
 int fork_server_fork(fds_t * fds)
 {
-  send_command(fds, FORK);
+  if(send_command(fds, FORK))
+    return FORKSERVER_ERROR;
   return read_response(fds); //Wait for the target pid
 }
 
 int fork_server_run(fds_t * fds)
 {
-  send_command(fds, RUN);
+  return send_command(fds, RUN);
 }
 
-int fork_server_get_status(fds_t * fds)
+int fork_server_get_pending_status(fds_t * fds, int wait)
 {
-  send_command(fds, GET_STATUS);
-  return read_response(fds); //Wait for the target's exit status
+  unsigned long bytes_available = 0;
+  int err;
+
+  if(wait)
+    return read_response(fds); //Wait for the target's exit status
+  else {
+    err = ioctl(fds->forksrv_to_fuzzer, FIONREAD, &bytes_available);
+    printf("%d GOT %lu from ioctl\n", err, bytes_available);
+    if(!err && bytes_available == sizeof(int))
+      return read_response(fds); //Wait for the target's exit status
+  }
+  return FORKSERVER_NO_RESULTS_READY;
+}
+
+int fork_server_get_status(fds_t * fds, int wait)
+{
+  if(send_command(fds, GET_STATUS))
+    return FORKSERVER_ERROR;
+  return fork_server_get_pending_status(fds, wait);
 }
 

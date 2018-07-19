@@ -19,10 +19,10 @@
  * This function terminates the fuzzed process.
  * @param state - The linux_ipt_state_t object containing this instrumentation's state
  */
-static void destroy_target_process(linux_ipt_state_t * state)
+static int destroy_target_process(linux_ipt_state_t * state)
 {
   kill(state->child_pid, SIGKILL);
-  fork_server_get_status(&state->fds);
+  return fork_server_get_status(&state->fds, 1);
 }
 
 /**
@@ -161,7 +161,7 @@ void linux_ipt_cleanup(void * instrumentation_state)
  */
 void * linux_ipt_merge(void * instrumentation_state, void * other_instrumentation_state)
 {
-  return NULL; // No instrumentation data, so we can't ever merge
+  return NULL; //TODO
 }
 
 /**
@@ -238,7 +238,7 @@ int linux_ipt_enable(void * instrumentation_state, pid_t * process, char * cmd_l
  */
 int linux_ipt_is_new_path(void * instrumentation_state)
 {
-  return 0; //We don't gather instrumentation data, so we can't ever tell if we hit a new path.
+  return 0; //TODO
 }
 
 /**
@@ -251,6 +251,9 @@ int linux_ipt_is_new_path(void * instrumentation_state)
 int linux_ipt_get_fuzz_result(void * instrumentation_state)
 {
   linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
+  int status;
+
+  status = destroy_target_process(state);
   return -1;
 }
 
