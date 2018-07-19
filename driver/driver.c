@@ -12,42 +12,6 @@
 #endif
 
 /**
- * This function determines if the fuzzed process has finished processing the input that was last given to it
- * @param process - a HANDLE to the fuzzed process
- * @param start_time - The time the process was started
- * @param timeout - The number of seconds to wait before declaring the process done
- * @return - Returns 1 if the fuzzed process is done processing the input, 0 otherwise
- */
-#ifdef _WIN32
-int generic_done_processing_input(int * fuzz_result, HANDLE process, time_t start_time, int timeout)
-#else
-int generic_done_processing_input(int * fuzz_result, pid_t process, time_t start_time, int timeout)
-#endif
-{
-	int status = get_process_status(process);
-
-	// Windows and linux implement get_process_status a little differently.
-#ifdef _WIN32
-	if (status == 0) // the process is dead
-		return 1;
-#else
-	if (status == 2) // process is still alive, keep going
-	{
-		*fuzz_result = FUZZ_HANG;
-	} else if (status == 1) { // crashed
-		*fuzz_result = FUZZ_CRASH;
-		return 1;
-	} else if (status == 0) { // we exited cleanly
-		*fuzz_result = FUZZ_NONE;
-		return 1;
-	}
-#endif
-	
-	// TODO: why not have an explicit timeout function?
-	return time(NULL) - start_time > timeout;
-}
-
-/**
  * Waits for a fuzzed process to be finished processing the input, either via timing out or the
  * process exiting.
  * @param process - a HANDLE to the fuzzed process
@@ -58,21 +22,22 @@ int generic_done_processing_input(int * fuzz_result, pid_t process, time_t start
  * instrumentation state to check if the process is done yet.
  */
 #ifdef _WIN32
-void generic_wait_for_process_completion(int * fuzz_result, HANDLE process, int timeout, instrumentation_t * instrumentation, void * instrumentation_state)
+int generic_wait_for_process_completion(HANDLE process, int timeout, instrumentation_t * instrumentation, void * instrumentation_state)
 #else
-void generic_wait_for_process_completion(int * fuzz_result, pid_t process, int timeout, instrumentation_t * instrumentation, void * instrumentation_state)
+int generic_wait_for_process_completion(pid_t process, int timeout, instrumentation_t * instrumentation, void * instrumentation_state)
 #endif
 {
 	time_t start_time = time(NULL);
 
-	while (1)
+	while(1)
 	{
-		// Has the process exited or have we timed out yet?
-		if(generic_done_processing_input(fuzz_result, process, start_time, timeout) > 0)
-			break;
-		// Does the instrumentation know that the process is done (eg waiting at a GUI)?
-		if (instrumentation && instrumentation->is_process_done && instrumentation->is_process_done(instrumentation_state))
-			break;
+		if (instrumentation->is_process_done(instrumentation_state))
+			return instrumentation->get_fuzz_result(instrumentation_state);
+
+		// timeout
+		if (time(NULL) - start_time > timeout)
+			return FUZZ_HANG;
+
 		#ifdef _WIN32
 		Sleep(5);
 		#else
