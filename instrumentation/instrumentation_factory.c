@@ -104,6 +104,7 @@ char * instrumentation_help(void)
 	APPEND_HELP(text, new_text, dynamorio_help);
 	#else
 	APPEND_HELP(text, new_text, return_code_help);
+	APPEND_HELP(text, new_text, linux_ipt_help);
 	#endif
 	return text;
 }

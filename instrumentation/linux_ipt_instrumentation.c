@@ -1,8 +1,10 @@
 // Linux-only Intel PT instrumentation.
 
-#include <string.h>
-#include <sys/types.h>
+#include <fcntl.h>
 #include <signal.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include "instrumentation.h"
@@ -66,15 +68,20 @@ static int create_target_process(linux_ipt_state_t * state, char* cmd_line, char
 
 static int get_file_int(char * filename)
 {
-  int ret;
-  char * buffer;
+  int ret, fd;
+  char buffer[100];
 
-  ret = read_file(filename, &buffer);
-  if(ret > 0 && buffer != NULL)
+  fd = open(filename, O_RDONLY);
+  if(fd < 0)
+    return -1;
+
+  memset(buffer, 0, sizeof(buffer));
+  ret = read(fd, buffer, sizeof(buffer));
+  if(ret > 0)
     ret = atoi(buffer);
   else
     ret = -1;
-  free(buffer);
+  close(fd);
   return ret;
 }
 
