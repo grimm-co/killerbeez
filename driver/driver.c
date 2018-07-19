@@ -31,7 +31,8 @@ int generic_wait_for_process_completion(pid_t process, int timeout, instrumentat
 
 	while(1)
 	{
-		if (instrumentation->is_process_done(instrumentation_state))
+		// if instrumentation has defined the optional is_process_done, and that reports that the process is done
+		if (instrumentation->is_process_done && instrumentation->is_process_done(instrumentation_state))
 			return instrumentation->get_fuzz_result(instrumentation_state);
 
 		// timeout
