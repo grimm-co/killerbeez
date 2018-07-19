@@ -1,8 +1,8 @@
 // Linux-only Intel PT instrumentation.
 
 #include <string.h>    // memset
-#include <sys/types.h> // kill
-#include <signal.h>    // kill
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "instrumentation.h"
 #include "linux_ipt_instrumentation.h"
@@ -20,13 +20,6 @@
  */
 static void destroy_target_process(linux_ipt_state_t * state)
 {
-	if (state->child_handle) {
-		// TODO: We're changing is_process alive and its interface, so let's come back to this code when that's done.
-		state->last_status = get_process_status(state->child_handle);
-
-		kill(state->child_handle, SIGKILL);
-		state->child_handle = 0;
-	}
 }
 
 /**
@@ -39,15 +32,6 @@ static void destroy_target_process(linux_ipt_state_t * state)
  */
 static int create_target_process(linux_ipt_state_t * state, char* cmd_line, char * stdin_input, size_t stdin_length)
 {
-	state->last_status = -1; // set to an error value. TODO: should probably be FUZZ_ERROR
-
-	//Create the child process
-	if (start_process_and_write_to_stdin(cmd_line, stdin_input, stdin_length, &state->child_handle)) {
-		state->child_handle = 0;
-		ERROR_MSG("Failed to create process with command line: %s\n", cmd_line);
-		return -1;
-	}
-
 	return 0;
 }
 
@@ -238,7 +222,7 @@ int linux_ipt_is_new_path(void * instrumentation_state)
 int linux_ipt_get_fuzz_result(void * instrumentation_state)
 {
 	linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
-	return state->last_status;
+	return -1;
 }
 
 /**

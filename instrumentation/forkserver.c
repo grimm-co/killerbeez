@@ -22,8 +22,8 @@
 //Function Prototypes and Globals ////////////////////////////
 //////////////////////////////////////////////////////////////
 
-void forkserver_init(void);
-void * fake_main(void * a0, void * a1, void * a2, void * a3, void * a4, void * a5, void * a6, void * a7);
+static void forkserver_init(void);
+static void * fake_main(void * a0, void * a1, void * a2, void * a3, void * a4, void * a5, void * a6, void * a7);
 
 //Whether or not we've already started the forkserver
 static int init_done = 0;
@@ -134,75 +134,74 @@ DYLD_INTERPOSE(NEW_FUNCTION, FUNCTION)
 */
 
 
-void forkserver_init(void)
+static void forkserver_init(void)
 {
-  int tmp = 0;
+  int response = 0x41414141;
+  int command;
   int child_pid;
-  int child_stopped = 0;
+	int target_pipe[2];
+
+	//Ensure children don't try to also run the forkserver
+	init_done = 1;
 
   // Phone home and tell the parent that we're OK. If parent isn't there,
   // assume we're not running in forkserver mode and just execute program.
-  if (write(FORKSRV_TO_FUZZER, &tmp, 4) != 4) return;
+  if (write(FORKSRV_TO_FUZZER, &response, sizeof(int)) != sizeof(int))
+		return;
+
+	if(pipe(target_pipe))
+		_exit(1);
 
   while (1) {
 
-    int was_killed;
-    int status;
-
     // Wait for parent by reading from the pipe. Abort if read fails.
-    if (read(FUZZER_TO_FORKSRV, &was_killed, 4) != 4)
+    if (read(FUZZER_TO_FORKSRV, &command, sizeof(int)) != sizeof(int))
 			_exit(1);
 
-    // If we stopped the child in persistent mode, but there was a race
-    // condition and afl-fuzz already issued SIGKILL, write off the old
-    // process.
-    if (child_stopped && was_killed) {
-      child_stopped = 0;
-      if(waitpid(child_pid, &status, 0) < 0)
-				_exit(1);
-    }
+		switch(command) {
 
-    if (!child_stopped) {
+			case EXIT:
+				_exit(0);
+				break;
 
-      // Once woken up, create a clone of our process.
-      child_pid = fork();
-      if (child_pid < 0)
-				_exit(1);
+			case FORK:
 
-      // In child process: close fds, resume execution.
-      if (!child_pid) {
-        close(FUZZER_TO_FORKSRV);
-        close(FORKSRV_TO_FUZZER);
-        return;
-      }
+				child_pid = fork();
+				if (child_pid < 0)
+					_exit(1);
 
-    } else {
+				//In child process: close fds, resume execution.
+				if (!child_pid) {
+					close(FUZZER_TO_FORKSRV);
+					close(FORKSRV_TO_FUZZER);
+					close(target_pipe[1]);
 
-      // Special handling for persistent mode: if the child is alive but
-      // currently stopped, simply restart it with SIGCONT.
-      kill(child_pid, SIGCONT);
-      child_stopped = 0;
+					//Wait for the forkserver to tell us to go
+					if (read(target_pipe[0], &response, sizeof(int)) != sizeof(int))
+						_exit(1);
 
-    }
+					close(target_pipe[0]);
+					return;
+				}
+				response = child_pid;
 
-    // In parent process: write PID to pipe, then wait for child.
-    if (write(FORKSRV_TO_FUZZER, &child_pid, 4) != 4)
+				break;
+
+			case RUN:
+				//Tell the target process to go
+				response = 0;
+				if (write(target_pipe[1], &response, sizeof(int)) != sizeof(int))
+					return;
+				break;
+
+			case GET_STATUS:
+				if (waitpid(child_pid, &response, 0) < 0)
+					_exit(1);
+				break;
+		}
+
+    if (write(FORKSRV_TO_FUZZER, &response, sizeof(int)) != sizeof(int))
 			_exit(1);
-
-    if (waitpid(child_pid, &status, is_persistent ? WUNTRACED : 0) < 0)
-      _exit(1);
-
-    // In persistent mode, the child stops itself with SIGSTOP to indicate
-    // a successful run. In this case, we want to wake it up without forking
-    // again.
-    if (WIFSTOPPED(status)) child_stopped = 1;
-
-    // Relay wait status to pipe, then loop back.
-    if (write(FORKSRV_TO_FUZZER, &status, 4) != 4) _exit(1);
-
   }
-
-	init_done = 1;
-
 }
 

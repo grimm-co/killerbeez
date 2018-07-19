@@ -65,3 +65,20 @@ struct instrumentation
 	int(*is_process_done)(void * instrumentation_state);
 };
 typedef struct instrumentation instrumentation_t;
+
+
+
+
+
+struct fds {
+  int fuzzer_to_forksrv;
+  int forksrv_to_fuzzer;
+};
+typedef struct fds fds_t;
+
+int fork_server_init(fds_t * fds, char * target_path, char ** argv, int use_forkserver_library, int output_fd);
+int fork_server_exit(fds_t * fds);
+int fork_server_fork(fds_t * fds);
+int fork_server_run(fds_t * fds);
+int fork_server_get_status(fds_t * fds);
+

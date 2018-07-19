@@ -1,19 +1,38 @@
+#include <fcntl.h>
+#include <sys/resource.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/time.h>
+#include <unistd.h>
+
 #include "instrumentation.h"
+#include "forkserver.h"
+#include "utils.h"
 
-struct fds
-{
-	int ctl_fd;
-	int st_fd;
-};
-typedef struct fds fds_t;
+#define STRINGIFY_INTERNAL(x) #x
+#define STRINGIFY(x) STRINGIFY_INTERNAL(x)
 
-int fork_server_start(fds_t fds, char * filename, char ** argv, int use_forkserver_library)
+//Save a fd to the /dev/null, so we don't have to keep opening/closing it
+static int dev_null_fd =  -1;
+
+//TODO implement memory limiting
+static int mem_limit = 0;
+
+//TODO customize the execution timeout
+static int exec_tmout = 1000;
+
+int fork_server_init(fds_t * fds, char * target_path, char ** argv, int use_forkserver_library, int output_fd)
 {
-#if 0
   static struct itimerval it;
   int st_pipe[2], ctl_pipe[2];
-  int status;
-  s32 rlen;
+  int rlen, status, forksrv_pid;
+
+  if(dev_null_fd < 0) {
+    dev_null_fd = open("/dev/null", O_RDWR);
+    if (dev_null_fd < 0)
+      FATAL_MSG("Unable to open /dev/null");
+  }
+
 
   DEBUG_MSG("Spinning up the fork server...");
 
@@ -24,6 +43,7 @@ int fork_server_start(fds_t fds, char * filename, char ** argv, int use_forkserv
   if(forksrv_pid < 0)
 		FATAL_MSG("fork() failed");
 
+  //In the child process
   if (!forksrv_pid) {
 
     struct rlimit r;
@@ -31,9 +51,9 @@ int fork_server_start(fds_t fds, char * filename, char ** argv, int use_forkserv
     /* Umpf. On OpenBSD, the default fd limit for root users is set to
        soft 128. Let's try to fix that... */
 
-    if (!getrlimit(RLIMIT_NOFILE, &r) && r.rlim_cur < FORKSRV_FD + 2) {
+    if (!getrlimit(RLIMIT_NOFILE, &r) && r.rlim_cur < MAX_FORKSRV_FD) {
 
-      r.rlim_cur = FORKSRV_FD + 2;
+      r.rlim_cur = MAX_FORKSRV_FD;
       setrlimit(RLIMIT_NOFILE, &r); /* Ignore errors */
 
     }
@@ -66,20 +86,21 @@ int fork_server_start(fds_t fds, char * filename, char ** argv, int use_forkserv
 
     setrlimit(RLIMIT_CORE, &r); /* Ignore errors */
 
-    /* Isolate the process and configure standard descriptors. If out_file is
-       specified, stdin is /dev/null; otherwise, out_fd is cloned instead. */
-
+    // Isolate the process and configure standard descriptors.
     setsid();
 
+    if(output_fd < 0)
+      dup2(dev_null_fd, 0);
+    else
+      dup2(output_fd, 0);
     dup2(dev_null_fd, 1);
     dup2(dev_null_fd, 2);
-		dup2(out_fd, 0);
 
     /* Set up control and status pipes, close the unneeded original fds. */
 
-    if (dup2(ctl_pipe[0], FORKSRV_FD) < 0)
+    if (dup2(ctl_pipe[0], FUZZER_TO_FORKSRV) < 0)
 			FATAL_MSG("dup2() failed");
-    if (dup2(st_pipe[1], FORKSRV_FD + 1) < 0)
+    if (dup2(st_pipe[1], FORKSRV_TO_FUZZER + 1) < 0)
 			FATAL_MSG("dup2() failed");
 
     close(ctl_pipe[0]);
@@ -87,10 +108,8 @@ int fork_server_start(fds_t fds, char * filename, char ** argv, int use_forkserv
     close(st_pipe[0]);
     close(st_pipe[1]);
 
-    close(out_dir_fd);
     close(dev_null_fd);
-    close(dev_urandom_fd);
-    close(fileno(plot_file));
+    close(output_fd);
 
     /* This should improve performance a bit, since it stops the linker from
        doing extra work post-fork(). */
@@ -115,8 +134,6 @@ int fork_server_start(fds_t fds, char * filename, char ** argv, int use_forkserv
 
     execv(target_path, argv);
 
-    /* Use a distinctive bitmap signature to tell the parent about execv()
-       falling through. */
     exit(0);
   }
 
@@ -125,30 +142,28 @@ int fork_server_start(fds_t fds, char * filename, char ** argv, int use_forkserv
   close(ctl_pipe[0]);
   close(st_pipe[1]);
 
-  fds->ctl_fd = ctl_pipe[1];
-  fds->st_fd  = st_pipe[0];
+  fds->fuzzer_to_forksrv = ctl_pipe[1];
+  fds->forksrv_to_fuzzer = st_pipe[0];
 
   /* Wait for the fork server to come up, but don't wait too long. */
-
-  it.it_value.tv_sec = ((exec_tmout * FORK_WAIT_MULT) / 1000);
-  it.it_value.tv_usec = ((exec_tmout * FORK_WAIT_MULT) % 1000) * 1000;
-
+  it.it_value.tv_sec = (exec_tmout / 1000);
+  it.it_value.tv_usec = (exec_tmout % 1000) * 1000;
   setitimer(ITIMER_REAL, &it, NULL);
 
-  rlen = read(fsrv_st_fd, &status, 4);
+  rlen = read(st_pipe[0], &status, 4);
 
   it.it_value.tv_sec = 0;
   it.it_value.tv_usec = 0;
-
   setitimer(ITIMER_REAL, &it, NULL);
 
   /* If we have a four-byte "hello" message from the server, we're all set.
      Otherwise, try to figure out what went wrong. */
-
   if (rlen == 4) {
     OKF("All right - fork server is up.");
     return;
   }
+
+#if 0
 
   if (child_timed_out)
     FATAL_MSG("Timeout while initializing fork server");
@@ -276,7 +291,23 @@ int fork_server_start(fds_t fds, char * filename, char ** argv, int use_forkserv
 #endif
 }
 
-int fork_server_create_process()
+int fork_server_exit(fds_t * fds)
 {
 
 }
+
+int fork_server_fork(fds_t * fds)
+{
+
+}
+
+int fork_server_run(fds_t * fds)
+{
+
+}
+
+int fork_server_get_status(fds_t * fds)
+{
+
+}
+
