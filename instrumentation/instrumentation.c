@@ -124,7 +124,7 @@ void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int u
 
     // Isolate the process and configure standard descriptors.
     setsid();
-    
+
     if(needs_stdin_fd) {
       dup2(fs->target_stdin, 0);
       close(fs->target_stdin);

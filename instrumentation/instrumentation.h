@@ -66,25 +66,3 @@ struct instrumentation
 };
 typedef struct instrumentation instrumentation_t;
 
-
-
-//TODO move this to its own header 
-#define FORKSERVER_ERROR -1
-#define FORKSERVER_NO_RESULTS_READY -2
-
-struct forkserver {
-  int fuzzer_to_forksrv;
-  int forksrv_to_fuzzer;
-  int target_stdin;
-  int sent_get_status;
-  int last_status;
-};
-typedef struct forkserver forkserver_t;
-
-void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int use_forkserver_library, int needs_stdin_fd);
-int fork_server_exit(forkserver_t * fs);
-int fork_server_fork(forkserver_t * fs);
-int fork_server_run(forkserver_t * fs);
-int fork_server_get_status(forkserver_t * fs, int wait);
-int fork_server_get_pending_status(forkserver_t * fs, int wait);
-

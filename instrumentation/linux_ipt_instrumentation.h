@@ -1,5 +1,7 @@
 #pragma once
 
+#include "forkserver.h"
+
 void * linux_ipt_create(char * options, char * state);
 void linux_ipt_cleanup(void * instrumentation_state);
 void * linux_ipt_merge(void * instrumentation_state, void * other_instrumentation_state);
@@ -12,10 +14,17 @@ int linux_ipt_is_process_done(void * instrumentation_state);
 int linux_ipt_get_fuzz_result(void * instrumentation_state);
 char * linux_ipt_help(void);
 
+#define PERF_MMAP_SIZE 1024*1024
+
 struct linux_ipt_state
 {
   int num_address_ranges;
   int fork_server_setup;
+  int intel_pt_type;
+
+  int perf_fd;
+  struct perf_event_mmap_page * pem;
+  void * perf_mmap_aux_buf;
 
   pid_t child_pid;
   forkserver_t fs;

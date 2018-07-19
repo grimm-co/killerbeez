@@ -1,14 +1,18 @@
 // Linux-only Intel PT instrumentation.
 
 #include <fcntl.h>
+#include <linux/perf_event.h>
 #include <signal.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 #include "instrumentation.h"
 #include "linux_ipt_instrumentation.h"
+#include "forkserver.h"
 
 #include <utils.h>
 #include <jansson_helper.h>
@@ -16,6 +20,19 @@
 ////////////////////////////////////////////////////////////////
 // Private methods /////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
+
+static void cleanup_ipt(linux_ipt_state_t * state)
+{
+  if(state->perf_mmap_aux_buf && state->perf_mmap_aux_buf != MAP_FAILED)
+    munmap(state->perf_mmap_aux_buf, state->pem->aux_size);
+  state->perf_mmap_aux_buf = NULL;
+  if(state->pem && state->pem != MAP_FAILED)
+    munmap(state->pem, PERF_MMAP_SIZE + getpagesize());
+  state->pem = NULL;
+  if(state->perf_fd >= 0)
+    close(state->perf_fd);
+  state->perf_fd = 0;
+}
 
 /**
  * This function terminates the fuzzed process.
@@ -27,6 +44,7 @@ static void destroy_target_process(linux_ipt_state_t * state)
     kill(state->child_pid, SIGKILL);
     state->child_pid = 0;
     state->last_status = fork_server_get_status(&state->fs, 1);
+    cleanup_ipt(state);
   }
 }
 
@@ -42,13 +60,17 @@ static int create_target_process(linux_ipt_state_t * state, char* cmd_line, char
 {
   char * target_path;
   char ** argv;
-  int pid;
+  int i, pid;
 
   if(!state->fork_server_setup) {
     if(split_command_line(cmd_line, &target_path, &argv))
       return -1;
     fork_server_init(&state->fs, target_path, argv, 1, stdin_length != 0);
     state->fork_server_setup = 1;
+    for(i = 0; argv[i]; i++)
+      free(argv[i]);
+    free(argv);
+    free(target_path);
   }
 
   pid = fork_server_fork(&state->fs);
@@ -61,7 +83,7 @@ static int create_target_process(linux_ipt_state_t * state, char* cmd_line, char
     if(write(state->fs.target_stdin, stdin_input, stdin_length) != stdin_length)
       FATAL_MSG("Short write to target's stdin file");
   }
-  if (ftruncate(state->fs.target_stdin, stdin_length))
+  if(ftruncate(state->fs.target_stdin, stdin_length))
     FATAL_MSG("ftruncate() failed");
   lseek(state->fs.target_stdin, 0, SEEK_SET);
 
@@ -97,6 +119,13 @@ static int get_ipt_system_info(linux_ipt_state_t * state)
     return 1;
   }
 
+  ret = get_file_int("/sys/devices/intel_pt/type");
+  if(ret <= 0) {
+    INFO_MSG("Intel PT not supported");
+    return -1;
+  }
+  state->intel_pt_type = ret;
+
   //For the moment, we'll only support Intel PT with address filtering
   ret = get_file_int("/sys/devices/intel_pt/caps/ip_filtering");
   if(ret <= 0) {
@@ -111,6 +140,48 @@ static int get_ipt_system_info(linux_ipt_state_t * state)
   }
   state->num_address_ranges = ret;
 
+  return 0;
+}
+
+//There's no syscall definition in libc for perf_event_open, so we'll define our own
+static long perf_event_open(struct perf_event_attr* hw_event, pid_t pid, int cpu, int group_fd, unsigned long flags)
+{
+  return syscall(__NR_perf_event_open, hw_event, (uintptr_t)pid, (uintptr_t)cpu, (uintptr_t)group_fd, (uintptr_t)flags);
+}
+
+
+static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
+{
+  struct perf_event_attr pe;
+  memset(&pe, 0, sizeof(struct perf_event_attr));
+  pe.size = sizeof(struct perf_event_attr);
+  pe.disabled = 0;
+  pe.enable_on_exec = 0;
+  pe.exclude_kernel = 1;
+  pe.exclude_hv = 1;
+  pe.type = PERF_TYPE_HARDWARE;
+  pe.type = state->intel_pt_type;
+  pe.config = (1U << 11); /* Disable RETCompression */
+
+  state->perf_fd = perf_event_open(&pe, pid, -1, -1, PERF_FLAG_FD_CLOEXEC);
+  if(state->perf_fd < 0) {
+    ERROR_MSG("perf_event_open failed!");
+    return 1;
+  }
+
+  state->pem = mmap(NULL, PERF_MMAP_SIZE + getpagesize(), PROT_READ|PROT_WRITE, MAP_SHARED, state->perf_fd, 0);
+  if(state->pem == MAP_FAILED) {
+    ERROR_MSG("Perf mmap failed\n");
+    return 1;
+  }
+
+  state->pem->aux_offset = state->pem->data_offset + state->pem->data_size;
+  state->pem->aux_size = PERF_MMAP_SIZE;
+  state->perf_mmap_aux_buf = mmap(NULL, state->pem->aux_size, PROT_READ, MAP_SHARED, state->perf_fd, state->pem->aux_offset);
+  if(state->perf_mmap_aux_buf == MAP_FAILED) {
+    ERROR_MSG("Perf mmap failed\n");
+    return 1;
+  }
   return 0;
 }
 
@@ -129,7 +200,7 @@ void * linux_ipt_create(char * options, char * state)
   // Allocate and initialize linux_ipt state object.
   linux_ipt_state_t * linux_ipt_state;
   linux_ipt_state = malloc(sizeof(linux_ipt_state_t));
-  if (!linux_ipt_state)
+  if(!linux_ipt_state)
     return NULL;
   memset(linux_ipt_state, 0, sizeof(linux_ipt_state_t));
 
@@ -138,7 +209,7 @@ void * linux_ipt_create(char * options, char * state)
     return NULL;
   }
 
-  if (state && linux_ipt_set_state(linux_ipt_state, state))
+  if(state && linux_ipt_set_state(linux_ipt_state, state))
   {
     linux_ipt_cleanup(linux_ipt_state);
     return NULL;
@@ -211,7 +282,7 @@ int linux_ipt_set_state(void * instrumentation_state, char * state)
 {
   linux_ipt_state_t * current_state = (linux_ipt_state_t *)instrumentation_state;
   int result, temp_int;
-  if (!state)
+  if(!state)
     return 1;
 
   //If a child process is running when the state is being set
@@ -235,12 +306,13 @@ int linux_ipt_enable(void * instrumentation_state, pid_t * process, char * cmd_l
   if(state->child_pid)
     destroy_target_process(state);
 
-  if (create_target_process(state, cmd_line, input, input_length))
+  if(create_target_process(state, cmd_line, input, input_length))
     return -1;
   state->process_finished = 0;
   state->fuzz_results_set = 0;
 
-  //TODO setup Linux IPT
+  if(setup_ipt(state, state->child_pid))
+    return -1;
 
   if(fork_server_run(&state->fs))
     return -1;
@@ -270,7 +342,6 @@ int linux_ipt_is_new_path(void * instrumentation_state)
 int linux_ipt_get_fuzz_result(void * instrumentation_state)
 {
   linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
-  int status;
 
   if(!state->fuzz_results_set) {
     //if it's still alive, it's a hang
@@ -280,7 +351,7 @@ int linux_ipt_get_fuzz_result(void * instrumentation_state)
       return state->last_fuzz_result;
     }
     //If it died from a signal (and it wasn't SIGKILL, that we send), it's a crash
-    else if(WIFSIGNALED(status) && WTERMSIG(status) != SIGKILL)
+    else if(WIFSIGNALED(state->last_status) && WTERMSIG(state->last_status) != SIGKILL)
       state->last_fuzz_result = FUZZ_CRASH;
     //Otherwise, just set FUZZ_NONE
     else
@@ -301,7 +372,7 @@ int linux_ipt_get_fuzz_result(void * instrumentation_state)
 int linux_ipt_is_process_done(void * instrumentation_state)
 {
   int status;
-	linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
+  linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
 
   if(state->process_finished)
     return 1;
