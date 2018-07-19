@@ -77,6 +77,7 @@ instrumentation_t * instrumentation_factory(char * instrumentation_type)
 		ret->enable = linux_ipt_enable;
 		ret->is_new_path = linux_ipt_is_new_path;
 		ret->get_fuzz_result = linux_ipt_get_fuzz_result;
+		ret->is_process_done = linux_ipt_is_process_done;
 	}
 	#endif
 	else

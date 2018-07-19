@@ -46,7 +46,7 @@ static char * find_fork_server_library(char * buffer, size_t buffer_len)
     FATAL_MSG("Failed to find the %s in %s.", library_name, directory);
 }
 
-void fork_server_init(fds_t * fds, char * target_path, char ** argv, int use_forkserver_library, int needs_stdin_fd)
+void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int use_forkserver_library, int needs_stdin_fd)
 {
   static struct itimerval it;
   int st_pipe[2], ctl_pipe[2];
@@ -60,14 +60,17 @@ void fork_server_init(fds_t * fds, char * target_path, char ** argv, int use_for
       FATAL_MSG("Unable to open /dev/null");
   }
 
+  fs->sent_get_status = 0;
+  fs->last_status = -1;
+
   if(needs_stdin_fd) {
     strncpy(stdin_filename, "/tmp/fuzzfileXXXXXX", sizeof(stdin_filename));
-    fds->target_stdin = mkstemp(stdin_filename);
-    if(fds->target_stdin < 0)
+    fs->target_stdin = mkstemp(stdin_filename);
+    if(fs->target_stdin < 0)
       FATAL_MSG("Couldn't make temp file\n");
   }
   else
-    fds->target_stdin = -1;
+    fs->target_stdin = -1;
 
   DEBUG_MSG("Spinning up the fork server...");
 
@@ -123,13 +126,13 @@ void fork_server_init(fds_t * fds, char * target_path, char ** argv, int use_for
     setsid();
     
     if(needs_stdin_fd) {
-      dup2(fds->target_stdin, 0);
-      close(fds->target_stdin);
+      dup2(fs->target_stdin, 0);
+      close(fs->target_stdin);
     }
     else
       dup2(dev_null_fd, 0);
-    //dup2(dev_null_fd, 1);
-    //dup2(dev_null_fd, 2);
+    dup2(dev_null_fd, 1);
+    dup2(dev_null_fd, 2);
 
     // Set up control and status pipes, close the unneeded original fds.
     if (dup2(ctl_pipe[0], FUZZER_TO_FORKSRV) < 0)
@@ -176,8 +179,8 @@ void fork_server_init(fds_t * fds, char * target_path, char ** argv, int use_for
   close(ctl_pipe[0]);
   close(st_pipe[1]);
 
-  fds->fuzzer_to_forksrv = ctl_pipe[1];
-  fds->forksrv_to_fuzzer = st_pipe[0];
+  fs->fuzzer_to_forksrv = ctl_pipe[1];
+  fs->forksrv_to_fuzzer = st_pipe[0];
 
   // Wait for the fork server to come up, but don't wait too long.
   it.it_value.tv_sec = (exec_tmout / 1000);
@@ -313,58 +316,71 @@ void fork_server_init(fds_t * fds, char * target_path, char ** argv, int use_for
   FATAL_MSG("Fork server handshake failed");
 }
 
-static int send_command(fds_t * fds, char command)
+static int send_command(forkserver_t * fs, char command)
 {
-  if (write(fds->fuzzer_to_forksrv, &command, sizeof(command)) != sizeof(command))
+  if (write(fs->fuzzer_to_forksrv, &command, sizeof(command)) != sizeof(command))
     return FORKSERVER_ERROR;
   return 0;
 }
 
-static int read_response(fds_t * fds)
+static int read_response(forkserver_t * fs)
 {
   int response;
-  if (read(fds->forksrv_to_fuzzer, &response, sizeof(response)) != sizeof(response))
+  if (read(fs->forksrv_to_fuzzer, &response, sizeof(response)) != sizeof(response))
     return FORKSERVER_ERROR;
   return response;
 }
 
-int fork_server_exit(fds_t * fds)
+int fork_server_exit(forkserver_t * fs)
 {
-  return send_command(fds, EXIT);
+  return send_command(fs, EXIT);
 }
 
-int fork_server_fork(fds_t * fds)
+int fork_server_fork(forkserver_t * fs)
 {
-  if(send_command(fds, FORK))
+  if(send_command(fs, FORK))
     return FORKSERVER_ERROR;
-  return read_response(fds); //Wait for the target pid
+  fs->sent_get_status = 0;
+  return read_response(fs); //Wait for the target pid
 }
 
-int fork_server_run(fds_t * fds)
+int fork_server_run(forkserver_t * fs)
 {
-  return send_command(fds, RUN);
+  if(send_command(fs, RUN))
+    return FORKSERVER_ERROR;
+  if(read_response(fs) != 0)
+    return FORKSERVER_ERROR;
+  return 0;
 }
 
-int fork_server_get_pending_status(fds_t * fds, int wait)
+int fork_server_get_pending_status(forkserver_t * fs, int wait)
 {
   unsigned long bytes_available = 0;
   int err;
 
+  if(fs->sent_get_status && fs->last_status != -1)
+    return fs->last_status;
+
   if(wait)
-    return read_response(fds); //Wait for the target's exit status
+    return read_response(fs); //Wait for the target's exit status
   else {
-    err = ioctl(fds->forksrv_to_fuzzer, FIONREAD, &bytes_available);
-    printf("%d GOT %lu from ioctl\n", err, bytes_available);
-    if(!err && bytes_available == sizeof(int))
-      return read_response(fds); //Wait for the target's exit status
+    err = ioctl(fs->forksrv_to_fuzzer, FIONREAD, &bytes_available);
+    if(!err && bytes_available == sizeof(int)) {
+      fs->last_status = read_response(fs); //Wait for the target's exit status
+      return fs->last_status;
+    }
   }
   return FORKSERVER_NO_RESULTS_READY;
 }
 
-int fork_server_get_status(fds_t * fds, int wait)
+int fork_server_get_status(forkserver_t * fs, int wait)
 {
-  if(send_command(fds, GET_STATUS))
-    return FORKSERVER_ERROR;
-  return fork_server_get_pending_status(fds, wait);
+  if(!fs->sent_get_status) {
+    if(send_command(fs, GET_STATUS))
+      return FORKSERVER_ERROR;
+    fs->sent_get_status = 1;
+    fs->last_status = -1;
+  }
+  return fork_server_get_pending_status(fs, wait);
 }
 

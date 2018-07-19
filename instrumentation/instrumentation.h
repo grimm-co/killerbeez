@@ -72,17 +72,19 @@ typedef struct instrumentation instrumentation_t;
 #define FORKSERVER_ERROR -1
 #define FORKSERVER_NO_RESULTS_READY -2
 
-struct fds {
+struct forkserver {
   int fuzzer_to_forksrv;
   int forksrv_to_fuzzer;
   int target_stdin;
+  int sent_get_status;
+  int last_status;
 };
-typedef struct fds fds_t;
+typedef struct forkserver forkserver_t;
 
-void fork_server_init(fds_t * fds, char * target_path, char ** argv, int use_forkserver_library, int needs_stdin_fd);
-int fork_server_exit(fds_t * fds);
-int fork_server_fork(fds_t * fds);
-int fork_server_run(fds_t * fds);
-int fork_server_get_status(fds_t * fds, int wait);
-int fork_server_get_pending_status(fds_t * fds, int wait);
+void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int use_forkserver_library, int needs_stdin_fd);
+int fork_server_exit(forkserver_t * fs);
+int fork_server_fork(forkserver_t * fs);
+int fork_server_run(forkserver_t * fs);
+int fork_server_get_status(forkserver_t * fs, int wait);
+int fork_server_get_pending_status(forkserver_t * fs, int wait);
 

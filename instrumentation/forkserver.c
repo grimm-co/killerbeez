@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <signal.h>
+#include <stdio.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -191,7 +192,7 @@ static void forkserver_init(void)
 				//Tell the target process to go
 				response = 0;
 				if (write(target_pipe[1], &response, sizeof(int)) != sizeof(int))
-					return;
+					_exit(1);
 				break;
 
 			case GET_STATUS:

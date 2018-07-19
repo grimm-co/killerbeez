@@ -21,10 +21,13 @@
  * This function terminates the fuzzed process.
  * @param state - The linux_ipt_state_t object containing this instrumentation's state
  */
-static int destroy_target_process(linux_ipt_state_t * state)
+static void destroy_target_process(linux_ipt_state_t * state)
 {
-  kill(state->child_pid, SIGKILL);
-  return fork_server_get_status(&state->fds, 1);
+  if(state->child_pid) {
+    kill(state->child_pid, SIGKILL);
+    state->child_pid = 0;
+    state->last_status = fork_server_get_status(&state->fs, 1);
+  }
 }
 
 /**
@@ -44,23 +47,23 @@ static int create_target_process(linux_ipt_state_t * state, char* cmd_line, char
   if(!state->fork_server_setup) {
     if(split_command_line(cmd_line, &target_path, &argv))
       return -1;
-    fork_server_init(&state->fds, target_path, argv, 1, stdin_length != 0);
+    fork_server_init(&state->fs, target_path, argv, 1, stdin_length != 0);
     state->fork_server_setup = 1;
   }
 
-  pid = fork_server_fork(&state->fds);
+  pid = fork_server_fork(&state->fs);
   if(pid < 0)
     return -1;
 
   //Take care of the stdin input, write over the file, then truncate it accordingly
-  lseek(state->fds.target_stdin, 0, SEEK_SET);
+  lseek(state->fs.target_stdin, 0, SEEK_SET);
   if(stdin_input != NULL && stdin_length != 0) {
-    if(write(state->fds.target_stdin, stdin_input, stdin_length) != stdin_length)
+    if(write(state->fs.target_stdin, stdin_input, stdin_length) != stdin_length)
       FATAL_MSG("Short write to target's stdin file");
   }
-  if (ftruncate(state->fds.target_stdin, stdin_length))
+  if (ftruncate(state->fs.target_stdin, stdin_length))
     FATAL_MSG("ftruncate() failed");
-  lseek(state->fds.target_stdin, 0, SEEK_SET);
+  lseek(state->fs.target_stdin, 0, SEEK_SET);
 
   state->child_pid = pid;
   return 0;
@@ -231,8 +234,17 @@ int linux_ipt_enable(void * instrumentation_state, pid_t * process, char * cmd_l
   linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
   if(state->child_pid)
     destroy_target_process(state);
+
   if (create_target_process(state, cmd_line, input, input_length))
     return -1;
+  state->process_finished = 0;
+  state->fuzz_results_set = 0;
+
+  //TODO setup Linux IPT
+
+  if(fork_server_run(&state->fs))
+    return -1;
+
   *process = state->child_pid;
   return 0;
 }
@@ -260,8 +272,47 @@ int linux_ipt_get_fuzz_result(void * instrumentation_state)
   linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
   int status;
 
-  status = destroy_target_process(state);
-  return -1;
+  if(!state->fuzz_results_set) {
+    //if it's still alive, it's a hang
+    if(!linux_ipt_is_process_done(state)) {
+      destroy_target_process(state);
+      state->last_fuzz_result = FUZZ_HANG;
+      return state->last_fuzz_result;
+    }
+    //If it died from a signal (and it wasn't SIGKILL, that we send), it's a crash
+    else if(WIFSIGNALED(status) && WTERMSIG(status) != SIGKILL)
+      state->last_fuzz_result = FUZZ_CRASH;
+    //Otherwise, just set FUZZ_NONE
+    else
+      state->last_fuzz_result = FUZZ_NONE;
+    state->fuzz_results_set = 1;
+  }
+
+  return state->last_fuzz_result;
+}
+
+/**
+ * Checks if the target process is done fuzzing the inputs yet.  If it has finished, it will have
+ * written last_status, the result of the fuzz job.
+ *
+ * @param state - The dynamorio_state_t object containing this instrumentation's state
+ * @return - 0 if the process is not done testing the fuzzed input, non-zero if the process is done.
+ */
+int linux_ipt_is_process_done(void * instrumentation_state)
+{
+  int status;
+	linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
+
+  if(state->process_finished)
+    return 1;
+
+  status = fork_server_get_status(&state->fs, 0);
+  //it's still alive or an error occurred and we can't tell
+  if(status < 0 || status == FORKSERVER_NO_RESULTS_READY)
+    return 0;
+  state->last_status = status;
+  state->process_finished = 1;
+  return 1;
 }
 
 /**

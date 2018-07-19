@@ -8,15 +8,20 @@ void linux_ipt_free_state(char * state);
 int linux_ipt_set_state(void * instrumentation_state, char * state);
 int linux_ipt_enable(void * instrumentation_state, pid_t * process, char * cmd_line, char * input, size_t input_length);
 int linux_ipt_is_new_path(void * instrumentation_state);
+int linux_ipt_is_process_done(void * instrumentation_state);
 int linux_ipt_get_fuzz_result(void * instrumentation_state);
 char * linux_ipt_help(void);
 
 struct linux_ipt_state
 {
-  pid_t child_pid;
-  fds_t fds;
-
   int num_address_ranges;
   int fork_server_setup;
+
+  pid_t child_pid;
+  forkserver_t fs;
+  int last_status;
+  int process_finished;
+  int last_fuzz_result;
+  int fuzz_results_set;
 };
 typedef struct linux_ipt_state linux_ipt_state_t;
