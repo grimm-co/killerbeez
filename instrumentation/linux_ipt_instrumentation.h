@@ -13,8 +13,10 @@ char * linux_ipt_help(void);
 
 struct linux_ipt_state
 {
-	pid_t child_handle;
+	pid_t child_pid;
+  fds_t fds;
 
   int num_address_ranges;
+  int fork_server_setup;
 };
 typedef struct linux_ipt_state linux_ipt_state_t;

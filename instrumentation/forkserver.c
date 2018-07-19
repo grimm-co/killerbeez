@@ -137,7 +137,7 @@ DYLD_INTERPOSE(NEW_FUNCTION, FUNCTION)
 static void forkserver_init(void)
 {
   int response = 0x41414141;
-  int command;
+  char command;
   int child_pid;
 	int target_pipe[2];
 
@@ -155,7 +155,7 @@ static void forkserver_init(void)
   while (1) {
 
     // Wait for parent by reading from the pipe. Abort if read fails.
-    if (read(FUZZER_TO_FORKSRV, &command, sizeof(int)) != sizeof(int))
+    if (read(FUZZER_TO_FORKSRV, &command, sizeof(command)) != sizeof(command))
 			_exit(1);
 
 		switch(command) {

@@ -73,10 +73,11 @@ typedef struct instrumentation instrumentation_t;
 struct fds {
   int fuzzer_to_forksrv;
   int forksrv_to_fuzzer;
+  int target_stdin;
 };
 typedef struct fds fds_t;
 
-int fork_server_init(fds_t * fds, char * target_path, char ** argv, int use_forkserver_library, int output_fd);
+void fork_server_init(fds_t * fds, char * target_path, char ** argv, int use_forkserver_library, int needs_stdin_fd);
 int fork_server_exit(fds_t * fds);
 int fork_server_fork(fds_t * fds);
 int fork_server_run(fds_t * fds);

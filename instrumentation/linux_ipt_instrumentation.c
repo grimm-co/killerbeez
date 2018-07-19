@@ -1,7 +1,8 @@
 // Linux-only Intel PT instrumentation.
 
-#include <string.h>    // memset
+#include <string.h>
 #include <sys/types.h>
+#include <signal.h>
 #include <unistd.h>
 
 #include "instrumentation.h"
@@ -20,6 +21,8 @@
  */
 static void destroy_target_process(linux_ipt_state_t * state)
 {
+  kill(state->child_pid, SIGKILL);
+  fork_server_get_status(&state->fds);
 }
 
 /**
@@ -32,47 +35,73 @@ static void destroy_target_process(linux_ipt_state_t * state)
  */
 static int create_target_process(linux_ipt_state_t * state, char* cmd_line, char * stdin_input, size_t stdin_length)
 {
-	return 0;
+  char * target_path;
+  char ** argv;
+  int pid;
+
+  if(!state->fork_server_setup) {
+    if(split_command_line(cmd_line, &target_path, &argv))
+      return -1;
+    fork_server_init(&state->fds, target_path, argv, 1, stdin_length != 0);
+    state->fork_server_setup = 1;
+  }
+
+  pid = fork_server_fork(&state->fds);
+  if(pid < 0)
+    return -1;
+
+  //Take care of the stdin input, write over the file, then truncate it accordingly
+  lseek(state->fds.target_stdin, 0, SEEK_SET);
+  if(stdin_input != NULL && stdin_length != 0) {
+    if(write(state->fds.target_stdin, stdin_input, stdin_length) != stdin_length)
+      FATAL_MSG("Short write to target's stdin file");
+  }
+  if (ftruncate(state->fds.target_stdin, stdin_length))
+    FATAL_MSG("ftruncate() failed");
+  lseek(state->fds.target_stdin, 0, SEEK_SET);
+
+  state->child_pid = pid;
+  return 0;
 }
 
 static int get_file_int(char * filename)
 {
-	int ret;
-	char * buffer;
+  int ret;
+  char * buffer;
 
-	ret = read_file(filename, &buffer);
-	if(ret > 0 && buffer != NULL)
-		ret = atoi(buffer);
-	else
-		ret = -1;
-	free(buffer);
-	return ret;
+  ret = read_file(filename, &buffer);
+  if(ret > 0 && buffer != NULL)
+    ret = atoi(buffer);
+  else
+    ret = -1;
+  free(buffer);
+  return ret;
 }
 
 static int get_ipt_system_info(linux_ipt_state_t * state)
 {
-	int ret;
+  int ret;
 
-	if(access("/sys/devices/intel_pt/", F_OK)) {
-		INFO_MSG("Intel PT not supported (/sys/devices/intel_pt/ does not exist)");
-		return 1;
-	}
+  if(access("/sys/devices/intel_pt/", F_OK)) {
+    INFO_MSG("Intel PT not supported (/sys/devices/intel_pt/ does not exist)");
+    return 1;
+  }
 
-	//For the moment, we'll only support Intel PT with address filtering
-	ret = get_file_int("/sys/devices/intel_pt/caps/ip_filtering");
-	if(ret <= 0) {
-		INFO_MSG("Intel PT address filtering not supported");
-		return -1;
-	}
+  //For the moment, we'll only support Intel PT with address filtering
+  ret = get_file_int("/sys/devices/intel_pt/caps/ip_filtering");
+  if(ret <= 0) {
+    INFO_MSG("Intel PT address filtering not supported");
+    return -1;
+  }
 
-	ret = get_file_int("/sys/devices/intel_pt/caps/num_address_ranges");
-	if(ret <= 0) {
-		INFO_MSG("Intel PT address filtering not supported");
-		return -1;
-	}
-	state->num_address_ranges = ret;
+  ret = get_file_int("/sys/devices/intel_pt/caps/num_address_ranges");
+  if(ret <= 0) {
+    INFO_MSG("Intel PT address filtering not supported");
+    return -1;
+  }
+  state->num_address_ranges = ret;
 
-	return 0;
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////
@@ -87,25 +116,25 @@ static int get_ipt_system_info(linux_ipt_state_t * state)
  */
 void * linux_ipt_create(char * options, char * state)
 {
-	// Allocate and initialize linux_ipt state object.
-	linux_ipt_state_t * linux_ipt_state;
-	linux_ipt_state = malloc(sizeof(linux_ipt_state_t));
-	if (!linux_ipt_state)
-		return NULL;
-	memset(linux_ipt_state, 0, sizeof(linux_ipt_state_t));
+  // Allocate and initialize linux_ipt state object.
+  linux_ipt_state_t * linux_ipt_state;
+  linux_ipt_state = malloc(sizeof(linux_ipt_state_t));
+  if (!linux_ipt_state)
+    return NULL;
+  memset(linux_ipt_state, 0, sizeof(linux_ipt_state_t));
 
-	if(get_ipt_system_info(linux_ipt_state)) {
-		linux_ipt_cleanup(linux_ipt_state);
-		return NULL;
-	}
+  if(get_ipt_system_info(linux_ipt_state)) {
+    linux_ipt_cleanup(linux_ipt_state);
+    return NULL;
+  }
 
-	if (state && linux_ipt_set_state(linux_ipt_state, state))
-	{
-		linux_ipt_cleanup(linux_ipt_state);
-		return NULL;
-	}
+  if (state && linux_ipt_set_state(linux_ipt_state, state))
+  {
+    linux_ipt_cleanup(linux_ipt_state);
+    return NULL;
+  }
 
-	return linux_ipt_state;
+  return linux_ipt_state;
 }
 
 /**
@@ -115,11 +144,11 @@ void * linux_ipt_create(char * options, char * state)
  */
 void linux_ipt_cleanup(void * instrumentation_state)
 {
-	linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
+  linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
 
-	destroy_target_process(state);
+  destroy_target_process(state);
 
-	free(state);
+  free(state);
 }
 
 /**
@@ -132,7 +161,7 @@ void linux_ipt_cleanup(void * instrumentation_state)
  */
 void * linux_ipt_merge(void * instrumentation_state, void * other_instrumentation_state)
 {
-	return NULL; // No instrumentation data, so we can't ever merge
+  return NULL; // No instrumentation data, so we can't ever merge
 }
 
 /**
@@ -143,14 +172,14 @@ void * linux_ipt_merge(void * instrumentation_state, void * other_instrumentatio
  */
 char * linux_ipt_get_state(void * instrumentation_state)
 {
-	linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
-	json_t *state_obj, *temp;
-	char * ret;
+  linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
+  json_t *state_obj, *temp;
+  char * ret;
 
-	state_obj = json_object();
-	ret = json_dumps(state_obj, 0);
-	json_decref(state_obj);
-	return ret;
+  state_obj = json_object();
+  ret = json_dumps(state_obj, 0);
+  json_decref(state_obj);
+  return ret;
 }
 
 /**
@@ -159,7 +188,7 @@ char * linux_ipt_get_state(void * instrumentation_state)
  */
 void linux_ipt_free_state(char * state)
 {
-	free(state);
+  free(state);
 }
 
 /**
@@ -170,15 +199,15 @@ void linux_ipt_free_state(char * state)
  */
 int linux_ipt_set_state(void * instrumentation_state, char * state)
 {
-	linux_ipt_state_t * current_state = (linux_ipt_state_t *)instrumentation_state;
-	int result, temp_int;
-	if (!state)
-		return 1;
+  linux_ipt_state_t * current_state = (linux_ipt_state_t *)instrumentation_state;
+  int result, temp_int;
+  if (!state)
+    return 1;
 
-	//If a child process is running when the state is being set
-	destroy_target_process(current_state); //kill it so we don't orphan it
+  //If a child process is running when the state is being set
+  destroy_target_process(current_state); //kill it so we don't orphan it
 
-	return 0; //No state to set, so just return success
+  return 0; //No state to set, so just return success
 }
 
 /**
@@ -192,13 +221,13 @@ int linux_ipt_set_state(void * instrumentation_state, char * state)
  */
 int linux_ipt_enable(void * instrumentation_state, pid_t * process, char * cmd_line, char * input, size_t input_length)
 {
-	linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
-	if(state->child_handle)
-		destroy_target_process(state);
-	if (create_target_process(state, cmd_line, input, input_length))
-		return -1;
-	*process = state->child_handle;
-	return 0;
+  linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
+  if(state->child_pid)
+    destroy_target_process(state);
+  if (create_target_process(state, cmd_line, input, input_length))
+    return -1;
+  *process = state->child_pid;
+  return 0;
 }
 
 /**
@@ -209,7 +238,7 @@ int linux_ipt_enable(void * instrumentation_state, pid_t * process, char * cmd_l
  */
 int linux_ipt_is_new_path(void * instrumentation_state)
 {
-	return 0; //We don't gather instrumentation data, so we can't ever tell if we hit a new path.
+  return 0; //We don't gather instrumentation data, so we can't ever tell if we hit a new path.
 }
 
 /**
@@ -221,22 +250,22 @@ int linux_ipt_is_new_path(void * instrumentation_state)
  */
 int linux_ipt_get_fuzz_result(void * instrumentation_state)
 {
-	linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
-	return -1;
+  linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
+  return -1;
 }
 
 /**
-* This function returns help text for this instrumentation.  This help text will describe the instrumentation and any options
-* that can be passed to linux_ipt_create.
-* @return - a newly allocated string containing the help text.
-*/
+ * This function returns help text for this instrumentation.  This help text will describe the instrumentation and any options
+ * that can be passed to linux_ipt_create.
+ * @return - a newly allocated string containing the help text.
+ */
 char * linux_ipt_help(void)
 {
-	return strdup(
-		"ipt - Linux IPT instrumentation\n"
-		"Options:\n"
-		"\tNone\n"
-		"\n"
-	);
+  return strdup(
+      "ipt - Linux IPT instrumentation\n"
+      "Options:\n"
+      "\tNone\n"
+      "\n"
+      );
 }
 
