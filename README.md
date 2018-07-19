@@ -107,6 +107,12 @@ cd ../../build/killerbeez/
 ./fuzzer file return_code honggfuzz -n 20 -sf /bin/bash -d '{"path":"../../killerbeez/corpus/test/test-linux","arguments":"@@"}'
 ```
 
+If it ran correctly, you should see something like this:
+```
+Thu Jul 19 09:40:46 2018 - INFO     - Logging Started
+Thu Jul 19 09:40:46 2018 - INFO     - Ran 20 iterations in 0 seconds
+```
+
 In the example above, we're using the file driver, the return_code
 instrumentation, and the honggfuzz mutator module.  We are only going to do 20
 executions and our seed file is /bin/bash, because why not?
@@ -123,6 +129,14 @@ available, you can use the help flag.  Below are some examples.
 ./fuzzer -h
 ./fuzzer -h driver
 ```
+
+Looking at the results in the "output" directory, we see that it didn't find
+any crashes, hangs or new paths.  At first glance, it might seem like it didn't
+work.  However, we were using the return_code instrumentation, which does not
+actually track code coverage, so it can not determine the execution path, thus
+it can't determine if a new path was hit.  Instead, it just looks at the return
+code to determine if the process crashed or not.  It's very efficient, however
+this is effectively dumb fuzzing.
 
 ## Documentation
 Documentation can be found in the docs folder.  It's written in LaTeX which
