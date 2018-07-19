@@ -1,5 +1,6 @@
 #include <fcntl.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
@@ -51,6 +52,7 @@ void fork_server_init(fds_t * fds, char * target_path, char ** argv, int use_for
   int st_pipe[2], ctl_pipe[2];
   int rlen, status, forksrv_pid;
   char fork_server_library_path[MAX_PATH];
+  char stdin_filename[100];
 
   if(dev_null_fd < 0) {
     dev_null_fd = open("/dev/null", O_RDWR);
@@ -59,7 +61,8 @@ void fork_server_init(fds_t * fds, char * target_path, char ** argv, int use_for
   }
 
   if(needs_stdin_fd) {
-    fds->target_stdin = mkstemp("fuzzfileXXXXXX");
+    strncpy(stdin_filename, "/tmp/fuzzfileXXXXXX", sizeof(stdin_filename));
+    fds->target_stdin = mkstemp(stdin_filename);
     if(fds->target_stdin < 0)
       FATAL_MSG("Couldn't make temp file\n");
   }
@@ -125,13 +128,13 @@ void fork_server_init(fds_t * fds, char * target_path, char ** argv, int use_for
     }
     else
       dup2(dev_null_fd, 0);
-    dup2(dev_null_fd, 1);
-    dup2(dev_null_fd, 2);
+    //dup2(dev_null_fd, 1);
+    //dup2(dev_null_fd, 2);
 
     // Set up control and status pipes, close the unneeded original fds.
     if (dup2(ctl_pipe[0], FUZZER_TO_FORKSRV) < 0)
       FATAL_MSG("dup2() failed");
-    if (dup2(st_pipe[1], FORKSRV_TO_FUZZER + 1) < 0)
+    if (dup2(st_pipe[1], FORKSRV_TO_FUZZER) < 0)
       FATAL_MSG("dup2() failed");
 
     close(ctl_pipe[0]);
@@ -204,14 +207,14 @@ void fork_server_init(fds_t * fds, char * target_path, char ** argv, int use_for
 
     if (mem_limit && mem_limit < 500 && uses_asan) {
 
-      ERROR_MSG("\n[-] "
+      ERROR_MSG(
            "Whoops, the target binary crashed suddenly, before receiving any input\n"
            "    from the fuzzer! Since it seems to be built with ASAN and you have a\n"
-           "    restrictive memory limit configured, this is expected\n");
+           "    restrictive memory limit configured, this is expected");
 
     } else if (!mem_limit) {
 
-      ERROR_MSG("\n[-] "
+      ERROR_MSG(
            "Whoops, the target binary crashed suddenly, before receiving any input\n"
            "    from the fuzzer! There are several probable explanations:\n\n"
 
@@ -226,11 +229,11 @@ void fork_server_init(fds_t * fds, char * target_path, char ** argv, int use_for
 
 #endif // __APPLE__
 
-           "    - Less likely, there is a horrible bug in the fuzzer.\n");
+           "    - Less likely, there is a horrible bug in the fuzzer.");
 
     } else {
 
-      ERROR_MSG("\n[-] "
+      ERROR_MSG(
            "Whoops, the target binary crashed suddenly, before receiving any input\n"
            "    from the fuzzer! There are several probable explanations:\n\n"
 
@@ -259,7 +262,7 @@ void fork_server_init(fds_t * fds, char * target_path, char ** argv, int use_for
 
 #endif // __APPLE__
 
-           "    - Less likely, there is a horrible bug in the fuzzer.\n",
+           "    - Less likely, there is a horrible bug in the fuzzer.",
            mem_limit << 20, mem_limit - 1);
 
     }
@@ -270,21 +273,21 @@ void fork_server_init(fds_t * fds, char * target_path, char ** argv, int use_for
 
   if (mem_limit && mem_limit < 500 && uses_asan) {
 
-    ERROR_MSG("\n[-] "
+    ERROR_MSG(
            "Hmm, looks like the target binary terminated before we could complete a\n"
            "    handshake with the injected code. Since it seems to be built with ASAN and\n"
-           "    you have a restrictive memory limit configured, this is expected.\n");
+           "    you have a restrictive memory limit configured, this is expected.");
 
   } else if (!mem_limit) {
 
-    ERROR_MSG("\n[-] "
+    ERROR_MSG(
          "Hmm, looks like the target binary terminated before we could complete a\n"
          "    handshake with the injected code. Perhaps there is a horrible bug in the\n"
-         "    fuzzer. Poke <lcamtuf@coredump.cx> for troubleshooting tips.\n");
+         "    fuzzer.");
 
   } else {
 
-    ERROR_MSG("\n[-] "
+    ERROR_MSG(
          "Hmm, looks like the target binary terminated before we could complete a\n"
          "    handshake with the injected code. There are a few probable explanations:\n\n"
 
@@ -302,7 +305,7 @@ void fork_server_init(fds_t * fds, char * target_path, char ** argv, int use_for
          "      estimate the required amount of virtual memory for the binary.\n\n"
 
          "    - Less likely, there is a horrible bug in the fuzzer. If other options\n"
-         "      fail, poke <lcamtuf@coredump.cx> for troubleshooting tips.\n",
+         "      fail.",
          mem_limit << 20, mem_limit - 1);
 
   }
