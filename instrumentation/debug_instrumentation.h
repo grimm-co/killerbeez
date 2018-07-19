@@ -22,6 +22,7 @@ int debug_enable(void * instrumentation_state, pid_t * process, char * cmd_line,
 
 int debug_is_new_path(void * instrumentation_state);
 int debug_get_fuzz_result(void * instrumentation_state);
+int debug_is_process_done(void * instrumentation_state);
 char * debug_help(void);
 
 typedef struct

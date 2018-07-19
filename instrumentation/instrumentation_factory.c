@@ -34,6 +34,7 @@ instrumentation_t * instrumentation_factory(char * instrumentation_type)
 		ret->enable = debug_enable;
 		ret->is_new_path = debug_is_new_path;
 		ret->get_fuzz_result = debug_get_fuzz_result;
+		ret->is_process_done = debug_is_process_done;
 	}
 	else if (!strcmp(instrumentation_type, "dynamorio"))
 	{
