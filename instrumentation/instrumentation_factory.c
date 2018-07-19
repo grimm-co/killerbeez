@@ -89,6 +89,8 @@ char * instrumentation_help(void)
 	#ifdef _WIN32
 	APPEND_HELP(text, new_text, debug_help);
 	APPEND_HELP(text, new_text, dynamorio_help);
+	#else
+	APPEND_HELP(text, new_text, return_code_help);
 	#endif
 	return text;
 }
