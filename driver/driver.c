@@ -31,17 +31,8 @@ int generic_wait_for_process_completion(pid_t process, int timeout, instrumentat
 
 	while(1)
 	{
-		// FUZZ_NONE, FUZZ_CRASH, FUZZ_PROCESS_DONE (returned on Windows, where
-		// we can't tell FUZZ_NONE from FUZZ_CRASH), FUZZ_STILL_RUNNING, other
-		// options...?
-		int fuzz_result = get_process_status(process);
-
-		if (fuzz_result != 1) // if the target is no longer running
-			return fuzz_result;
-
-		// if instrumentation has defined the optional is_process_done, and that reports that the process is done
-		if (instrumentation->is_process_done && instrumentation->is_process_done(instrumentation_state))
-			return fuzz_result;
+		if (instrumentation->is_process_done(instrumentation_state))
+			return instrumentation->get_fuzz_result(instrumentation_state);
 
 		// timeout
 		if (time(NULL) - start_time > timeout)

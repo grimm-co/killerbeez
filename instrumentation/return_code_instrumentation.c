@@ -200,6 +200,31 @@ int return_code_get_fuzz_result(void * instrumentation_state)
 }
 
 /**
+ * Checks if the target process is done fuzzing the inputs yet.  If it has finished, it will have
+ * written last_status, the result of the fuzz job.
+ *
+ * TODO: The API doc should probably also contain the above guarantee.
+ *
+ * @param state - The dynamorio_state_t object containing this instrumentation's state
+ * @return - 0 if the process has not done testing the fuzzed input, non-zero if the process is done.
+ */
+int return_code_is_process_done(void * instrumentation_state)
+{
+	return_code_state_t * state = (return_code_state_t *)instrumentation_state;
+
+	int fuzz_result = get_process_status(state->child_handle);
+
+	// expects 2, 1, 0, or -1
+	if (fuzz_result == 1) // it's aliiiiive
+		return 0;
+	else
+	{
+		state->last_status = fuzz_result;
+		return 1;
+	}
+}
+
+/**
 * This function returns help text for this instrumentation.  This help text will describe the instrumentation and any options
 * that can be passed to return_code_create.
 * @return - a newly allocated string containing the help text.
