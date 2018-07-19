@@ -1,4 +1,5 @@
 // Linux-only Intel PT instrumentation.
+#define _GNU_SOURCE
 
 #include <fcntl.h>
 #include <linux/perf_event.h>
@@ -13,9 +14,257 @@
 #include "instrumentation.h"
 #include "linux_ipt_instrumentation.h"
 #include "forkserver.h"
+#include "uthash.h"
 
 #include <utils.h>
 #include <jansson_helper.h>
+
+////////////////////////////////////////////////////////////////
+// IPT Packet Analyzer /////////////////////////////////////////
+////////////////////////////////////////////////////////////////
+
+//Uncomment this define to make the IPT parser print each packet
+//#define IPT_DEBUG
+
+#ifdef IPT_DEBUG
+#define IPT_DEBUG_MSG DEBUG_MSG
+#else
+#define IPT_DEBUG_MSG
+#endif
+
+struct ipt_hash_state
+{
+  uint64_t tnt_bits;
+  uint64_t num_bits_left;
+  uint64_t tnt_hash;
+  uint64_t tip_hash;
+};
+
+#define BYTES_LEFT(num) ((end - p) >= (num))
+
+static uint64_t get_ip_val(unsigned char **pp, unsigned char *end, int len, uint64_t *last_ip)
+{
+  unsigned char *p = *pp;
+  uint64_t v = *last_ip;
+  int i;
+  unsigned shift = 0;
+
+  if (len == 0) {
+    *last_ip = 0;
+    return 0; /* out of context */
+  }
+  if (len < 4) {
+    if (!BYTES_LEFT(len)) {
+      *last_ip = 0;
+      WARNING_MSG("Got error in get_ip_val: Not enough bytes for decoding IP (have %lu, need %lu)", end-p, len);
+      return 0; /* XXX error */
+    }
+    for (i = 0; i < len; i++, shift += 16, p += 2) {
+      uint64_t b = *(uint16_t *)p;
+      v = (v & ~(0xffffULL << shift)) | (b << shift);
+    }
+    v = ((int64_t)(v << (64 - 48))) >> (64 - 48); /* sign extension */
+  } else {
+    WARNING_MSG("Got error in get_ip_val!");
+    return 0; /* XXX error */
+  }
+  *pp = p;
+  *last_ip = v;
+  return v;
+}
+
+static void add_tnt_to_hash(struct ipt_hash_state * hash_state, uint64_t tnt_bits, int num_bits)
+{
+
+}
+
+static void add_tip_to_hash(struct ipt_hash_state * hash_state, uint64_t tip)
+{
+
+}
+
+static int analyze_ipt(linux_ipt_state_t * state)
+{
+  unsigned char * p, * start, * end, * psb_pos;
+  struct ipt_hashtable_entry * hashes, * match = NULL;
+  struct ipt_hash_state hash_state;
+  uint64_t ip_address, last_ip = 0;
+
+  const unsigned char psb[16] = {
+    0x02, 0x82, 0x02, 0x82, 0x02, 0x82, 0x02, 0x82,
+    0x02, 0x82, 0x02, 0x82, 0x02, 0x82, 0x02, 0x82
+  };
+
+  hashes = malloc(sizeof(struct ipt_hashtable_entry));
+  if(!hashes)
+    return -1;
+  memset(&hash_state, 0, sizeof(hash_state));
+
+  start = (char *)state->perf_aux_buf + state->pem->aux_tail;
+  p = (char *)state->perf_aux_buf + state->pem->aux_tail;
+  end = (char *)state->perf_aux_buf + state->pem->aux_head;
+
+  write_buffer_to_file("/tmp/ipt_dump", start, end-start);
+
+  while(p < end) {
+
+    psb_pos = memmem(p, end - p, psb, sizeof(psb));
+    if(!psb_pos) {
+      DEBUG_MSG("Couldn't find PSB packet");
+      break;
+    }
+    IPT_DEBUG_MSG("Skipping %d bytes", psb_pos - p);
+    p = psb_pos + sizeof(psb);
+
+    while(p < end)
+    {
+      IPT_DEBUG_MSG("%04x: %02x %02x %02x %02x %02x %02x %02x %02x", p - start,
+        (unsigned char)p[0], (unsigned char)p[1], (unsigned char)p[2], (unsigned char)p[3],
+        (unsigned char)p[4], (unsigned char)p[5], (unsigned char)p[6], (unsigned char)p[7]);
+
+      if (p[0] == 2 && BYTES_LEFT(2)) {
+        if (p[1] == 0xa3 && BYTES_LEFT(8)) { // Long TNT
+          //TODO process long TNT
+          IPT_DEBUG_MSG("Long TNT");
+          p += 8;
+          continue;
+        }
+        if (p[1] == 0x43 && BYTES_LEFT(8)) { // PIP
+          IPT_DEBUG_MSG("PIP");
+          p += 8;
+          continue;
+        }
+        if (p[1] == 3 && BYTES_LEFT(4)) { // CBR
+          IPT_DEBUG_MSG("CBR");
+          p += 4;
+          continue;
+        }
+        if (p[1] == 0x83) { //TRACESTOP
+          IPT_DEBUG_MSG("TRACESTOP");
+          p += 2;
+          continue;
+        }
+        if (p[1] == 0xf3 && BYTES_LEFT(8)) { // OVF
+          p += 8;
+          WARNING_MSG("IPT received overflow packet");
+          continue;
+        }
+        if (p[1] == 0x82 && BYTES_LEFT(16) && !memcmp(p, psb, 16)) { // PSB
+          p += 16;
+          IPT_DEBUG_MSG("PSB");
+          continue;
+        }
+        if (p[1] == 0x23) { // PSBEND
+          p += 2;
+          IPT_DEBUG_MSG("PSBEND");
+          continue;
+        }
+        if (p[1] == 0xc3 && BYTES_LEFT(11) && p[2] == 0x88) { //MNT
+          p += 10;
+          IPT_DEBUG_MSG("MNT");
+          continue;
+        }
+        if (p[1] == 0x73 && BYTES_LEFT(7)) { //TMA
+          p += 7;
+          IPT_DEBUG_MSG("TMA");
+          continue;
+        }
+        if (p[1] == 0xc8 && BYTES_LEFT(7)) { //VMCS
+          p += 7;
+          IPT_DEBUG_MSG("VMCS");
+          continue;
+        }
+      }
+
+      if(!(p[0] & 1)) {
+        if (p[0] == 0) { // PAD
+          p++;
+          IPT_DEBUG_MSG("PAD");
+          continue;
+        }
+
+        // Short TNT
+        //TODO process TNT8
+        IPT_DEBUG_MSG("SHORT TNT");
+        p++;
+        continue;
+      }
+
+#define TIP_TYPE_TIP     0xd
+#define TIP_TYPE_TIP_PGE 0x11
+#define TIP_TYPE_TIP_PGD 0x1
+#define TIP_TYPE_FUP     0x1d
+
+      char tip_type = p[0] & 0x1f;
+      if(tip_type == TIP_TYPE_TIP || tip_type == TIP_TYPE_TIP_PGE
+          || tip_type == TIP_TYPE_TIP_PGD || tip_type == TIP_TYPE_FUP) {
+
+        int ipl = *p >> 5;
+        ip_address = get_ip_val(&p, end, ipl, &last_ip);
+        if(tip_type != TIP_TYPE_TIP || (tip_type == TIP_TYPE_TIP && ip_address)) {
+          IPT_DEBUG_MSG("TIP/PGE/PGD/FUP");
+          if(tip_type == TIP_TYPE_TIP) {
+            //TODO process TIP
+            printf("Got address %lx\n", ip_address);
+          }
+
+          p++;
+          continue;
+        }
+      }
+
+      if (p[0] == 0x99 && BYTES_LEFT(2)) { // MODE
+        if ((p[1] >> 5) == 1) {
+          IPT_DEBUG_MSG("MODE 1");
+          p += 2;
+          continue;
+        } else if ((p[1] >> 5) == 0) {
+          IPT_DEBUG_MSG("MODE 2");
+          p += 2;
+          continue;
+        }
+      }
+
+      if (p[0] == 0x19 && BYTES_LEFT(8)) { // TSC
+        p+=8;
+        IPT_DEBUG_MSG("TSC");
+        continue;
+      }
+      if (p[0] == 0x59 && BYTES_LEFT(2)) { // MTC
+        p += 2;
+        IPT_DEBUG_MSG("MTC");
+        continue;
+      }
+      if ((p[0] & 3) == 3) { // CYC
+        IPT_DEBUG_MSG("CYC");
+        if ((p[0] & 4) && BYTES_LEFT(1)) {
+          do {
+            p++;
+          } while ((p[0] & 1) && BYTES_LEFT(1));
+        }
+        p++;
+        continue;
+      }
+
+      WARNING_MSG("Hit unknown packet type at offset 0x%lx", p - start);
+      break;
+    }
+  }
+
+
+  //Create a hashtable entry to lookup/add
+  memset(hashes, 0, sizeof(struct ipt_hashtable_entry));
+  hashes->id.tip = hash_state.tip_hash;
+  hashes->id.tnt = hash_state.tnt_hash;
+
+  //Look for our hashes in the hashtable, and add them if they're not already in it
+  HASH_FIND(hh, state->head, &hashes->id, sizeof(struct ipt_hashtable_key), match);
+  if(!match)
+    HASH_ADD(hh, state->head, id, sizeof(struct ipt_hashtable_key), hashes);
+  else
+    free(hashes);
+  return match == NULL;
+}
 
 ////////////////////////////////////////////////////////////////
 // Private methods /////////////////////////////////////////////
@@ -23,15 +272,15 @@
 
 static void cleanup_ipt(linux_ipt_state_t * state)
 {
-  if(state->perf_mmap_aux_buf && state->perf_mmap_aux_buf != MAP_FAILED)
-    munmap(state->perf_mmap_aux_buf, state->pem->aux_size);
-  state->perf_mmap_aux_buf = NULL;
+  if(state->perf_aux_buf && state->perf_aux_buf != MAP_FAILED)
+    munmap(state->perf_aux_buf, state->pem->aux_size);
+  state->perf_aux_buf = NULL;
   if(state->pem && state->pem != MAP_FAILED)
     munmap(state->pem, PERF_MMAP_SIZE + getpagesize());
   state->pem = NULL;
   if(state->perf_fd >= 0)
     close(state->perf_fd);
-  state->perf_fd = 0;
+  state->perf_fd = -1;
 }
 
 /**
@@ -44,7 +293,6 @@ static void destroy_target_process(linux_ipt_state_t * state)
     kill(state->child_pid, SIGKILL);
     state->child_pid = 0;
     state->last_status = fork_server_get_status(&state->fs, 1);
-    cleanup_ipt(state);
   }
 }
 
@@ -73,6 +321,7 @@ static int create_target_process(linux_ipt_state_t * state, char* cmd_line, char
     free(target_path);
   }
 
+  cleanup_ipt(state);
   pid = fork_server_fork(&state->fs);
   if(pid < 0)
     return -1;
@@ -177,8 +426,8 @@ static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
 
   state->pem->aux_offset = state->pem->data_offset + state->pem->data_size;
   state->pem->aux_size = PERF_MMAP_SIZE;
-  state->perf_mmap_aux_buf = mmap(NULL, state->pem->aux_size, PROT_READ, MAP_SHARED, state->perf_fd, state->pem->aux_offset);
-  if(state->perf_mmap_aux_buf == MAP_FAILED) {
+  state->perf_aux_buf = mmap(NULL, state->pem->aux_size, PROT_READ, MAP_SHARED, state->perf_fd, state->pem->aux_offset);
+  if(state->perf_aux_buf == MAP_FAILED) {
     ERROR_MSG("Perf mmap failed\n");
     return 1;
   }
@@ -228,6 +477,7 @@ void linux_ipt_cleanup(void * instrumentation_state)
   linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
 
   destroy_target_process(state);
+  fork_server_exit(&state->fs);
 
   free(state);
 }
@@ -321,15 +571,16 @@ int linux_ipt_enable(void * instrumentation_state, pid_t * process, char * cmd_l
   return 0;
 }
 
-/**
- * This function determines whether the process being instrumented has taken a new path.  The linux_ipt instrumentation does
- * not track the fuzzed process's path, so it is unable to determine if the process took a new path.
- * @param instrumentation_state - an instrumentation specific state object previously created by the linux_ipt_create function
- * @return - 0 when a new path wasn't detected (as it always won't be with the linux_ipt instrumentation), or -1 on failure.
- */
 int linux_ipt_is_new_path(void * instrumentation_state)
 {
-  return 0; //TODO
+  linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
+
+  //If we haven't cleaned up the IPT state, then it must not have been
+  if(state->perf_fd >= 0) { //analyzed.  Analyze it now and cleanup the IPT state
+    state->last_is_new_path = analyze_ipt(state);
+    cleanup_ipt(state);
+  }
+  return state->last_is_new_path;
 }
 
 /**

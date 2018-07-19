@@ -1,6 +1,7 @@
 #pragma once
 
 #include "forkserver.h"
+#include "uthash.h"
 
 void * linux_ipt_create(char * options, char * state);
 void linux_ipt_cleanup(void * instrumentation_state);
@@ -16,6 +17,16 @@ char * linux_ipt_help(void);
 
 #define PERF_MMAP_SIZE 1024*1024
 
+struct ipt_hashtable_key {
+  uint64_t tip;
+  uint64_t tnt;
+};
+
+struct ipt_hashtable_entry {
+    struct ipt_hashtable_key id;
+    UT_hash_handle hh;
+};
+
 struct linux_ipt_state
 {
   int num_address_ranges;
@@ -24,7 +35,9 @@ struct linux_ipt_state
 
   int perf_fd;
   struct perf_event_mmap_page * pem;
-  void * perf_mmap_aux_buf;
+  void * perf_aux_buf;
+
+  struct ipt_hashtable_entry * head;
 
   pid_t child_pid;
   forkserver_t fs;
@@ -32,5 +45,6 @@ struct linux_ipt_state
   int process_finished;
   int last_fuzz_result;
   int fuzz_results_set;
+  int last_is_new_path;
 };
 typedef struct linux_ipt_state linux_ipt_state_t;
