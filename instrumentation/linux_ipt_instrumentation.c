@@ -479,7 +479,8 @@ static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
 
   state->perf_fd = perf_event_open(&pe, pid, -1, -1, PERF_FLAG_FD_CLOEXEC);
   if(state->perf_fd < 0) {
-    ERROR_MSG("perf_event_open failed!");
+    ERROR_MSG("Could not open the perf event file system (perf_event_open failed with errno %d (%s))", errno, strerror(errno));
+    ERROR_MSG("Try adjusting the perf system permissions with: echo 1 | sudo tee /proc/sys/kernel/perf_event_paranoid");
     return 1;
   }
 
