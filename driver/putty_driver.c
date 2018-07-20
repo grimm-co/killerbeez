@@ -78,7 +78,8 @@ void * putty_create(char * options, instrumentation_t * instrumentation, void * 
 	size_t i;
 
 	//This driver requires at least the path to the program to run. Make sure we either have both a mutator and state
-	if (!options || !strlen(options) || (mutator && !mutator_state) || (!mutator && mutator_state)) { //or neither
+	if (!options || !strlen(options) || (mutator && !mutator_state) || (!mutator && mutator_state))
+	{ //or neither
 		puts("ERROR: Missing driver options");
 		return NULL;
 	}
@@ -103,7 +104,8 @@ void * putty_create(char * options, instrumentation_t * instrumentation, void * 
 		//Setup the mutate buffers
 		//allocate space for the array of mutate buffers
 		state->mutate_buffers = malloc(sizeof(char *) * state->num_inputs);
-		if (!state->mutate_buffers) {
+		if (!state->mutate_buffers)
+		{
 			putty_cleanup(state);
 			return NULL;
 		}
@@ -111,7 +113,8 @@ void * putty_create(char * options, instrumentation_t * instrumentation, void * 
 
 		//Allocate space for the array containing the sizes the mutate buffers
 		state->mutate_last_sizes = malloc(sizeof(size_t) * state->num_inputs);
-		if (!state->mutate_last_sizes) {
+		if (!state->mutate_last_sizes)
+		{
 			putty_cleanup(state);
 			return NULL;
 		}
@@ -223,7 +226,8 @@ static int start_listener(putty_state_t * state, SOCKET * sock)
 	struct sockaddr_in addr;
 	int iResult = 0;
 	*sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (*sock == INVALID_SOCKET) {
+	if (*sock == INVALID_SOCKET)
+	{
 		printf("socket function failed with error: %ld\n", WSAGetLastError());
 		return 1;
 	}
@@ -233,7 +237,8 @@ static int start_listener(putty_state_t * state, SOCKET * sock)
 	addr.sin_port = htons(state->lport);
 	//Now bind to the socket
 	iResult = bind(*sock, (SOCKADDR *)& addr, sizeof(addr));
-	if (iResult == SOCKET_ERROR) {
+	if (iResult == SOCKET_ERROR)
+	{
 		printf("Socket failed to bind, error: %d\n", WSAGetLastError());
 		iResult = closesocket(*sock);
 		if (iResult == SOCKET_ERROR)
@@ -241,7 +246,8 @@ static int start_listener(putty_state_t * state, SOCKET * sock)
 		return 1;
 	}
 	//Now put the socket into LISTEN state
-	if (listen(*sock, SOMAXCONN) == SOCKET_ERROR) {
+	if (listen(*sock, SOMAXCONN) == SOCKET_ERROR)
+	{
 		printf("listen function failed with error: %d\n", WSAGetLastError());
 		return 1;
 	}
@@ -266,7 +272,8 @@ static int putty_run(putty_state_t * state, char ** inputs, size_t * lengths, si
 	int listening = 0, ret = 0;
 
 	//Start the server socket so the client can connect below:
-	if (start_listener(state, &serverSock)) {
+	if (start_listener(state, &serverSock))
+	{
 		return -1;
 	}
 	//Start the process and give it our input
@@ -289,7 +296,8 @@ static int putty_run(putty_state_t * state, char ** inputs, size_t * lengths, si
 	}
 	//Now accept the client connection
 	clientSock = accept(serverSock, NULL, NULL);
-	if (clientSock == INVALID_SOCKET) {
+	if (clientSock == INVALID_SOCKET)
+	{
 		printf("accept failed with error: %d\n", WSAGetLastError());
 		return 1;
 	}
