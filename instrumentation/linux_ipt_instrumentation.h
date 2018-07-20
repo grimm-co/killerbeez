@@ -2,6 +2,7 @@
 
 #include "forkserver.h"
 #include "uthash.h"
+#include "xxhash.h"
 
 void * linux_ipt_create(char * options, char * state);
 void linux_ipt_cleanup(void * instrumentation_state);
@@ -27,6 +28,14 @@ struct ipt_hashtable_entry {
     UT_hash_handle hh;
 };
 
+struct ipt_hash_state
+{
+  uint64_t tnt_bits;
+  uint64_t num_bits_left;
+  XXH64_state_t * tnt;
+  XXH64_state_t * tip;
+};
+
 struct linux_ipt_state
 {
   int num_address_ranges;
@@ -37,7 +46,11 @@ struct linux_ipt_state
   struct perf_event_mmap_page * pem;
   void * perf_aux_buf;
 
+  struct ipt_hash_state ipt_hashes;
   struct ipt_hashtable_entry * head;
+
+  char * target_path;
+  size_t target_path_filter_size;
 
   pid_t child_pid;
   forkserver_t fs;

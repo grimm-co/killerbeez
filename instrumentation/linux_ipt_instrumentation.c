@@ -1,10 +1,12 @@
 // Linux-only Intel PT instrumentation.
 #define _GNU_SOURCE
 
+#include <errno.h>
 #include <fcntl.h>
 #include <linux/perf_event.h>
 #include <signal.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
@@ -15,6 +17,7 @@
 #include "linux_ipt_instrumentation.h"
 #include "forkserver.h"
 #include "uthash.h"
+#include "xxhash.h"
 
 #include <utils.h>
 #include <jansson_helper.h>
@@ -24,7 +27,7 @@
 ////////////////////////////////////////////////////////////////
 
 //Uncomment this define to make the IPT parser print each packet
-//#define IPT_DEBUG
+#define IPT_DEBUG
 
 #ifdef IPT_DEBUG
 #define IPT_DEBUG_MSG DEBUG_MSG
@@ -32,15 +35,8 @@
 #define IPT_DEBUG_MSG
 #endif
 
-struct ipt_hash_state
-{
-  uint64_t tnt_bits;
-  uint64_t num_bits_left;
-  uint64_t tnt_hash;
-  uint64_t tip_hash;
-};
-
-#define BYTES_LEFT(num) ((end - p) >= (num))
+#define BYTES_LEFT(num)    ((end - p) >= (num))
+#define BIT_TEST(num, bit) ((num) & (1 << (bit)))
 
 static uint64_t get_ip_val(unsigned char **pp, unsigned char *end, int len, uint64_t *last_ip)
 {
@@ -73,38 +69,69 @@ static uint64_t get_ip_val(unsigned char **pp, unsigned char *end, int len, uint
   return v;
 }
 
-static void add_tnt_to_hash(struct ipt_hash_state * hash_state, uint64_t tnt_bits, int num_bits)
+static void finish_tnt_hash(struct ipt_hash_state * ipt_hashes)
 {
 
 }
 
-static void add_tip_to_hash(struct ipt_hash_state * hash_state, uint64_t tip)
+static void add_tnt_to_hash(struct ipt_hash_state * ipt_hashes, unsigned char * tnt_bits, int num_bits)
 {
+#ifdef IPT_DEBUG
+  char bit_string[64];
+  int i;
 
+  for(i = 0; i < num_bits; i++)
+    bit_string[i] = BIT_TEST(tnt_bits[i / 8], i % 8) ? 'T' : 'N';
+  bit_string[num_bits] = 0;
+
+  IPT_DEBUG_MSG("TNT bits %d: %s", num_bits, bit_string);
+#endif
+
+}
+
+static void add_tip_to_hash(struct ipt_hash_state * ipt_hashes, uint64_t tip)
+{
+  IPT_DEBUG_MSG("TIP %lx", tip);
+  if(XXH64_update(ipt_hashes->tip, &tip, sizeof(uint64_t)) == XXH_ERROR)
+    WARNING_MSG("Updating the TIP hash failed!"); //Should never happen
+}
+
+static int get_tnt_num_bits(unsigned char * packet, int max_bits)
+{
+  int num_bits;
+  for(num_bits = max_bits; num_bits >= 0; num_bits--) { //Find the stop bit
+    if(BIT_TEST(packet[num_bits / 8], num_bits % 8))
+      break;
+  }
+  return num_bits;
 }
 
 static int analyze_ipt(linux_ipt_state_t * state)
 {
   unsigned char * p, * start, * end, * psb_pos;
   struct ipt_hashtable_entry * hashes, * match = NULL;
-  struct ipt_hash_state hash_state;
   uint64_t ip_address, last_ip = 0;
 
-  const unsigned char psb[16] = {
+  const unsigned char psb[0x10] = {
     0x02, 0x82, 0x02, 0x82, 0x02, 0x82, 0x02, 0x82,
     0x02, 0x82, 0x02, 0x82, 0x02, 0x82, 0x02, 0x82
   };
 
+  if(XXH64_reset(state->ipt_hashes.tnt, 0) == XXH_ERROR ||
+    XXH64_reset(state->ipt_hashes.tip, 0) == XXH_ERROR)
+    return -1;
+
   hashes = malloc(sizeof(struct ipt_hashtable_entry));
   if(!hashes)
     return -1;
-  memset(&hash_state, 0, sizeof(hash_state));
 
   start = (char *)state->perf_aux_buf + state->pem->aux_tail;
   p = (char *)state->perf_aux_buf + state->pem->aux_tail;
   end = (char *)state->perf_aux_buf + state->pem->aux_head;
 
+#ifdef IPT_DEBUG
   write_buffer_to_file("/tmp/ipt_dump", start, end-start);
+#endif
 
   while(p < end) {
 
@@ -124,8 +151,8 @@ static int analyze_ipt(linux_ipt_state_t * state)
 
       if (p[0] == 2 && BYTES_LEFT(2)) {
         if (p[1] == 0xa3 && BYTES_LEFT(8)) { // Long TNT
-          //TODO process long TNT
           IPT_DEBUG_MSG("Long TNT");
+          add_tnt_to_hash(&state->ipt_hashes, p+2, get_tnt_num_bits(p+2, 47));
           p += 8;
           continue;
         }
@@ -184,7 +211,8 @@ static int analyze_ipt(linux_ipt_state_t * state)
         }
 
         // Short TNT
-        //TODO process TNT8
+        char tnt_bits = p[0] >> 1;
+        add_tnt_to_hash(&state->ipt_hashes, &tnt_bits, get_tnt_num_bits(&tnt_bits, 6));
         IPT_DEBUG_MSG("SHORT TNT");
         p++;
         continue;
@@ -204,8 +232,7 @@ static int analyze_ipt(linux_ipt_state_t * state)
         if(tip_type != TIP_TYPE_TIP || (tip_type == TIP_TYPE_TIP && ip_address)) {
           IPT_DEBUG_MSG("TIP/PGE/PGD/FUP");
           if(tip_type == TIP_TYPE_TIP) {
-            //TODO process TIP
-            printf("Got address %lx\n", ip_address);
+            add_tip_to_hash(&state->ipt_hashes, ip_address);
           }
 
           p++;
@@ -251,11 +278,12 @@ static int analyze_ipt(linux_ipt_state_t * state)
     }
   }
 
-
   //Create a hashtable entry to lookup/add
+  finish_tnt_hash(&state->ipt_hashes);
   memset(hashes, 0, sizeof(struct ipt_hashtable_entry));
-  hashes->id.tip = hash_state.tip_hash;
-  hashes->id.tnt = hash_state.tnt_hash;
+  hashes->id.tip = XXH64_digest(state->ipt_hashes.tip);
+  hashes->id.tnt = XXH64_digest(state->ipt_hashes.tnt);
+  DEBUG_MSG("Got TIP hash 0x%llx and TNT hash 0x%llx", hashes->id.tip, hashes->id.tnt);
 
   //Look for our hashes in the hashtable, and add them if they're not already in it
   HASH_FIND(hh, state->head, &hashes->id, sizeof(struct ipt_hashtable_key), match);
@@ -306,19 +334,17 @@ static void destroy_target_process(linux_ipt_state_t * state)
  */
 static int create_target_process(linux_ipt_state_t * state, char* cmd_line, char * stdin_input, size_t stdin_length)
 {
-  char * target_path;
   char ** argv;
   int i, pid;
 
   if(!state->fork_server_setup) {
-    if(split_command_line(cmd_line, &target_path, &argv))
+    if(split_command_line(cmd_line, &state->target_path, &argv))
       return -1;
-    fork_server_init(&state->fs, target_path, argv, 1, stdin_length != 0);
+    fork_server_init(&state->fs, state->target_path, argv, 1, stdin_length != 0);
     state->fork_server_setup = 1;
     for(i = 0; argv[i]; i++)
       free(argv[i]);
     free(argv);
-    free(target_path);
   }
 
   cleanup_ipt(state);
@@ -398,10 +424,13 @@ static long perf_event_open(struct perf_event_attr* hw_event, pid_t pid, int cpu
   return syscall(__NR_perf_event_open, hw_event, (uintptr_t)pid, (uintptr_t)cpu, (uintptr_t)group_fd, (uintptr_t)flags);
 }
 
-
 static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
 {
   struct perf_event_attr pe;
+  char filter[256];
+  struct stat statbuf;
+  size_t size;
+
   memset(&pe, 0, sizeof(struct perf_event_attr));
   pe.size = sizeof(struct perf_event_attr);
   pe.disabled = 0;
@@ -415,6 +444,25 @@ static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
   state->perf_fd = perf_event_open(&pe, pid, -1, -1, PERF_FLAG_FD_CLOEXEC);
   if(state->perf_fd < 0) {
     ERROR_MSG("perf_event_open failed!");
+    return 1;
+  }
+
+  if(!state->target_path_filter_size) {
+    if(stat(state->target_path, &statbuf)) {
+      ERROR_MSG("Couldn't get size of target executable (%s)", state->target_path);
+      return 1;
+    }
+    state->target_path_filter_size = statbuf.st_size;
+    if(state->target_path_filter_size != size % 0x1000)
+      state->target_path_filter_size = (((size + 0x1000) / 0x1000) * 0x1000);
+  }
+
+  //See https://elixir.bootlin.com/linux/v4.17.8/source/kernel/events/core.c#L8806 for the filter format
+  //start is autodetected by the kernel
+  snprintf(filter, sizeof(filter), "filter 0/%ld@%s", state->target_path_filter_size, state->target_path);
+  IPT_DEBUG_MSG("Using filter: %s", filter);
+  if(ioctl(state->perf_fd, PERF_EVENT_IOC_SET_FILTER, filter)) {
+    ERROR_MSG("perf filter failed! (errno %d: %s)", errno, strerror(errno));
     return 1;
   }
 
@@ -454,6 +502,13 @@ void * linux_ipt_create(char * options, char * state)
   memset(linux_ipt_state, 0, sizeof(linux_ipt_state_t));
 
   if(get_ipt_system_info(linux_ipt_state)) {
+    linux_ipt_cleanup(linux_ipt_state);
+    return NULL;
+  }
+
+  linux_ipt_state->ipt_hashes.tip = XXH64_createState();
+  linux_ipt_state->ipt_hashes.tnt = XXH64_createState();
+  if(!linux_ipt_state->ipt_hashes.tip || !linux_ipt_state->ipt_hashes.tnt) {
     linux_ipt_cleanup(linux_ipt_state);
     return NULL;
   }
