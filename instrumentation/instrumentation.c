@@ -342,12 +342,22 @@ int fork_server_exit(forkserver_t * fs)
   return ret;
 }
 
-int fork_server_fork(forkserver_t * fs)
+static int send_fork(forkserver_t * fs, char command)
 {
-  if(send_command(fs, FORK))
+  if(send_command(fs, command))
     return FORKSERVER_ERROR;
   fs->sent_get_status = 0;
   return read_response(fs); //Wait for the target pid
+}
+
+int fork_server_fork(forkserver_t * fs)
+{
+  return send_fork(fs, FORK);
+}
+
+int fork_server_fork_run(forkserver_t * fs)
+{
+  return send_fork(fs, FORK_RUN);
 }
 
 int fork_server_run(forkserver_t * fs)

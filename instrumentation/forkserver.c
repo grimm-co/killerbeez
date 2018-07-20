@@ -166,6 +166,7 @@ static void forkserver_init(void)
 				break;
 
 			case FORK:
+			case FORK_RUN:
 
 				child_pid = fork();
 				if (child_pid < 0)
@@ -177,8 +178,8 @@ static void forkserver_init(void)
 					close(FORKSRV_TO_FUZZER);
 					close(target_pipe[1]);
 
-					//Wait for the forkserver to tell us to go
-					if (read(target_pipe[0], &response, sizeof(int)) != sizeof(int))
+					//If we're just forking, wait for the forkserver to tell us to go
+					if (command == FORK && read(target_pipe[0], &response, sizeof(int)) != sizeof(int))
 						_exit(1);
 
 					close(target_pipe[0]);
