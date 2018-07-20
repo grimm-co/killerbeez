@@ -34,10 +34,8 @@ struct driver
 typedef struct driver driver_t;
 
 #ifdef _WIN32
-FUNC_PREFIX int generic_done_processing_input(HANDLE process, time_t start_time, int timeout);
 FUNC_PREFIX int generic_wait_for_process_completion(HANDLE process, int timeout, instrumentation_t * instrumentation, void * instrumentation_state);
 #else
-FUNC_PREFIX int generic_done_processing_input(pid_t process, time_t start_time, int timeout);
 FUNC_PREFIX int generic_wait_for_process_completion(pid_t process, int timeout, instrumentation_t * instrumentation, void * instrumentation_state);
 #endif
 FUNC_PREFIX int generic_test_next_input(void * state, mutator_t * mutator, void * mutator_state, char * buffer, size_t buffer_length,

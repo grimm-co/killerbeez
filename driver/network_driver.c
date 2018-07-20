@@ -128,23 +128,6 @@ void * network_create(char * options, instrumentation_t * instrumentation, void 
 }
 
 /**
- * This function cleans up the fuzzed process, if it's not being managed
- * by the instrumentation module instead.
- * @param state - the network_state_t object that represents the current state of the driver
- */
-static void cleanup_process(network_state_t * state)
-{
-	//If we have a process running and no instrumentation, kill it.
-	//If we have an instrumentation, then the instrumentation will kill the process
-	if (state->process && !state->instrumentation)
-	{
-		TerminateProcess(state->process, 9);
-		CloseHandle(state->process);
-		state->process = NULL;
-	}
-}
-
-/**
  * This function cleans up all resources with the passed in driver state.
  * @param driver_state - a driver specific state object previously created by the network_create function
  * This state object should not be referenced after this function returns.
@@ -154,7 +137,6 @@ void network_cleanup(void * driver_state)
 	network_state_t * state = (network_state_t *)driver_state;
 	int i;
 
-	cleanup_process(state);
 	for(i = 0; state->mutate_buffers && i < state->num_inputs; i++)
 		free(state->mutate_buffers[i]);
 	free(state->mutate_buffers);
@@ -304,7 +286,7 @@ static int is_port_listening(int port, int udp)
  * @param inputs - an array of inputs to send to the program
  * @param lengths - an array of lengths for the buffers in the inputs parameter
  * @param inputs_count - the number of buffers in the inputs parameter
- * @return - 0 on success or -1 on failure
+ * @return - FUZZ_ result on success or FUZZ_ERROR on failure
  */
 static int network_run(network_state_t * state, char ** inputs, size_t * lengths, size_t inputs_count)
 {
@@ -313,23 +295,7 @@ static int network_run(network_state_t * state, char ** inputs, size_t * lengths
 	int listening = 0;
 
 	//Start the process and give it our input
-	if (state->instrumentation)
-	{
-		//Have the instrumentation start the new process, since it needs to do so in a custom environment
-		state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0);
-	}
-	else
-	{
-		//kill any previous processes so they release the file we're gonna write to
-		cleanup_process(state);
-
-		//Start the new process
-		if (start_process_and_write_to_stdin(state->cmd_line, NULL, 0, &state->process))
-		{
-			cleanup_process(state);
-			return -1;
-		}
-	}
+	state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0);
 
 	//Wait for the port to be listening
 	while (!state->skip_network_check && listening == 0) {
@@ -338,10 +304,10 @@ static int network_run(network_state_t * state, char ** inputs, size_t * lengths
 			Sleep(5);
 	}
 	if(listening < 0)
-		return -1;
+		return FUZZ_ERROR;
 
 	if (connect_to_target(state, &sock)) // opens socket
-		return -1;
+		return FUZZ_ERROR;
 	for (i = 0; i < inputs_count; i++)
 	{
 		if (state->sleeps && state->sleeps[i] != 0)
@@ -350,12 +316,12 @@ static int network_run(network_state_t * state, char ** inputs, size_t * lengths
 			|| (!state->target_udp && send_tcp_input(&sock, inputs[i], lengths[i])))
 		{
 			closesocket(sock);
-			return -1;
+			return FUZZ_ERROR;
 		}
 	}
 	closesocket(sock);
 
-	//Wait for it to be done
+	//Wait for it to be done and return FUZZ_ result
 	return generic_wait_for_process_completion(state->process, state->timeout,
 		state->instrumentation, state->instrumentation_state);
 }
@@ -374,7 +340,7 @@ static void network_test_input_cleanup(char ** inputs, size_t inputs_count, size
  * @param driver_state - a driver specific structure previously created by the network_create function
  * @param input - the input that should be tested
  * @param length - the length of the input parameter
- * @return - FUZZ_CRASH, FUZZ_HANG, or FUZZ_NONE on success or -1 on failure
+ * @return - FUZZ_ result on success or FUZZ_ERROR on failure
  */
 int network_test_input(void * driver_state, char * input, size_t length)
 {
@@ -382,20 +348,22 @@ int network_test_input(void * driver_state, char * input, size_t length)
 	char ** inputs;
 	size_t * input_lengths;
 	size_t inputs_count;
+	int network_run_result = FUZZ_ERROR;
 
 	if (decode_mem_array(input, &inputs, &input_lengths, &inputs_count))
-		return -1;
+		return FUZZ_ERROR;
 	if (inputs_count)
 	{
-		if (network_run(state, inputs, input_lengths, inputs_count) == -1)
+		network_run_result = network_run(state, inputs, input_lengths, inputs_count);
+		if (network_run_result == FUZZ_ERROR)
 		{
 			network_test_input_cleanup(inputs, inputs_count, input_lengths);
-			return -1;
+			return FUZZ_ERROR;
 		}
 	}
 	network_test_input_cleanup(inputs, inputs_count, input_lengths);
 
-	return driver_get_fuzz_result(&state->fuzz_result, state->instrumentation, state->instrumentation_state);
+	return network_run_result;
 }
 
 
@@ -403,15 +371,16 @@ int network_test_input(void * driver_state, char * input, size_t length)
  * This function will run the fuzzed program with the output of the mutator given during driver
  * creation.  This function blocks until the program has finished processing the input.
  * @param driver_state - a driver specific structure previously created by the network_create function
- * @return - FUZZ_CRASH, FUZZ_HANG, or FUZZ_NONE on success, -1 on error, -2 if the mutator has finished generating inputs
+ * @return - FUZZ_ result on success, FUZZ_ERROR on error, -2 if the mutator has finished generating inputs
  */
 int network_test_next_input(void * driver_state)
 {
 	network_state_t * state = (network_state_t *)driver_state;
 	int i;
+	int network_run_result = FUZZ_ERROR;
 
 	if (!state->mutator)
-		return -1;
+		return FUZZ_ERROR;
 	
 	memset(state->mutate_last_sizes, 0, sizeof(int) * state->num_inputs);
 	for (i = 0; i < state->num_inputs; i++)
@@ -419,15 +388,14 @@ int network_test_next_input(void * driver_state)
 		state->mutate_last_sizes[i] = state->mutator->mutate_extended(state->mutator_state,
 			state->mutate_buffers[i], state->mutate_buffer_lengths[i], MUTATE_MULTIPLE_INPUTS | i);
 		if (state->mutate_last_sizes[i] < 0)
-			return -1;
+			return FUZZ_ERROR;
 		else if (state->mutate_last_sizes[i] == 0)
 			return -2;
 	}
 
-	if(network_run(state, state->mutate_buffers, state->mutate_last_sizes, state->num_inputs) == -1)
-		return -1;
+	network_run_result = network_run(state, state->mutate_buffers, state->mutate_last_sizes, state->num_inputs);
 
-	return driver_get_fuzz_result(&state->fuzz_result, state->instrumentation, state->instrumentation_state);
+	return network_run_result;
 }
 
 /**

@@ -15,15 +15,16 @@
 ////////////////////////////////////////////////////////////////
 
 /**
- * This function terminates the fuzzed process.
- * @param state - The return_code_state_t object containing this instrumentation's state
+ * This function terminates the fuzzed process and sets the result in the
+ * instrumentation state.
+ *
+ * @param state - The return_code_state_t object containing this
+ * instrumentation's state
  */
 static void destroy_target_process(return_code_state_t * state)
 {
 	if (state->child_handle) {
-		// TODO: We're changing is_process alive and its interface, so let's come back to this code when that's done.
 		state->last_status = get_process_status(state->child_handle);
-
 		kill(state->child_handle, SIGKILL);
 		state->child_handle = 0;
 	}
@@ -39,7 +40,8 @@ static void destroy_target_process(return_code_state_t * state)
  */
 static int create_target_process(return_code_state_t * state, char* cmd_line, char * stdin_input, size_t stdin_length)
 {
-	state->last_status = -1; // set to an error value. TODO: should probably be FUZZ_ERROR
+	state->last_status = FUZZ_RUNNING;
+	state->process_reaped = 0;
 
 	//Create the child process
 	if (start_process_and_write_to_stdin(cmd_line, stdin_input, stdin_length, &state->child_handle)) {
@@ -203,24 +205,36 @@ int return_code_get_fuzz_result(void * instrumentation_state)
  * Checks if the target process is done fuzzing the inputs yet.  If it has finished, it will have
  * written last_status, the result of the fuzz job.
  *
- * TODO: The API doc should probably also contain the above guarantee.
- *
- * @param state - The dynamorio_state_t object containing this instrumentation's state
- * @return - 0 if the process has not done testing the fuzzed input, non-zero if the process is done.
+ * @param state - The return_code_state_t object containing this instrumentation's state
+ * @return - 0 if the process has not done testing the fuzzed input, 1 if the process is done, -1 on error
  */
 int return_code_is_process_done(void * instrumentation_state)
 {
 	return_code_state_t * state = (return_code_state_t *)instrumentation_state;
 
-	int fuzz_result = get_process_status(state->child_handle);
-
-	// expects 2, 1, 0, or -1
-	if (fuzz_result == 1) // it's aliiiiive
-		return 0;
+	if (state->process_reaped == 1) 
+	{
+		return state->last_status;
+	}
 	else
 	{
-		state->last_status = fuzz_result;
-		return 1;
+		int fuzz_result = get_process_status(state->child_handle);
+
+		// expects 2, 1, 0, or -1
+		if (fuzz_result == FUZZ_RUNNING) // it's aliiiiive
+			// don't set last_status here, because hangs are handled by the timeout in the driver.
+			return 0;
+		else if (fuzz_result == FUZZ_CRASH || fuzz_result == FUZZ_NONE) // crash or clean exit
+		{
+			state->last_status = fuzz_result;
+			state->process_reaped = 1;
+			return 1;
+		}
+		else // get_process_status returned an error
+		{
+			state->last_status = fuzz_result;
+			return -1;
+		}
 	}
 }
 
@@ -234,7 +248,7 @@ char * return_code_help(void)
 	return strdup(
 		"return_code - Linux return_code \"instrumentation\"\n"
 		"Options:\n"
-		"\treturn_code\n"
+		"\tnone\n"
 		"\n"
 	);
 }

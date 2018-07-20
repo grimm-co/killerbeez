@@ -32,9 +32,6 @@ struct wmp_state
 	//command line of the fuzzed process
 	char * cmd_line;
 
-	//time wmplayer.exe started
-	time_t start_time;
-
 	//The instrumentation module
 	instrumentation_t * instrumentation;
 

@@ -16,8 +16,6 @@
 #include <mmdeviceapi.h>
 #include <endpointvolume.h>
 
-static int doneProcessingInput(wmp_state_t * state);
-static void cleanup_process(wmp_state_t * state);
 static int is_playing_sound();
 
 /**
@@ -116,7 +114,6 @@ void * wmp_create(char * options, instrumentation_t * instrumentation, void * in
 void wmp_cleanup(void * driver_state)
 {
 	wmp_state_t * state = (wmp_state_t *)driver_state;
-	cleanup_process(state);
 
 	free(state->mutate_buffer);
 
@@ -137,7 +134,7 @@ void wmp_cleanup(void * driver_state)
  * @param driver_state - a driver specific structure previously created by the wmp_create function
  * @param input - the input that should be tested
  * @param length - the length of the input parameter
- * @return - FUZZ_CRASH, FUZZ_HANG, or FUZZ_NONE on success or -1 on failure
+ * @return - FUZZ_ result on success or FUZZ_ERROR on failure
  */
 int wmp_test_input(void * driver_state, char * input, size_t length)
 {
@@ -147,44 +144,52 @@ int wmp_test_input(void * driver_state, char * input, size_t length)
 	write_buffer_to_file(state->test_filename, input, length);
 
 	//Start the process and give it our input
-	if (state->instrumentation)
-	{
-		//Have the instrumentation start the new process, since it needs to do so in a custom environment
-		state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0);
-	}
-	else
-	{
-		//kill any previous processes so they release the file we're gonna write to
-		cleanup_process(state);
+	state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0);
 
-		//Start the new process
-		if (start_process_and_write_to_stdin(state->cmd_line, input, length, &state->process))
-		{
-			cleanup_process(state);
-			return -1;
-		}
-	}
-	state->start_time = time(NULL);
+	time_t start_time = time(NULL);
+	int tmp_result = FUZZ_ERROR;
 
-	//Wait for it to be done
+	// This is reimplementing the loop in generic_wait_for_process
+	// completion, because we want to do an additional check:
+	// `is_playing_sound`, which can end early.
+	//
+	// We assume that if WMP is playing sound, it has successfully
+	// processed input, which means that we won't get a crash.
 	while (1)
 	{
-		if (doneProcessingInput(state) > 0)
-			break;
-		if (state->instrumentation && state->instrumentation->is_process_done &&
-			state->instrumentation->is_process_done(state->instrumentation_state))
-			break;
+		tmp_result = state->instrumentation->is_process_done(state->instrumentation_state);
+
+		if (tmp_result == 1) // process is done, it crashed or exited cleanly
+		{
+			// so fetch the result from the instrumentation
+			return state->instrumentation->get_fuzz_result(state->instrumentation_state);
+		}
+		else if (tmp_result == -1)
+		{
+			return FUZZ_ERROR;
+		} // else it's still running, so do our other checks
+
+		// WMP is playing sound, so we don't expect a crash and can end
+		// this fuzz round.
+		if (is_playing_sound())
+			return FUZZ_NONE;
+		
+		if (time(NULL) - start_time > state->timeout)
+			return FUZZ_HANG;
+		
 		Sleep(50);
 	}
 
-	return driver_get_fuzz_result(&state->fuzz_result, state->instrumentation, state->instrumentation_state);
+	// We should never get here, because we should take one of the return
+	// statements in the above loop.
+	return FUZZ_ERROR;
 }
 
 /**
  * This function will run the fuzzed program with the output of the mutator given during driver
  * creation.  This function blocks until the program has finished processing the input.
  * @param driver_state - a driver specific structure previously created by the wmp_create function
- * @return - FUZZ_CRASH, FUZZ_HANG, or FUZZ_NONE on success, -1 on error, -2 if the mutator has finished generating inputs
+ * @return - FUZZ_ result on success, FUZZ_ERROR on error, -2 if the mutator has finished generating inputs
  */
 int wmp_test_next_input(void * driver_state)
 {
@@ -209,41 +214,6 @@ char * wmp_get_last_input(void * driver_state, int * length)
 		return NULL;
 	*length = state->mutate_last_size;
 	return (char *)memdup(state->mutate_buffer, state->mutate_last_size);
-}
-
-/**
- * This function cleans up the fuzzed wmplayer.exe process, if it's not being managed
- * by the instrumentation module instead.
- * @param state - the wmp_state_t object that represents the current state of the driver
- */
-static void cleanup_process(wmp_state_t * state)
-{
-	if (state->start_time != 0 && !state->instrumentation)
-	{
-		TerminateProcess(state->process, 9);
-		CloseHandle(state->process);
-		state->start_time = 0;
-	}
-}
-
-/**
- * This function determines if the fuzzed wmplayer.exe process has finished processing the input that was last given to it
- * @param state - the wmp_state_t object that represents the current state of the driver
- * @return - Returns 1 if the fuzzed process is done processing the input, 0 otherwise
- */
-static int doneProcessingInput(wmp_state_t * state)
-{
-	int status;
-	status = is_playing_sound();
-	if (status > 0)
-		return 1;
-
-	//No audio, check process info as backup
-	status = get_process_status(state->process);
-	if (status == 0) // process is dead
-		return 1;
-
-	return time(NULL) - state->start_time > state->timeout;
 }
 
 #define EXIT_ON_ERROR(hres)  \

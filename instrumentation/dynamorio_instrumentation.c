@@ -757,8 +757,9 @@ static int finish_fuzz_round(dynamorio_state_t * state) {
 /**
  * Checks if the target process is done fuzzing the inputs yet.  If it has finished, it will have
  * written the results to the dynamorio instrumentation's pipe.
+
  * @param state - The dynamorio_state_t object containing this instrumentation's state
- * @return - zero if the process has not done testing the fuzzed input, non-zero if the process is done.
+ * @return - 0 if the process has not done testing the fuzzed input, 1 if the process is done, -1 on error.
  */
 int dynamorio_is_process_done(void * instrumentation_state)
 {
@@ -766,7 +767,8 @@ int dynamorio_is_process_done(void * instrumentation_state)
 	DWORD num_bytes_available;
 
 	if (!PeekNamedPipe(state->pipe_handle, NULL, 0, NULL, &num_bytes_available, NULL))
-		return 1;
+		return -1;
+
 	return num_bytes_available != 0;
 }
 

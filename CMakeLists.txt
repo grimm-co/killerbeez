@@ -3,13 +3,10 @@ project (killerbeez)
 
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -D_DEBUG")	# for _DEBUG ifdefs in utils.h
 
-if (UNIX)
-	if(NOT CMAKE_BUILD_TYPE)
-		set(CMAKE_BUILD_TYPE Debug) 	# for gcc -g
-		message("WARNING: Building with debug options; performance will be impacted. Try cmake -DCMAKE_BUILD_TYPE=Release ../killerbeez")
-	endif()
-endif(UNIX)
-
+if(NOT CMAKE_BUILD_TYPE)
+	set(CMAKE_BUILD_TYPE Debug) 	# for gcc -g
+	message("WARNING: Building with debug options; performance will be impacted. Try cmake -DCMAKE_BUILD_TYPE=Release ../killerbeez")
+endif()
 
 SET ( BUILD_DIRECTORY ${CMAKE_SOURCE_DIR}/../build )
 

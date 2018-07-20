@@ -42,7 +42,7 @@ static int debugging_thread(debug_state_t * state)
 
 		//Loop while debugging and look for process exits and exceptions
 		child_pid = GetProcessId(state->child_handle);
-		state->last_status = FUZZ_HANG;
+		state->last_status = FUZZ_RUNNING;
 		memset(&de, 0, sizeof(DEBUG_EVENT));
 		while (state->process_running && WaitForDebugEvent(&de, INFINITE))
 		{
@@ -123,7 +123,7 @@ static int create_target_process(debug_state_t * state, char* cmd_line, char * s
 	//Reset the state for this fuzz process
 	state->finished_last_run = 0;
 	state->last_child_hung = 0;
-	state->last_status = -1;
+	state->last_status = FUZZ_RUNNING;
 
 	//Tell the debug thread to start a new process
 	state->thread_args.cmd_line = cmd_line;
@@ -341,10 +341,9 @@ int debug_get_fuzz_result(void * instrumentation_state)
  * Checks if the target process is done fuzzing the inputs yet.  If it has finished, it will have
  * written last_status, the result of the fuzz job.
  *
- * TODO: The API doc should probably also contain the above guarantee.
- *
  * @param state - The dynamorio_state_t object containing this instrumentation's state
- * @return - 0 if the process has not done testing the fuzzed input, non-zero if the process is done.
+ * @return - 0 if the process has not finished testing the fuzzed input, 1 if the process is done.
+ * NOTE: this particular implementation of is_process_done cannot error.
  */
 int debug_is_process_done(void * instrumentation_state)
 {

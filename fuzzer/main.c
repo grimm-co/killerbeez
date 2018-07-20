@@ -120,6 +120,10 @@ int main(int argc, char ** argv)
 #else
 			snprintf(mutator_directory, MAX_PATH, "%s/../build/mutators/", mutator_repo_dir);
 #endif
+
+#else
+			snprintf(mutator_directory, MAX_PATH, "%s/../build/mutators/", mutator_repo_dir);
+#endif
 		}
 		else
 		{
@@ -346,7 +350,8 @@ int main(int argc, char ** argv)
 			break;
 		}
 
-		if (instrumentation)
+		new_path = instrumentation->is_new_path(instrumentation_state);
+		if (new_path < 0)
 		{
 			new_path = instrumentation->is_new_path(instrumentation_state);
 			if (new_path < 0)
@@ -415,10 +420,7 @@ int main(int argc, char ** argv)
 
 	//Cleanup everything and exit
 	driver->cleanup(driver->state);
-
-	if (instrumentation != NULL)
-		instrumentation->cleanup(instrumentation_state);
-
+	instrumentation->cleanup(instrumentation_state);
 	mutator->cleanup(mutator_state);
 	free(driver);
 	free(instrumentation);

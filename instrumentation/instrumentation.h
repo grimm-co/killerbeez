@@ -14,10 +14,6 @@
 #define INSTRUMENTATION_API __declspec(dllimport)
 #endif
 
-#define FUZZ_NONE  0
-#define FUZZ_HANG  1
-#define FUZZ_CRASH 2
-
 struct instrumentation_edge
 {
 #ifdef _M_X64

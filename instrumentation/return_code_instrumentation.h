@@ -17,5 +17,6 @@ struct return_code_state
 	pid_t child_handle;
 
 	int last_status;
+	int process_reaped; // used to prevent further calls to get_process_status if the process has been reaped
 };
 typedef struct return_code_state return_code_state_t;
