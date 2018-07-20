@@ -27,59 +27,81 @@
 ////////////////////////////////////////////////////////////////
 
 //Uncomment this define to make the IPT parser print each packet
-//#define IPT_DEBUG
+#define IPT_DEBUG
 
 #ifdef IPT_DEBUG
-#define IPT_DEBUG_MSG DEBUG_MSG
+#define IPT_DEBUG_MSG_PACKET //DEBUG_MSG
+#define IPT_DEBUG_MSG        DEBUG_MSG
 #else
+#define IPT_DEBUG_MSG_PACKET
 #define IPT_DEBUG_MSG
 #endif
 
 #define BYTES_LEFT(num)    ((end - p) >= (num))
 #define BIT_TEST(num, bit) ((num) & (1 << (bit)))
 
-static uint64_t get_ip_val(unsigned char **pp, unsigned char *end, int len, uint64_t *last_ip)
+static uint64_t sign_extend(uint64_t val, uint8_t sign)
 {
-  unsigned char *p = *pp;
-  uint64_t v = *last_ip;
-  int i;
-  unsigned shift = 0;
+  uint64_t mask = ~0ULL << sign;
+  return val & (1ULL << (sign - 1)) ? val | mask : val & ~mask;
+}
 
-  if (len == 0) {
-    *last_ip = 0;
-    return 0; // out of context
-  }
-  if (len < 4) {
-    if (!BYTES_LEFT(len)) {
-      *last_ip = 0;
-      WARNING_MSG("Got error in get_ip_val: Not enough bytes for decoding IP (have %lu, need %lu)", end-p, len);
-      return 0;
-    }
-    for (i = 0; i < len; i++, shift += 16, p += 2) {
-      uint64_t b = *(uint16_t *)p;
-      v = (v & ~(0xffffULL << shift)) | (b << shift);
-    }
-    v = ((int64_t)(v << (64 - 48))) >> (64 - 48); // sign extension
+static uint64_t handle_ip_packet(unsigned char ** outp, unsigned char *end, uint64_t *last_ip)
+{
+  unsigned char *p = *outp;
+  uint64_t new_ip;
+  int num_bytes;
+  uint64_t new_bytes;
+
+  int ip_bytes = p[0] >> 5;
+
+  if (ip_bytes == 0) //IP is out of context
+    return 0;
+  else if(ip_bytes == 1) { //Bottom 32 bits, last_ip top 48
+    num_bytes = 2;
+    new_bytes = *((uint64_t *)(p+1)) & 0xFFFFULL;
+    new_ip = (*last_ip & (0xFFFFFFFFFFFFULL << 16)) | new_bytes;
+  } else if(ip_bytes == 2) { //Bottom 32 bits, last_ip top 32
+    num_bytes = 4;
+    new_bytes = *((uint64_t *)(p+1)) & 0xFFFFFFFFULL;
+    new_ip = (*last_ip & (0xFFFFFFFFULL << 32)) | new_bytes;
+  } else if(ip_bytes == 3) { //Bottom 48 bits, sign extended
+    num_bytes = 6;
+    new_bytes = *((uint64_t *)(p+1)) & 0xFFFFFFFFFFFFULL;
+    new_ip = sign_extend(new_bytes, 48);
+  } else if(ip_bytes == 4) { //Bottom 48 bits, last_ip top 16
+    num_bytes = 6;
+    new_bytes = *((uint64_t *)(p+1)) & 0xFFFFFFFFFFFFULL;
+    new_ip = (*last_ip & (0xFFFFULL << 48)) | new_bytes;
+  } else if(ip_bytes == 6) { //All 64 bits
+    num_bytes = 8;
+    new_ip = *((uint64_t *)(p+1));
   } else {
-    WARNING_MSG("Got error in get_ip_val!");
+    WARNING_MSG("Got unknown IP packet (IPBytes=%d)", ip_bytes);
     return 0;
   }
-  *pp = p;
-  *last_ip = v;
-  return v;
+
+  if (!BYTES_LEFT(num_bytes)) {
+    WARNING_MSG("Got error in handle_ip_packet: Not enough bytes for decoding IP (have %lu, need %lu)", end-p, ip_bytes);
+    return 0;
+  }
+
+  *outp = p + num_bytes;
+  *last_ip = new_ip;
+  return new_ip;
 }
 
 static void finish_tnt_hash(struct ipt_hash_state * ipt_hashes)
 {
-	if(ipt_hashes->num_bits != 0) {
-		if(XXH64_update(ipt_hashes->tnt, &ipt_hashes->tnt_bits, sizeof(uint64_t)) == XXH_ERROR)
-			WARNING_MSG("Updating the TNT hash failed!"); //Should never happen
-	}
+  if(ipt_hashes->num_bits != 0) {
+    if(XXH64_update(ipt_hashes->tnt, &ipt_hashes->tnt_bits, sizeof(uint64_t)) == XXH_ERROR)
+      WARNING_MSG("Updating the TNT hash failed!"); //Should never happen
+  }
 }
 
 static void add_tnt_to_hash(struct ipt_hash_state * ipt_hashes, unsigned char * tnt_bits, int num_bits)
 {
-	uint64_t i;
+  uint64_t i;
 #ifdef IPT_DEBUG
   char bit_string[64];
 
@@ -90,16 +112,16 @@ static void add_tnt_to_hash(struct ipt_hash_state * ipt_hashes, unsigned char * 
   IPT_DEBUG_MSG("TNT bits %d: %s", num_bits, bit_string);
 #endif
 
-	for(i = 0; i < num_bits; i++) {
-		ipt_hashes->tnt_bits |= (BIT_TEST(tnt_bits[i / 8], i % 8) << ipt_hashes->num_bits);
-		ipt_hashes->num_bits++;
-		if(ipt_hashes->num_bits == sizeof(ipt_hashes->tnt_bits)) {
-			if(XXH64_update(ipt_hashes->tnt, &ipt_hashes->tnt_bits, sizeof(uint64_t)) == XXH_ERROR)
-				WARNING_MSG("Updating the TNT hash failed!"); //Should never happen
-			ipt_hashes->tnt_bits = 0;
-			ipt_hashes->num_bits = 0;
-		}
-	}
+  for(i = 0; i < num_bits; i++) {
+    ipt_hashes->tnt_bits |= (BIT_TEST(tnt_bits[i / 8], i % 8) << ipt_hashes->num_bits);
+    ipt_hashes->num_bits++;
+    if(ipt_hashes->num_bits == sizeof(ipt_hashes->tnt_bits)) {
+      if(XXH64_update(ipt_hashes->tnt, &ipt_hashes->tnt_bits, sizeof(uint64_t)) == XXH_ERROR)
+        WARNING_MSG("Updating the TNT hash failed!"); //Should never happen
+      ipt_hashes->tnt_bits = 0;
+      ipt_hashes->num_bits = 0;
+    }
+  }
 }
 
 static void add_tip_to_hash(struct ipt_hash_state * ipt_hashes, uint64_t tip)
@@ -130,11 +152,11 @@ static int analyze_ipt(linux_ipt_state_t * state)
     0x02, 0x82, 0x02, 0x82, 0x02, 0x82, 0x02, 0x82
   };
 
-	//Reset the IPT hashes struct
-	state->ipt_hashes.tnt_bits = 0;
-	state->ipt_hashes.num_bits = 0;
+  //Reset the IPT hashes struct
+  state->ipt_hashes.tnt_bits = 0;
+  state->ipt_hashes.num_bits = 0;
   if(XXH64_reset(state->ipt_hashes.tnt, 0) == XXH_ERROR ||
-    XXH64_reset(state->ipt_hashes.tip, 0) == XXH_ERROR)
+      XXH64_reset(state->ipt_hashes.tip, 0) == XXH_ERROR)
     return -1;
 
   hashes = malloc(sizeof(struct ipt_hashtable_entry));
@@ -156,34 +178,36 @@ static int analyze_ipt(linux_ipt_state_t * state)
       DEBUG_MSG("Couldn't find PSB packet");
       break;
     }
-    IPT_DEBUG_MSG("Skipping %d bytes", psb_pos - p);
+    if(psb_pos - p != 0)
+      IPT_DEBUG_MSG("Skipping %d bytes", psb_pos - p);
     p = psb_pos + sizeof(psb);
+    last_ip = 0;
 
     while(p < end)
     {
-      IPT_DEBUG_MSG("%04x: %02x %02x %02x %02x %02x %02x %02x %02x", p - start,
-        (unsigned char)p[0], (unsigned char)p[1], (unsigned char)p[2], (unsigned char)p[3],
-        (unsigned char)p[4], (unsigned char)p[5], (unsigned char)p[6], (unsigned char)p[7]);
+      IPT_DEBUG_MSG_PACKET("%04x: %02x %02x %02x %02x %02x %02x %02x %02x", p - start,
+          (unsigned char)p[0], (unsigned char)p[1], (unsigned char)p[2], (unsigned char)p[3],
+          (unsigned char)p[4], (unsigned char)p[5], (unsigned char)p[6], (unsigned char)p[7]);
 
       if (p[0] == 2 && BYTES_LEFT(2)) {
         if (p[1] == 0xa3 && BYTES_LEFT(8)) { // Long TNT
-          IPT_DEBUG_MSG("Long TNT");
+          IPT_DEBUG_MSG_PACKET("Long TNT");
           add_tnt_to_hash(&state->ipt_hashes, p+2, get_tnt_num_bits(p+2, 47));
           p += 8;
           continue;
         }
         if (p[1] == 0x43 && BYTES_LEFT(8)) { // PIP
-          IPT_DEBUG_MSG("PIP");
+          IPT_DEBUG_MSG_PACKET("PIP");
           p += 8;
           continue;
         }
         if (p[1] == 3 && BYTES_LEFT(4)) { // CBR
-          IPT_DEBUG_MSG("CBR");
+          IPT_DEBUG_MSG_PACKET("CBR");
           p += 4;
           continue;
         }
         if (p[1] == 0x83) { //TRACESTOP
-          IPT_DEBUG_MSG("TRACESTOP");
+          IPT_DEBUG_MSG_PACKET("TRACESTOP");
           p += 2;
           continue;
         }
@@ -193,27 +217,28 @@ static int analyze_ipt(linux_ipt_state_t * state)
           continue;
         }
         if (p[1] == 0x82 && BYTES_LEFT(16) && !memcmp(p, psb, 16)) { // PSB
-          IPT_DEBUG_MSG("PSB");
+          IPT_DEBUG_MSG_PACKET("PSB");
           p += 16;
+          last_ip = 0;
           continue;
         }
         if (p[1] == 0x23) { // PSBEND
-          IPT_DEBUG_MSG("PSBEND");
+          IPT_DEBUG_MSG_PACKET("PSBEND");
           p += 2;
           continue;
         }
         if (p[1] == 0xc3 && BYTES_LEFT(11) && p[2] == 0x88) { //MNT
-          IPT_DEBUG_MSG("MNT");
+          IPT_DEBUG_MSG_PACKET("MNT");
           p += 10;
           continue;
         }
         if (p[1] == 0x73 && BYTES_LEFT(7)) { //TMA
-          IPT_DEBUG_MSG("TMA");
+          IPT_DEBUG_MSG_PACKET("TMA");
           p += 7;
           continue;
         }
         if (p[1] == 0xc8 && BYTES_LEFT(7)) { //VMCS
-          IPT_DEBUG_MSG("VMCS");
+          IPT_DEBUG_MSG_PACKET("VMCS");
           p += 7;
           continue;
         }
@@ -221,7 +246,7 @@ static int analyze_ipt(linux_ipt_state_t * state)
 
       if(!(p[0] & 1)) {
         if (p[0] == 0) { // PAD
-          IPT_DEBUG_MSG("PAD");
+          IPT_DEBUG_MSG_PACKET("PAD");
           p++;
           continue;
         }
@@ -229,7 +254,7 @@ static int analyze_ipt(linux_ipt_state_t * state)
         // Short TNT
         char tnt_bits = p[0] >> 1;
         add_tnt_to_hash(&state->ipt_hashes, &tnt_bits, get_tnt_num_bits(&tnt_bits, 6));
-        IPT_DEBUG_MSG("SHORT TNT");
+        IPT_DEBUG_MSG_PACKET("SHORT TNT");
         p++;
         continue;
       }
@@ -242,44 +267,38 @@ static int analyze_ipt(linux_ipt_state_t * state)
       char tip_type = p[0] & 0x1f;
       if(tip_type == TIP_TYPE_TIP || tip_type == TIP_TYPE_TIP_PGE
           || tip_type == TIP_TYPE_TIP_PGD || tip_type == TIP_TYPE_FUP) {
-
-        int ipl = *p >> 5;
-        ip_address = get_ip_val(&p, end, ipl, &last_ip);
-        if(tip_type != TIP_TYPE_TIP || (tip_type == TIP_TYPE_TIP && ip_address)) {
-          IPT_DEBUG_MSG("TIP/PGE/PGD/FUP");
-          if(tip_type == TIP_TYPE_TIP) {
-            add_tip_to_hash(&state->ipt_hashes, ip_address);
-          }
-
-          p++;
-          continue;
-        }
+        ip_address = handle_ip_packet(&p, end, &last_ip);
+        IPT_DEBUG_MSG_PACKET("TIP/PGE/PGD/FUP");
+        if(tip_type == TIP_TYPE_TIP)
+          add_tip_to_hash(&state->ipt_hashes, ip_address);
+        p++;
+        continue;
       }
 
       if (p[0] == 0x99 && BYTES_LEFT(2)) { // MODE
         if ((p[1] >> 5) == 1) {
-          IPT_DEBUG_MSG("MODE 1");
+          IPT_DEBUG_MSG_PACKET("MODE 1");
           p += 2;
           continue;
         } else if ((p[1] >> 5) == 0) {
-          IPT_DEBUG_MSG("MODE 2");
+          IPT_DEBUG_MSG_PACKET("MODE 2");
           p += 2;
           continue;
         }
       }
 
       if (p[0] == 0x19 && BYTES_LEFT(8)) { // TSC
-        IPT_DEBUG_MSG("TSC");
+        IPT_DEBUG_MSG_PACKET("TSC");
         p+=8;
         continue;
       }
       if (p[0] == 0x59 && BYTES_LEFT(2)) { // MTC
-        IPT_DEBUG_MSG("MTC");
+        IPT_DEBUG_MSG_PACKET("MTC");
         p += 2;
         continue;
       }
       if ((p[0] & 3) == 3) { // CYC
-        IPT_DEBUG_MSG("CYC");
+        IPT_DEBUG_MSG_PACKET("CYC");
         if ((p[0] & 4) && BYTES_LEFT(1)) {
           do {
             p++;
