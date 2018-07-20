@@ -21,7 +21,11 @@ struct file_state
 	double input_ratio;   //the ratio of the maximum input size
 
 	//The handle to the fuzzed process instance
+	#ifdef _WIN32
 	HANDLE process;
+	#else
+	pid_t process;
+	#endif
 
 	//command line of the fuzzed process
 	char * cmd_line;

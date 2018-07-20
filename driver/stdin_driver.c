@@ -10,11 +10,15 @@
 #include <stdlib.h>
 #include <time.h>
 
+#ifdef _WIN32
 //Windows API
 #include <Shlwapi.h>
 #include <process.h>
-
-static void cleanup_process(stdin_state_t * state);
+#else // linux
+#include <string.h>    // memset, strlen
+#include <sys/types.h> // kill
+#include <signal.h>    // kill
+#endif
 
 /**
  * This function creates a stdin_state_t object based on the given options.
@@ -109,7 +113,6 @@ void * stdin_create(char * options, instrumentation_t * instrumentation, void * 
 void stdin_cleanup(void * driver_state)
 {
 	stdin_state_t * state = (stdin_state_t *)driver_state;
-	cleanup_process(state);
 
 	free(state->mutate_buffer);
 	free(state->path);
@@ -124,42 +127,25 @@ void stdin_cleanup(void * driver_state)
  * @param driver_state - a driver specific structure previously created by the stdin_create function
  * @param input - the input that should be tested
  * @param length - the length of the input parameter
- * @return - FUZZ_CRASH, FUZZ_HANG, or FUZZ_NONE on success or -1 on failure
+ * @return - FUZZ_ on success or FUZZ_ERROR on failure
  */
 int stdin_test_input(void * driver_state, char * input, size_t length)
 {
 	stdin_state_t * state = (stdin_state_t *)driver_state;
 
 	//Start the process and give it our input
-	if (state->instrumentation)
-	{
-		//Have the instrumentation start the new process, since it needs to do so in a custom environment
-		state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, input, length);
-	}
-	else
-	{
-		//kill any previous processes so they release the file we're gonna write to
-		cleanup_process(state);
-
-		//Start the new process
-		if (start_process_and_write_to_stdin(state->cmd_line, input, length, &state->process))
-		{
-			cleanup_process(state);
-			return -1;
-		}
-	}
+	state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, input, length);
 
 	//Wait for it to be done
-	generic_wait_for_process_completion(state->process, state->timeout, state->instrumentation, state->instrumentation_state);
-
-	return driver_get_fuzz_result(state->instrumentation, state->instrumentation_state);
+	return generic_wait_for_process_completion(state->process, state->timeout,
+		state->instrumentation, state->instrumentation_state);
 }
 
 /**
  * This function will run the fuzzed program with the output of the mutator given during driver
  * creation.  This function blocks until the program has finished processing the input.
  * @param driver_state - a driver specific structure previously created by the stdin_create function
- * @return - FUZZ_CRASH, FUZZ_HANG, or FUZZ_NONE on success, -1 on error, -2 if the mutator has finished generating inputs
+ * @return - FUZZ_ result on success, FUZZ_ERROR on error, -2 if the mutator has finished generating inputs
  */
 int stdin_test_next_input(void * driver_state)
 {
@@ -184,23 +170,6 @@ char * stdin_get_last_input(void * driver_state, int * length)
 		return NULL;
 	*length = state->mutate_last_size;
 	return memdup(state->mutate_buffer, state->mutate_last_size);
-}
-
-/**
- * This function cleans up the fuzzed process, if it's not being managed
- * by the instrumentation module instead.
- * @param state - the stdin_state_t object that represents the current state of the driver
- */
-static void cleanup_process(stdin_state_t * state)
-{
-	//If we have a process running and no instrumentation, kill it.
-	//If we have an instrumentation, then the instrumentation will kill the process
-	if (state->process && !state->instrumentation)
-	{
-		TerminateProcess(state->process, 9);
-		CloseHandle(state->process);
-		state->process = NULL;
-	}
 }
 
 /**

@@ -10,11 +10,15 @@
 #include <stdlib.h>
 #include <time.h>
 
-//Windows API
+#ifdef _WIN32
 #include <Shlwapi.h>
 #include <process.h>
-
-static void cleanup_process(file_state_t * state);
+#else
+#include <string.h> // memset
+#include <sys/types.h> // kill()
+#include <signal.h>
+#include <unistd.h> // unlink
+#endif
 
 /**
  * This function creates a file_state_t object based on the given options.
@@ -61,6 +65,7 @@ static file_state_t * setup_options(char * options)
 		pos = new_arguments = state->arguments;
 		while (*pos != 0)
 		{
+			// replace the "@@" in the arguments with the temp filename
 			if (*pos == '@' && *(pos + 1) == '@')
 			{
 				int index = pos - new_arguments;
@@ -146,7 +151,6 @@ void * file_create(char * options, instrumentation_t * instrumentation, void * i
 void file_cleanup(void * driver_state)
 {
 	file_state_t * state = (file_state_t *)driver_state;
-	cleanup_process(state);
 
 	free(state->mutate_buffer);
 
@@ -168,7 +172,7 @@ void file_cleanup(void * driver_state)
  * @param driver_state - a driver specific structure previously created by the file_create function
  * @param input - the input that should be tested
  * @param length - the length of the input parameter
- * @return - FUZZ_CRASH, FUZZ_HANG, or FUZZ_NONE on success or -1 on failure
+ * @return - FUZZ_ result on success or FUZZ_ERROR on failure
  */
 int file_test_input(void * driver_state, char * input, size_t length)
 {
@@ -178,42 +182,24 @@ int file_test_input(void * driver_state, char * input, size_t length)
 	write_buffer_to_file(state->test_filename, input, length);
 
 	//Start the process and give it our input
-	if (state->instrumentation)
-	{
-		//Have the instrumentation start the new process, since it needs to do so in a custom environment
-		state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0);
-	}
-	else
-	{
-		//kill any previous processes so they release the file we're gonna write to
-		cleanup_process(state);
+	state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0);
 
-		//Start the new process
-		if (start_process_and_write_to_stdin(state->cmd_line, NULL, 0, &state->process))
-		{
-			cleanup_process(state);
-			return -1;
-		}
-	}
-
-	//Wait for it to be done
-	generic_wait_for_process_completion(state->process, state->timeout, state->instrumentation, state->instrumentation_state);
-
-	return driver_get_fuzz_result(state->instrumentation, state->instrumentation_state);
+	//Wait for it to be done, return the termination termination status
+	return generic_wait_for_process_completion(state->process, state->timeout,
+		state->instrumentation, state->instrumentation_state);
 }
 
 /**
  * This function will run the fuzzed program with the output of the mutator given during driver
  * creation.  This function blocks until the program has finished processing the input.
  * @param driver_state - a driver specific structure previously created by the file_create function
- * @return - FUZZ_CRASH, FUZZ_HANG, or FUZZ_NONE on success, -1 on error, -2 if the mutator has finished generating inputs
+ * @return - FUZZ_ result on success, FUZZ_ERROR on error, -2 if the mutator has finished generating inputs
  */
 int file_test_next_input(void * driver_state)
 {
 	file_state_t * state = (file_state_t *)driver_state;
 	return generic_test_next_input(state, state->mutator, state->mutator_state, state->mutate_buffer,
 		state->mutate_buffer_length, file_test_input, &state->mutate_last_size);
-
 }
 
 /**
@@ -232,23 +218,6 @@ char * file_get_last_input(void * driver_state, int * length)
 		return NULL;
 	*length = state->mutate_last_size;
 	return memdup(state->mutate_buffer, state->mutate_last_size);
-}
-
-/**
- * This function cleans up the fuzzed process, if it's not being managed
- * by the instrumentation module instead.
- * @param state - the file_state_t object that represents the current state of the driver
- */
-static void cleanup_process(file_state_t * state)
-{
-	//If we have a process running and no instrumentation, kill it.
-	//If we have an instrumentation, then the instrumentation will kill the process
-	if (state->process && !state->instrumentation)
-	{
-		TerminateProcess(state->process, 9);
-		CloseHandle(state->process);
-		state->process = NULL;
-	}
 }
 
 /**

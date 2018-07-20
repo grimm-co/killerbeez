@@ -7,72 +7,54 @@
 
 #include <time.h>
 
-/**
- * This function determines if the fuzzed process has finished processing the input that was last given to it
- * @param process - a HANDLE to the fuzzed process
- * @param start_time - The time the process was started
- * @param timeout - The number of seconds to wait before declaring the process done
- * @return - Returns 1 if the fuzzed process is done processing the input, 0 otherwise
- */
-int generic_done_processing_input(HANDLE process, time_t start_time, int timeout)
-{
-	int status = is_process_alive(process);
-	if (status == 0)
-		return 1;
-
-	return time(NULL) - start_time > timeout;
-}
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 /**
  * Waits for a fuzzed process to be finished processing the input, either via timing out or the
  * process exiting.
  * @param process - a HANDLE to the fuzzed process
  * @param timeout - The maximum number of seconds to wait before declaring the process done
- * @param instrumentation - Optionally, an instrumentation struct that should be used to check if the process is
- * done yet
- * @param instrumentation_state - if the instrumentation parameter is provided, this parameter should define the
- * instrumentation state to check if the process is done yet.
+ * @param instrumentation - used to access `is_process_done` and `get_fuzz_result`
+ * @param instrumentation_state - arguments for `is_process_done` and `get_fuzz_result`
+ * @return - FUZZ_HANG or FUZZ_ result (from get_fuzz_result)
  */
-void generic_wait_for_process_completion(HANDLE process, int timeout, instrumentation_t * instrumentation, void * instrumentation_state)
+#ifdef _WIN32
+int generic_wait_for_process_completion(HANDLE process, int timeout, instrumentation_t * instrumentation, void * instrumentation_state)
+#else
+int generic_wait_for_process_completion(pid_t process, int timeout, instrumentation_t * instrumentation, void * instrumentation_state)
+#endif
 {
 	time_t start_time = time(NULL);
+	int process_done = 0;
 
-	while (1)
+	while(1)
 	{
-		// Has the process exited or have we timed out yet?
-		if(generic_done_processing_input(process, start_time, timeout) > 0)
-			break;
-		// Does the instrumentation know that the process is done (eg waiting at a GUI)?
-		if (instrumentation && instrumentation->is_process_done && instrumentation->is_process_done(instrumentation_state))
-			break;
+		process_done = instrumentation->is_process_done(instrumentation_state);
+		if (process_done == 1)
+			return instrumentation->get_fuzz_result(instrumentation_state);
+		else if (process_done == -1)
+			return FUZZ_ERROR;
+		// if it's zero, the process is not done, so keep looping
+
+		// timeout
+		if (time(NULL) - start_time > timeout)
+			return FUZZ_HANG;
+
+		// FUZZ_HANG isn't ever set in the instrumentation, which isn't great.
+		// could be solved by adding a set_fuzz_result function to the API. I
+		// am unaware of any API constraints that require it at this time. A
+		// potential issue I forsee is that a second get_fuzz_result would
+		// incorrectly report FUZZ_RUNNING.
+
+		#ifdef _WIN32
 		Sleep(5);
+		#else
+		usleep(5*1000);
+		#endif
 	}
 }
-
-/**
- * This function will fetch the fuzz result if an instrumentation exists, and do nothing if one does not.
- * TODO: Update this docstring when linux support is added.
- * @param instrumentation - an instrumentation struct that is used to access the fuzz result
- * @param instrumentation_state - required to 
- * @return - either FUZZ_NONE, FUZZ_HANG, FUZZ_CRASH, or -1 on error.
- */
-int driver_get_fuzz_result(instrumentation_t * instrumentation, void * instrumentation_state)
-{
-	if (instrumentation)
-	{
-		return instrumentation->get_fuzz_result(instrumentation_state);
-	}
-	else
-	{
-		// How does the null instrumentation on Windows get fuzz results?
-		// Right now, it does not.
-		// So, we can always return FUZZ_NONE.
-		//
-		// TODO: For linux, this should return something real.
-		return FUZZ_NONE;
-	}
-}
-
 
 /**
  * This function will call mutate on the given mutator state to modify the mutator buffer
@@ -85,7 +67,7 @@ int driver_get_fuzz_result(instrumentation_t * instrumentation, void * instrumen
  * @param buffer_length - the length of the buffer parameter
  * @param test_input_func - the test_input function to call after mutating the input buffer
  * @param mutate_last_size - this parameter is used to return the size of the mutated input buffer
- * @return - FUZZ_CRASH, FUZZ_HANG, or FUZZ_NONE on success, -1 on error, -2 if the mutator has finished generating inputs
+ * @return - FUZZ_CRASH, FUZZ_HANG, or FUZZ_NONE on success, FUZZ_ERROR on error, -2 if the mutator has finished generating inputs
  */
 int generic_test_next_input(void * state, mutator_t * mutator, void * mutator_state, char * buffer, size_t buffer_length,
 	int (*test_input_func)(void * driver_state, char * buffer, size_t length), int * mutate_last_size)
