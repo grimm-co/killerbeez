@@ -120,10 +120,6 @@ int main(int argc, char ** argv)
 #else
 			snprintf(mutator_directory, MAX_PATH, "%s/../build/mutators/", mutator_repo_dir);
 #endif
-
-#else
-			snprintf(mutator_directory, MAX_PATH, "%s/../build/mutators/", mutator_repo_dir);
-#endif
 		}
 		else
 		{
@@ -353,13 +349,9 @@ int main(int argc, char ** argv)
 		new_path = instrumentation->is_new_path(instrumentation_state);
 		if (new_path < 0)
 		{
-			new_path = instrumentation->is_new_path(instrumentation_state);
-			if (new_path < 0)
-			{
-				printf("ERROR: instrumentation failed to determine the fuzzed process's fuzz_result\n");
-				break;
-			}
-		} // no instrumentation? no new paths.
+			printf("ERROR: instrumentation failed to determine the fuzzed process's fuzz_result\n");
+			break;
+		}
 
 		directory = NULL;
 		if (fuzz_result == FUZZ_CRASH)

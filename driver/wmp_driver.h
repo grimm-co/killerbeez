@@ -43,7 +43,5 @@ struct wmp_state
 	char * mutate_buffer;
 	size_t mutate_buffer_length;
 	int mutate_last_size;
-
-	int fuzz_result;
 };
 typedef struct wmp_state wmp_state_t;

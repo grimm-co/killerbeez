@@ -52,8 +52,8 @@ instrumentation_t * instrumentation_factory(char * instrumentation_type)
 		ret->is_process_done = dynamorio_is_process_done;
 		ret->get_fuzz_result = dynamorio_get_fuzz_result;
 	}
-	#else 
-	if (!strcmp(instrumentation_type, "return_code")) 
+	#else
+	if (!strcmp(instrumentation_type, "return_code"))
 	{
 		ret->create = return_code_create;
 		ret->cleanup = return_code_cleanup;
@@ -66,7 +66,7 @@ instrumentation_t * instrumentation_factory(char * instrumentation_type)
 		ret->get_fuzz_result = return_code_get_fuzz_result;
 		ret->is_process_done = return_code_is_process_done;
 	}
-	else if (!strcmp(instrumentation_type, "ipt")) 
+	else if (!strcmp(instrumentation_type, "ipt"))
 	{
 		ret->create = linux_ipt_create;
 		ret->cleanup = linux_ipt_cleanup;
