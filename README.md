@@ -89,6 +89,89 @@ fuzzer.exe wmp dynamorio nop -n 3 -sf "C:\Users\<user>\Desktop\test.mp4" -d "{\"
 ```
 You may need to modify these parameters to match your environment.  In order to speed up fuzzing, it may be useful to enable persistence mode.  See PersistenceMode.md for instructions.
 
+### Standalone Client - Linux
+Clone the killerbeez, killerbeez-mutators and killerbeez-utils repos next to each other.
+
+```
+cd killerbeez
+mkdir build; cd build; cmake ..; make
+```
+
+At this point everything should be compiled and you should be ready to change
+into the right directory and run the fuzzer.  Here's an example of running it
+on a test program from our corpus (assumption is that you're still in the
+killerbeez/build directory from the commands above).
+
+```
+cd ../../build/killerbeez/
+./fuzzer file return_code honggfuzz -n 20 -sf /bin/bash -d '{"path":"../../killerbeez/corpus/test/test-linux","arguments":"@@"}'
+```
+
+If it ran correctly, you should see something like this:
+```
+Thu Jul 19 09:40:46 2018 - INFO     - Logging Started
+Thu Jul 19 09:40:46 2018 - INFO     - Ran 20 iterations in 0 seconds
+```
+
+In the example above, we're using the file driver, the return_code
+instrumentation, and the honggfuzz mutator module.  We are only going to do 20
+executions and our seed file is /bin/bash, because why not?
+
+The -d option are for the driver.  We need to give it the path to our executable
+and the command line arguments, which in our case is just the filename,
+represented by "@@" here.
+
+We don't need to specify any options for the mutator nor the instrumentation, so
+we wont.  We are just relying on the default values.  To see the options
+available, you can use the help flag.  Below are some examples.
+
+```
+./fuzzer -h
+./fuzzer -h driver
+```
+
+Looking at the results in the "output" directory, we see that it didn't find
+any crashes, hangs or new paths.  At first glance, it might seem like it didn't
+work.  However, we were using the return_code instrumentation, which does not
+actually track code coverage, so it can not determine the execution path, thus
+it can't determine if a new path was hit.  Instead, it just looks at the return
+code to determine if the process crashed or not.  It's very efficient, however
+this is effectively dumb fuzzing.
+
+To see a crash, we can just change our seed file to be close to the file which
+will cause a crash.  It's cheating, but it works well to demonstrate the
+importance of seed files as well as illustrating what the output of finding a
+crash looks like.  The following commands assume you are still in the directory
+containing ./fuzzer.
+
+```
+echo "ABC@" > test1  # ABC@ is one bit different than ABCD, the crashing input
+./fuzzer file return_code honggfuzz -n 2000 -sf ./test1 -d '{"path":"../../killerbeez/corpus/test/test-linux","arguments":"@@"}'
+```
+
+Which should yield output similar to this:
+
+```
+Thu Jul 19 12:03:11 2018 - INFO     - Logging Started
+Thu Jul 19 12:03:13 2018 - CRITICAL - Found crashes
+Thu Jul 19 12:03:13 2018 - CRITICAL - Found crashes
+Thu Jul 19 12:03:19 2018 - CRITICAL - Found crashes
+Thu Jul 19 12:03:22 2018 - CRITICAL - Found crashes
+Thu Jul 19 12:03:22 2018 - INFO     - Ran 2000 iterations in 11 seconds
+```
+
+Looking in the output/crashes folder, we can see the inputs which were found to
+crash this target and reproduce the crash manually.
+
+```
+$ ls output/crashes/
+2B81D0C867F76051FD33D8690AA2AC68  5220E572A6F9DAAF522EF5C5698EAF4C  59F885D0289BE9A83E711C5E7CFCBE4D  ED5D34C74E59D16BD6D5B3683DB655C3
+$ cat output/crashes/2B81D0C867F76051FD33D8690AA2AC68 ; echo
+ABCDJ
+$ ../../killerbeez/corpus/test/test-linux output/crashes/59F885D0289BE9A83E711C5E7CFCBE4D
+Segmentation fault (core dumped)
+```
+
 ## Documentation
 Documentation can be found in the docs folder.  It's written in LaTeX which
 can be used to generate a PDF, HTML, or various other formats.  PDFs are also

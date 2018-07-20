@@ -7,8 +7,10 @@ include_directories (${CMAKE_SOURCE_DIR}/mutator/)
 
 set(FUZZER_SRC ${PROJECT_SOURCE_DIR}/main.c)
 source_group("Executable Sources" FILES ${FUZZER_SRC})
+
 add_executable(fuzzer ${FUZZER_SRC} $<TARGET_OBJECTS:driver>
 	$<TARGET_OBJECTS:instrumentation>)
+
 target_compile_definitions(fuzzer PUBLIC DRIVER_NO_IMPORT)
 target_compile_definitions(fuzzer PUBLIC INSTRUMENTATION_NO_IMPORT)
 target_compile_definitions(fuzzer PUBLIC MUTATOR_NO_IMPORT)

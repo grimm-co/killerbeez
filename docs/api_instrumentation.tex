@@ -132,12 +132,13 @@ function) took a new path, 0 if it did not, or -1 on failure
 \api{int get\_fuzz\_result(void * instrumentation\_state)
 }{
 This function will return the result of the fuzz job. It should be called
-after the process has finished processing the tested input.
+after the process has finished processing the tested input, i.e. after a
+successful \texttt{is\_process\_done}.
 }{
 \item instrumentation\_state - an instrumentation specific structure previously
 created by the create() function
 \item return value - either \texttt{FUZZ\_NONE}, \texttt{FUZZ\_HANG},
-\texttt{FUZZ\_CRASH}, or -1 on error.
+\texttt{FUZZ\_CRASH}, or \texttt{FUZZ\_ERROR} on error.
 }
 
 \api{int get\_module\_info(void * instrumentation\_state, int index, int * is\_new,
@@ -197,13 +198,12 @@ instrumentation run.  The returned pointer should be freed by the caller.
 
 \api{int is\_process\_done(void * instrumentation\_state)
 }{
-This function is optional and not required for the fuzzer to work.  It is used
-by the driver to determine if an instrumented process has finished being fuzzed.
-It is particularly useful for instrumentations that support the ability to fuzz
-more than one input per process, such as the DynamoRIO instrumentation.
+This function is used by the driver to determine if an instrumented process has
+finished being fuzzed. If the process is done being fuzzed, then
+\texttt{get\_fuzz\_result} is ready to be called.
 }{
 \item instrumentation\_state - an instrumentation specific structure previously
 created by the create() function.
-\item return value - zero if the process has finished being fuzzed, non-zero
-otherwise.
+\item return value - 0 if the process has finished being fuzzed, 1 if not, -1
+on error.
 }

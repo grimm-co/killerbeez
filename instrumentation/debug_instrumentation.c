@@ -4,7 +4,7 @@
 #include <ntstatus.h>
 
 #include "instrumentation.h"
-#include "none_instrumentation.h"
+#include "debug_instrumentation.h"
 
 #include <utils.h>
 #include <jansson_helper.h>
@@ -17,7 +17,7 @@
  * @param args - A thread_arguments_t object with the thread's arguments in it
  * @return - zero on success, non-zero on failure
 */
-static int debugging_thread(none_state_t * state)
+static int debugging_thread(debug_state_t * state)
 {
 	DEBUG_EVENT de;
 	DWORD cont, child_pid;
@@ -42,7 +42,7 @@ static int debugging_thread(none_state_t * state)
 
 		//Loop while debugging and look for process exits and exceptions
 		child_pid = GetProcessId(state->child_handle);
-		state->last_status = FUZZ_HANG;
+		state->last_status = FUZZ_RUNNING;
 		memset(&de, 0, sizeof(DEBUG_EVENT));
 		while (state->process_running && WaitForDebugEvent(&de, INFINITE))
 		{
@@ -52,7 +52,7 @@ static int debugging_thread(none_state_t * state)
 				{
 					// Not all exceptions are real crashes - we ignore breakpoints being hit and
 					// exceptions that are encountered multiple times
-					if (!de.u.Exception.dwFirstChance ||
+					if (!de.u.Exception.dwFirstChance || // if the debugger has not encountered this exception before
 						(de.u.Exception.ExceptionRecord.ExceptionCode != EXCEPTION_BREAKPOINT &&
 						 de.u.Exception.ExceptionRecord.ExceptionCode != STATUS_WX86_BREAKPOINT)) {
 						state->last_status = FUZZ_CRASH;
@@ -89,11 +89,11 @@ static int debugging_thread(none_state_t * state)
 
 /**
  * This function terminates the fuzzed process.
- * @param state - The none_state_t object containing this instrumentation's state
+ * @param state - The debug_state_t object containing this instrumentation's state
  */
-static void destroy_target_process(none_state_t * state) {
+static void destroy_target_process(debug_state_t * state) {
 	if (state->child_handle) {
-		state->last_child_hung = is_process_alive(state->child_handle);
+		state->last_child_hung = get_process_status(state->child_handle);
 		//If the process hung, then make sure the debug thread finishes its debug loop
 		if(state->last_child_hung)//otherwise we'll be waiting for it forever
 			state->process_running = 0;
@@ -104,7 +104,7 @@ static void destroy_target_process(none_state_t * state) {
 
 		//Wait for the debug thread to be done with the child.  We need to wait
 		//here, since we don't want the results_ready_semaphore to becoming stale
-		//because the none instrumentation user did not read the results of a previous
+		//because the debug instrumentation user did not read the results of a previous
 		//fuzzed process
 		take_semaphore(state->results_ready_semaphore);
 	}
@@ -112,18 +112,18 @@ static void destroy_target_process(none_state_t * state) {
 
 /**
  * This function starts the fuzzed process
- * @param state - The none_state_t object containing this instrumentation's state
+ * @param state - The debug_state_t object containing this instrumentation's state
  * @param cmd_line - the command line of the fuzzed process to start
  * @param stdin_input - the input to pass to the fuzzed process's stdin
  * @param stdin_length - the length of the stdin_input parameter
  * @return - zero on success, non-zero on failure.
  */
-static int create_target_process(none_state_t * state, char* cmd_line, char * stdin_input, size_t stdin_length) {
+static int create_target_process(debug_state_t * state, char* cmd_line, char * stdin_input, size_t stdin_length) {
 
 	//Reset the state for this fuzz process
 	state->finished_last_run = 0;
 	state->last_child_hung = 0;
-	state->last_status = -1;
+	state->last_status = FUZZ_RUNNING;
 
 	//Tell the debug thread to start a new process
 	state->thread_args.cmd_line = cmd_line;
@@ -139,10 +139,10 @@ static int create_target_process(none_state_t * state, char* cmd_line, char * st
 
 /**
  * This function ends the fuzzed process (if it wasn't previously ended).
- * @param state - The none_state_t object containing this instrumentation's state
+ * @param state - The debug_state_t object containing this instrumentation's state
  * @return - returns 0 on success or -1 on error
  */
-static int finish_fuzz_round(none_state_t * state) {
+static int finish_fuzz_round(debug_state_t * state) {
 	if (!state->finished_last_run) {
 		destroy_target_process(state);
 		state->finished_last_run = 1;
@@ -164,55 +164,55 @@ static int finish_fuzz_round(none_state_t * state) {
 /**
  * This function allocates and initializes a new instrumentation specific state object based on the given options.
  * @param options - a JSON string that contains the instrumentation specific string of options
- * @param state - an instrumentation specific JSON string previously returned from none_get_state that should be loaded
+ * @param state - an instrumentation specific JSON string previously returned from debug_get_state that should be loaded
  * @return - An instrumentation specific state object on success or NULL on failure
  */
-void * none_create(char * options, char * state)
+void * debug_create(char * options, char * state)
 {
-	none_state_t * none_state;
-	none_state = malloc(sizeof(none_state_t));
-	if (!none_state)
+	debug_state_t * debug_state;
+	debug_state = malloc(sizeof(debug_state_t));
+	if (!debug_state)
 		return NULL;
-	memset(none_state, 0, sizeof(none_state_t));
+	memset(debug_state, 0, sizeof(debug_state_t));
 
-	none_state->fuzz_round_semaphore = create_semaphore(0, 1);
-	none_state->process_creation_semaphore = create_semaphore(0, 1);
-	none_state->results_ready_semaphore = create_semaphore(0, 1);
-	if (!none_state->fuzz_round_semaphore || !none_state->process_creation_semaphore || !none_state->results_ready_semaphore) {
-		none_cleanup(none_state);
+	debug_state->fuzz_round_semaphore = create_semaphore(0, 1);
+	debug_state->process_creation_semaphore = create_semaphore(0, 1);
+	debug_state->results_ready_semaphore = create_semaphore(0, 1);
+	if (!debug_state->fuzz_round_semaphore || !debug_state->process_creation_semaphore || !debug_state->results_ready_semaphore) {
+		debug_cleanup(debug_state);
 		return NULL;
 	}
 
-	if (state && none_set_state(none_state, state))
+	if (state && debug_set_state(debug_state, state))
 	{
-		none_cleanup(none_state);
+		debug_cleanup(debug_state);
 		return NULL;
 	}
 
-	none_state->debug_thread_handle = CreateThread(
+	debug_state->debug_thread_handle = CreateThread(
 		NULL,           // default security attributes
 		0,              // default stack size
 		(LPTHREAD_START_ROUTINE)debugging_thread, // thread function
-		none_state,     // thread argument
+		debug_state,     // thread argument
 		0,              // default creation flags
 		NULL            // record the thread handle
 	);
-	if (!none_state->debug_thread_handle) {
-		none_cleanup(none_state);
+	if (!debug_state->debug_thread_handle) {
+		debug_cleanup(debug_state);
 		return NULL;
 	}
 
-	return none_state;
+	return debug_state;
 }
 
 /**
  * This function cleans up all resources with the passed in instrumentation state.
- * @param instrumentation_state - an instrumentation specific state object previously created by the none_create function
+ * @param instrumentation_state - an instrumentation specific state object previously created by the debug_create function
  * This state object should not be referenced after this function returns.
  */
-void none_cleanup(void * instrumentation_state)
+void debug_cleanup(void * instrumentation_state)
 {
-	none_state_t * state = (none_state_t *)instrumentation_state;
+	debug_state_t * state = (debug_state_t *)instrumentation_state;
 
 	destroy_target_process(state);
 	if (state->debug_thread_handle) {
@@ -232,26 +232,26 @@ void none_cleanup(void * instrumentation_state)
 
 /**
  * This function merges the coverage information from two instrumentation states.  This will always fail for the
- * none instrumentation, since it does not record instrumentation data.
- * @param instrumentation_state - an instrumentation specific state object previously created by the none_create function
- * @param other_instrumentation_state - an instrumentation specific state object previously created by the none_create function
+ * debug instrumentation, since it does not record instrumentation data.
+ * @param instrumentation_state - an instrumentation specific state object previously created by the debug_create function
+ * @param other_instrumentation_state - an instrumentation specific state object previously created by the debug_create function
  * @return - An instrumentation specific state object that contains the combination of both of the passed in instrumentation states
  * on success, or NULL on failure
  */
-void * none_merge(void * instrumentation_state, void * other_instrumentation_state)
+void * debug_merge(void * instrumentation_state, void * other_instrumentation_state)
 {
 	return NULL; //No instrumentation data, so we can't ever merge
 }
 
 /**
  * This function returns the state information holding the previous execution path info.  The returned value can later be passed to
- * none_create or none_set_state to load the state.
- * @param instrumentation_state - an instrumentation specific state object previously created by the none_create function
+ * debug_create or debug_set_state to load the state.
+ * @param instrumentation_state - an instrumentation specific state object previously created by the debug_create function
  * @return - A JSON string that holds the instrumentation specific state object information on success, or NULL on failure
  */
-char * none_get_state(void * instrumentation_state)
+char * debug_get_state(void * instrumentation_state)
 {
-	none_state_t * state = (none_state_t *)instrumentation_state;
+	debug_state_t * state = (debug_state_t *)instrumentation_state;
 	json_t *state_obj, *temp;
 	char * ret;
 
@@ -263,23 +263,23 @@ char * none_get_state(void * instrumentation_state)
 }
 
 /**
- * This function frees an instrumentation state previously obtained via none_get_state.
+ * This function frees an instrumentation state previously obtained via debug_get_state.
  * @param state - the instrumentation state to free
  */
-void none_free_state(char * state)
+void debug_free_state(char * state)
 {
 	free(state);
 }
 
 /**
- * This function sets the instrumentation state to the passed in state previously obtained via none_get_state.
- * @param instrumentation_state - an instrumentation specific state object previously created by the none_create function
- * @param state - an instrumentation state previously obtained via none_get_state
+ * This function sets the instrumentation state to the passed in state previously obtained via debug_get_state.
+ * @param instrumentation_state - an instrumentation specific state object previously created by the debug_create function
+ * @param state - an instrumentation state previously obtained via debug_get_state
  * @return - 0 on success, non-zero on failure.
  */
-int none_set_state(void * instrumentation_state, char * state)
+int debug_set_state(void * instrumentation_state, char * state)
 {
-	none_state_t * current_state = (none_state_t *)instrumentation_state;
+	debug_state_t * current_state = (debug_state_t *)instrumentation_state;
 	int result, temp_int;
 	if (!state)
 		return 1;
@@ -295,16 +295,16 @@ int none_set_state(void * instrumentation_state, char * state)
 
 /**
  * This function enables the instrumentation and runs the fuzzed process.  If the process needs to be restarted, it will be.
- * @param instrumentation_state - an instrumentation specific state object previously created by the none_create function
+ * @param instrumentation_state - an instrumentation specific state object previously created by the debug_create function
  * @process - a pointer to return a handle to the process that instrumentation was enabled on
  * @cmd_line - the command line of the fuzzed process to enable instrumentation on
  * @input - a buffer to the input that should be sent to the fuzzed process on stdin
  * @input_length - the length of the input parameter
  * returns 0 on success, -1 on failure
  */
-int none_enable(void * instrumentation_state, HANDLE * process, char * cmd_line, char * input, size_t input_length)
+int debug_enable(void * instrumentation_state, HANDLE * process, char * cmd_line, char * input, size_t input_length)
 {
-	none_state_t * state = (none_state_t *)instrumentation_state;
+	debug_state_t * state = (debug_state_t *)instrumentation_state;
 	if(state->child_handle)
 		destroy_target_process(state);
 	if (create_target_process(state, cmd_line, input, input_length))
@@ -314,13 +314,12 @@ int none_enable(void * instrumentation_state, HANDLE * process, char * cmd_line,
 }
 
 /**
- * This function determines whether the process being instrumented has taken a new path.  The none instrumentation does
- * not track the fuzzed process's path, so it is unable to determine if the process took a new path.  It will however be
- * able to determine if the process exitted normally, hung, or crashed.
- * @param instrumentation_state - an instrumentation specific state object previously created by the none_create function
- * @return - 0 when a new path wasn't detected (as it always won't be with the none instrumentation), or -1 on failure.
+ * This function determines whether the process being instrumented has taken a new path.  The debug instrumentation does
+ * not track the fuzzed process's path, so it is unable to determine if the process took a new path.
+ * @param instrumentation_state - an instrumentation specific state object previously created by the debug_create function
+ * @return - 0 when a new path wasn't detected (as it always won't be with the debug instrumentation), or -1 on failure.
  */
-int none_is_new_path(void * instrumentation_state)
+int debug_is_new_path(void * instrumentation_state)
 {
 	return 0; //We don't gather instrumentation data, so we can't ever tell if we hit a new path.
 }
@@ -331,22 +330,41 @@ int none_is_new_path(void * instrumentation_state)
  * @param instrumentation_state - an instrumentation specific structure previously created by the create() function
  * @return - either FUZZ_NONE, FUZZ_HANG, FUZZ_CRASH, or -1 on error.
  */
-int none_get_fuzz_result(void * instrumentation_state)
+int debug_get_fuzz_result(void * instrumentation_state)
 {
-	none_state_t * state = (none_state_t *)instrumentation_state;
+	debug_state_t * state = (debug_state_t *)instrumentation_state;
 	finish_fuzz_round(state);
 	return state->last_status;
 }
 
 /**
+ * Checks if the target process is done fuzzing the inputs yet.  If it has finished, it will have
+ * written last_status, the result of the fuzz job.
+ *
+ * @param state - The dynamorio_state_t object containing this instrumentation's state
+ * @return - 0 if the process has not finished testing the fuzzed input, 1 if the process is done.
+ * NOTE: this particular implementation of is_process_done cannot error.
+ */
+int debug_is_process_done(void * instrumentation_state)
+{
+	debug_state_t * state = (debug_state_t *)instrumentation_state;
+
+	if (state->process_running)
+		return 0;
+	else
+		return 1;
+	// we don't need to setup for get_fuzz_result, it should be handled by the debug thread.
+}
+
+/**
 * This function returns help text for this instrumentation.  This help text will describe the instrumentation and any options
-* that can be passed to none_create.
+* that can be passed to debug_create.
 * @return - a newly allocated string containing the help text.
 */
-char * none_help(void)
+char * debug_help(void)
 {
 	return strdup(
-		"none - No instrumentation (using debugging to detect crashes)\n"
+		"debug - Windows debug thread \"instrumentation\", only detects crashes\n"
 		"Options:\n"
 		"\tNone\n"
 		"\n"
