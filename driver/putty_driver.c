@@ -186,7 +186,7 @@ void putty_cleanup(void * driver_state)
 }
 
 /**
-* This function sends the provided buffer on the arleady connected TCP socket
+* This function sends the provided buffer on the already connected TCP socket
 * @param sock - a pointer to a connected TCP SOCKET to send the buffer on
 * @param buffer - the buffer to send
 * @param length - the length of the buffer parameter
