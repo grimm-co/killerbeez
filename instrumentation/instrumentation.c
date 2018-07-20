@@ -40,7 +40,7 @@ static char * find_fork_server_library(char * buffer, size_t buffer_len)
 
   char * directory = filename_relative_to_binary_dir(".");
   snprintf(buffer, buffer_len, "%s/%s", directory, library_name);
-  if (access(buffer, R_OK))
+  if (!file_exists(buffer))
     FATAL_MSG("Failed to find the %s in %s.", library_name, directory);
 }
 
