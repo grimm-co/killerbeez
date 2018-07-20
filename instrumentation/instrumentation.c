@@ -333,7 +333,13 @@ static int read_response(forkserver_t * fs)
 
 int fork_server_exit(forkserver_t * fs)
 {
-  return send_command(fs, EXIT);
+  int ret = send_command(fs, EXIT);
+  if(!ret) {
+    close(fs->fuzzer_to_forksrv);
+    close(fs->forksrv_to_fuzzer);
+    close(fs->target_stdin);
+  }
+  return ret;
 }
 
 int fork_server_fork(forkserver_t * fs)

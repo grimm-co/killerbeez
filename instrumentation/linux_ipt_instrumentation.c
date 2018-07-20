@@ -464,7 +464,6 @@ static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
   struct perf_event_attr pe;
   char filter[256];
   struct stat statbuf;
-  size_t size;
 
   memset(&pe, 0, sizeof(struct perf_event_attr));
   pe.size = sizeof(struct perf_event_attr);
@@ -487,8 +486,8 @@ static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
       return 1;
     }
     state->target_path_filter_size = statbuf.st_size;
-    if(state->target_path_filter_size != size % 0x1000)
-      state->target_path_filter_size = (((size + 0x1000) / 0x1000) * 0x1000);
+    if(state->target_path_filter_size != state->target_path_filter_size % 0x1000)
+      state->target_path_filter_size = (((state->target_path_filter_size + 0x1000) / 0x1000) * 0x1000);
   }
 
   //See https://elixir.bootlin.com/linux/v4.17.8/source/kernel/events/core.c#L8806 for the filter format
@@ -563,11 +562,34 @@ void * linux_ipt_create(char * options, char * state)
  */
 void linux_ipt_cleanup(void * instrumentation_state)
 {
+  struct ipt_hashtable_entry * hash, * tmp;
   linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
 
+  //Kill any remaining target processes
   destroy_target_process(state);
-  fork_server_exit(&state->fs);
 
+  //Cleanup the fork server
+  if(state->fork_server_setup) {
+    fork_server_exit(&state->fs);
+    state->fork_server_setup = 0;
+  }
+
+  //Cleanup our xxhash's
+  if(state->ipt_hashes.tnt != NULL)
+    XXH64_freeState(state->ipt_hashes.tip);
+  if(state->ipt_hashes.tnt != NULL)
+    XXH64_freeState(state->ipt_hashes.tnt);
+
+  //Cleanup the perf IPT fd and mmaps
+  cleanup_ipt(state);
+
+  //Cleanup the hashtable entries
+  HASH_ITER(hh, state->head, hash, tmp) {
+    HASH_DEL(state->head, hash);
+    free(hash);
+  }
+
+  free(state->target_path);
   free(state);
 }
 
