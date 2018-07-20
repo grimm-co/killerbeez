@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
@@ -17,17 +18,14 @@
 #define STRINGIFY(x) STRINGIFY_INTERNAL(x)
 #define MSAN_ERROR 86
 
+//The amount of time to wait before considering the fork server initialization failed
+#define FORK_SERVER_STARTUP_TIME 5000
+
 //Save a fd to the /dev/null, so we don't have to keep opening/closing it
 static int dev_null_fd =  -1;
 
-//TODO Used to detect if a child timed out
-static int child_timed_out = 0;
-
 //TODO implement memory limiting
 static int mem_limit = 0;
-
-//TODO customize the execution timeout
-static int exec_tmout = 1000;
 
 //TODO asan detection
 static int uses_asan = 0;
@@ -50,9 +48,11 @@ void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int u
 {
   static struct itimerval it;
   int st_pipe[2], ctl_pipe[2];
-  int rlen, status, forksrv_pid;
+  int err, status, forksrv_pid;
+  int rlen = -1, timed_out = 1;
   char fork_server_library_path[MAX_PATH];
   char stdin_filename[100];
+  time_t start_time;
 
   if(dev_null_fd < 0) {
     dev_null_fd = open("/dev/null", O_RDWR);
@@ -73,6 +73,10 @@ void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int u
     fs->target_stdin = -1;
 
   DEBUG_MSG("Spinning up the fork server...");
+
+  ////////////////////////////////////////////////////////////////////////////////////
+  //This code is loosely based on the AFL startup fork server present in afl-fuzz.c //
+  ////////////////////////////////////////////////////////////////////////////////////
 
   if(pipe(st_pipe) || pipe(ctl_pipe))
     FATAL_MSG("pipe() failed");
@@ -183,15 +187,19 @@ void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int u
   fs->forksrv_to_fuzzer = st_pipe[0];
 
   // Wait for the fork server to come up, but don't wait too long.
-  it.it_value.tv_sec = (exec_tmout / 1000);
-  it.it_value.tv_usec = (exec_tmout % 1000) * 1000;
-  setitimer(ITIMER_REAL, &it, NULL);
-
-  rlen = read(st_pipe[0], &status, sizeof(status));
-
-  it.it_value.tv_sec = 0;
-  it.it_value.tv_usec = 0;
-  setitimer(ITIMER_REAL, &it, NULL);
+  // Note, we do this looping, rather than blocking on read and using
+  // a SIGALRM to breakout on time out, because we want to avoid globals
+  // so the code can be used without worrying about any existing signal handlers
+  start_time = time(NULL);
+  while(time(NULL) - start_time < FORK_SERVER_STARTUP_TIME) {
+    err = ioctl(fs->forksrv_to_fuzzer, FIONREAD, &rlen);
+    if(!err && rlen == sizeof(int)) {
+      rlen = read(fs->forksrv_to_fuzzer, &status, sizeof(status));
+      timed_out = 0;
+      break;
+    }
+    usleep(5);
+  }
 
   // If we have a four-byte "hello" message from the server, we're all set.
   // Otherwise, try to figure out what went wrong.
@@ -200,8 +208,9 @@ void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int u
     return;
   }
 
-  if (child_timed_out)
-    FATAL_MSG("Timeout while initializing fork server");
+  kill(forksrv_pid, SIGKILL);
+  if(timed_out)
+    FATAL_MSG("Timeout while initializing fork server\n");
 
   if (waitpid(forksrv_pid, &status, 0) <= 0)
     FATAL_MSG("waitpid() failed");
