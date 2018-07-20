@@ -295,7 +295,8 @@ static int network_run(network_state_t * state, char ** inputs, size_t * lengths
 	int listening = 0;
 
 	//Start the process and give it our input
-	state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0);
+	if(state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0))
+		return FUZZ_ERROR;
 
 	//Wait for the port to be listening
 	while (!state->skip_network_check && listening == 0) {

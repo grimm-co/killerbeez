@@ -182,7 +182,8 @@ int file_test_input(void * driver_state, char * input, size_t length)
 	write_buffer_to_file(state->test_filename, input, length);
 
 	//Start the process and give it our input
-	state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0);
+	if(state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0))
+		return FUZZ_ERROR;
 
 	//Wait for it to be done, return the termination termination status
 	return generic_wait_for_process_completion(state->process, state->timeout,
