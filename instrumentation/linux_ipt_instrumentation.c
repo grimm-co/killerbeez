@@ -27,7 +27,7 @@
 ////////////////////////////////////////////////////////////////
 
 //Uncomment this define to make the IPT parser print each packet
-#define IPT_DEBUG
+//#define IPT_DEBUG
 
 #ifdef IPT_DEBUG
 #define IPT_DEBUG_MSG DEBUG_MSG
@@ -47,22 +47,22 @@ static uint64_t get_ip_val(unsigned char **pp, unsigned char *end, int len, uint
 
   if (len == 0) {
     *last_ip = 0;
-    return 0; /* out of context */
+    return 0; // out of context
   }
   if (len < 4) {
     if (!BYTES_LEFT(len)) {
       *last_ip = 0;
       WARNING_MSG("Got error in get_ip_val: Not enough bytes for decoding IP (have %lu, need %lu)", end-p, len);
-      return 0; /* XXX error */
+      return 0;
     }
     for (i = 0; i < len; i++, shift += 16, p += 2) {
       uint64_t b = *(uint16_t *)p;
       v = (v & ~(0xffffULL << shift)) | (b << shift);
     }
-    v = ((int64_t)(v << (64 - 48))) >> (64 - 48); /* sign extension */
+    v = ((int64_t)(v << (64 - 48))) >> (64 - 48); // sign extension
   } else {
     WARNING_MSG("Got error in get_ip_val!");
-    return 0; /* XXX error */
+    return 0;
   }
   *pp = p;
   *last_ip = v;
@@ -71,14 +71,17 @@ static uint64_t get_ip_val(unsigned char **pp, unsigned char *end, int len, uint
 
 static void finish_tnt_hash(struct ipt_hash_state * ipt_hashes)
 {
-
+	if(ipt_hashes->num_bits != 0) {
+		if(XXH64_update(ipt_hashes->tnt, &ipt_hashes->tnt_bits, sizeof(uint64_t)) == XXH_ERROR)
+			WARNING_MSG("Updating the TNT hash failed!"); //Should never happen
+	}
 }
 
 static void add_tnt_to_hash(struct ipt_hash_state * ipt_hashes, unsigned char * tnt_bits, int num_bits)
 {
+	uint64_t i;
 #ifdef IPT_DEBUG
   char bit_string[64];
-  int i;
 
   for(i = 0; i < num_bits; i++)
     bit_string[i] = BIT_TEST(tnt_bits[i / 8], i % 8) ? 'T' : 'N';
@@ -87,6 +90,16 @@ static void add_tnt_to_hash(struct ipt_hash_state * ipt_hashes, unsigned char * 
   IPT_DEBUG_MSG("TNT bits %d: %s", num_bits, bit_string);
 #endif
 
+	for(i = 0; i < num_bits; i++) {
+		ipt_hashes->tnt_bits |= (BIT_TEST(tnt_bits[i / 8], i % 8) << ipt_hashes->num_bits);
+		ipt_hashes->num_bits++;
+		if(ipt_hashes->num_bits == sizeof(ipt_hashes->tnt_bits)) {
+			if(XXH64_update(ipt_hashes->tnt, &ipt_hashes->tnt_bits, sizeof(uint64_t)) == XXH_ERROR)
+				WARNING_MSG("Updating the TNT hash failed!"); //Should never happen
+			ipt_hashes->tnt_bits = 0;
+			ipt_hashes->num_bits = 0;
+		}
+	}
 }
 
 static void add_tip_to_hash(struct ipt_hash_state * ipt_hashes, uint64_t tip)
@@ -117,6 +130,9 @@ static int analyze_ipt(linux_ipt_state_t * state)
     0x02, 0x82, 0x02, 0x82, 0x02, 0x82, 0x02, 0x82
   };
 
+	//Reset the IPT hashes struct
+	state->ipt_hashes.tnt_bits = 0;
+	state->ipt_hashes.num_bits = 0;
   if(XXH64_reset(state->ipt_hashes.tnt, 0) == XXH_ERROR ||
     XXH64_reset(state->ipt_hashes.tip, 0) == XXH_ERROR)
     return -1;
@@ -177,36 +193,36 @@ static int analyze_ipt(linux_ipt_state_t * state)
           continue;
         }
         if (p[1] == 0x82 && BYTES_LEFT(16) && !memcmp(p, psb, 16)) { // PSB
-          p += 16;
           IPT_DEBUG_MSG("PSB");
+          p += 16;
           continue;
         }
         if (p[1] == 0x23) { // PSBEND
-          p += 2;
           IPT_DEBUG_MSG("PSBEND");
+          p += 2;
           continue;
         }
         if (p[1] == 0xc3 && BYTES_LEFT(11) && p[2] == 0x88) { //MNT
-          p += 10;
           IPT_DEBUG_MSG("MNT");
+          p += 10;
           continue;
         }
         if (p[1] == 0x73 && BYTES_LEFT(7)) { //TMA
-          p += 7;
           IPT_DEBUG_MSG("TMA");
+          p += 7;
           continue;
         }
         if (p[1] == 0xc8 && BYTES_LEFT(7)) { //VMCS
-          p += 7;
           IPT_DEBUG_MSG("VMCS");
+          p += 7;
           continue;
         }
       }
 
       if(!(p[0] & 1)) {
         if (p[0] == 0) { // PAD
-          p++;
           IPT_DEBUG_MSG("PAD");
+          p++;
           continue;
         }
 
@@ -253,13 +269,13 @@ static int analyze_ipt(linux_ipt_state_t * state)
       }
 
       if (p[0] == 0x19 && BYTES_LEFT(8)) { // TSC
-        p+=8;
         IPT_DEBUG_MSG("TSC");
+        p+=8;
         continue;
       }
       if (p[0] == 0x59 && BYTES_LEFT(2)) { // MTC
-        p += 2;
         IPT_DEBUG_MSG("MTC");
+        p += 2;
         continue;
       }
       if ((p[0] & 3) == 3) { // CYC
@@ -433,13 +449,12 @@ static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
 
   memset(&pe, 0, sizeof(struct perf_event_attr));
   pe.size = sizeof(struct perf_event_attr);
+  pe.config = (1U << 11); // Disable RET compression, makes parsing easier
   pe.disabled = 0;
   pe.enable_on_exec = 0;
-  pe.exclude_kernel = 1;
   pe.exclude_hv = 1;
-  pe.type = PERF_TYPE_HARDWARE;
+  pe.exclude_kernel = 1;
   pe.type = state->intel_pt_type;
-  pe.config = (1U << 11); /* Disable RETCompression */
 
   state->perf_fd = perf_event_open(&pe, pid, -1, -1, PERF_FLAG_FD_CLOEXEC);
   if(state->perf_fd < 0) {

@@ -31,7 +31,7 @@ struct ipt_hashtable_entry {
 struct ipt_hash_state
 {
   uint64_t tnt_bits;
-  uint64_t num_bits_left;
+  uint64_t num_bits;
   XXH64_state_t * tnt;
   XXH64_state_t * tip;
 };
