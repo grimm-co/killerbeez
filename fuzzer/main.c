@@ -6,14 +6,25 @@
 #include <instrumentation_factory.h>
 #include <utils.h>
 
+
+#ifdef _WIN32
 #include <io.h>
 #include <Shlwapi.h>
+#define F_OK 00     // for checking if a file is open/writable
+#define W_OK 02
+#else
+#include <libgen.h>     // dirname
+#include <unistd.h>     // access, F_OK, W_OK
+#include <sys/stat.h>   // mkdir
+#include <sys/types.h>
+#include <errno.h>      // output directory creation
+#endif
+
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <time.h>
 
-#define F_OK 00
-#define W_OK 02
 
 /**
  * This function prints out the usage information for the fuzzer and each of the individual components
@@ -63,7 +74,7 @@ int main(int argc, char ** argv)
 	void * instrumentation_state;
 	int seed_length = 0, mutate_length = 0, instrumentation_length = 0, mutator_state_length;
 	time_t fuzz_begin_time;
-	int iteration = 0, fuzz_result, new_path;
+	int iteration = 0, fuzz_result = FUZZ_NONE, new_path = 0;
 	void * mutator_state = NULL;
 	char filename[MAX_PATH];
 	char filehash[256];
@@ -80,7 +91,8 @@ int main(int argc, char ** argv)
 	if (!mutator_directory)
 	{
 		char * mutator_repo_dir = getenv("KILLERBEEZ_MUTATORS");
-		if (mutator_repo_dir) //If the environment variable KILLERBEEZ_MUTATORS is set, try to autodetect the directory based on the repo build path
+		//If the environment variable KILLERBEEZ_MUTATORS is set, try to autodetect the directory based on the repo build path
+		if (mutator_repo_dir) 
 		{
 			mutator_directory = (char *)malloc(MAX_PATH + 1);
 			if (!mutator_directory)
@@ -89,6 +101,8 @@ int main(int argc, char ** argv)
 				return 1;
 			}
 			memset(mutator_directory, 0, MAX_PATH + 1);
+#ifdef _WIN32
+
 #if defined(_M_X64) || defined(__x86_64__)
 #ifdef _DEBUG
 			snprintf(mutator_directory, MAX_PATH, "%s\\..\\build\\x64\\Debug\\mutators\\", mutator_repo_dir);
@@ -97,15 +111,23 @@ int main(int argc, char ** argv)
 #endif
 #else
 #ifdef _DEBUG
-			snprintf(mutator_directory, MAX_PATH, "%s\\..\\build\\Debug\\mutators\\", mutator_repo_dir);
+			snprintf(mutator_directory, MAX_PATH, "%s\\..\\build\\X86\\Debug\\mutators\\", mutator_repo_dir);
 #else
-			snprintf(mutator_directory, MAX_PATH, "%s\\..\\build\\Release\\mutators\\", mutator_repo_dir);
+			snprintf(mutator_directory, MAX_PATH, "%s\\..\\build\\X86\\Release\\mutators\\", mutator_repo_dir);
 #endif
+#endif
+
+#else
+			snprintf(mutator_directory, MAX_PATH, "%s/../build/mutators/", mutator_repo_dir);
 #endif
 		}
 		else
 		{
+#ifdef _WIN32
 			mutator_directory = filename_relative_to_binary_dir("..\\mutators\\");
+#else
+			mutator_directory = filename_relative_to_binary_dir("../mutators");
+#endif
 		}
 	}
 	
@@ -190,27 +212,47 @@ int main(int argc, char ** argv)
 
 	if (instrumentation_state_dump_file) {
 		strncpy(filename, instrumentation_state_dump_file, sizeof(filename));
+
+		#ifdef _WIN32
 		PathRemoveFileSpec(filename);
+		#else
+		dirname(filename);
+		#endif
+
 		if (access(filename, W_OK))
 			FATAL_MSG("The provided instrumentation_state_dump_file filename (%s) is not writeable", instrumentation_state_dump_file);
 	}
 	if (mutation_state_dump_file) {
 		strncpy(filename, mutation_state_dump_file, sizeof(filename));
+
+		#ifdef _WIN32
 		PathRemoveFileSpec(filename);
+		#else
+		dirname(filename);
+		#endif
+
 		if (access(filename, W_OK))
 			FATAL_MSG("The provided mutation_state_dump_file filename (%s) is not writeable", mutation_state_dump_file);
 	}
 
-#define create_output_directory(name)                                                \
-	snprintf(filename, sizeof(filename), "%s" name, output_directory);               \
-	if(!CreateDirectory(filename, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) { \
-		FATAL_MSG("Unable to create directory %s", filename);                        \
-		return 1;                                                                    \
-	}
+#ifdef _WIN32
+	#define create_output_directory(name)                                                \
+		snprintf(filename, sizeof(filename), "%s" name, output_directory);               \
+		if(!CreateDirectory(filename, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) { \
+			FATAL_MSG("Unable to create directory %s", filename);                        \
+		}
+#else
+	#define create_output_directory(name)                                                \
+		snprintf(filename, sizeof(filename), "%s" name, output_directory);               \
+		if (mkdir(filename, 0775) == -1) {                                               \
+			if (errno != EEXIST)                                                         \
+				FATAL_MSG("Unable to create directory %s", filename);                    \
+		} // otherwise, it already exists and we don't need to do anything
+#endif
 
 	//Setup the output directory
-	create_output_directory("");
-	create_output_directory("/crashes");
+	create_output_directory("");			// creates ./output
+	create_output_directory("/crashes");	// creates ./output/crashes and so on
 	create_output_directory("/hangs");
 	create_output_directory("/new_paths");
 
@@ -225,18 +267,22 @@ int main(int argc, char ** argv)
 		if (instrumentation_length <= 0)
 			FATAL_MSG("Could not read instrumentation file or empty instrumentation file: %s", instrumentation_state_load_file);
 	}
+
+	// NULL means instrumentation failed to initialize.
 	instrumentation = instrumentation_factory(instrumentation_name);
 	if (!instrumentation)
 	{
 		free(instrumentation_state_string);
 		FATAL_MSG("Unknown instrumentation '%s'", instrumentation_name);
 	}
+
 	instrumentation_state = instrumentation->create(instrumentation_options, instrumentation_state_string);
 	if (!instrumentation_state)
 	{
 		free(instrumentation_state_string);
 		FATAL_MSG("Bad options/state for instrumentation %s", instrumentation_name);
 	}
+
 	free(instrumentation_state_string);
 
 	//Load the seed buffer from a file
@@ -246,6 +292,7 @@ int main(int argc, char ** argv)
 		if (seed_length <= 0)
 			FATAL_MSG("Could not read seed file or empty seed file: %s", seed_file);
 	}
+
 	if (!seed_buffer)
 		FATAL_MSG("No seed file or seed id specified.");
 
@@ -271,7 +318,11 @@ int main(int argc, char ** argv)
 	//Create the driver
 	driver = driver_all_factory(driver_name, driver_options, instrumentation, instrumentation_state, mutator, mutator_state);
 	if (!driver)
-		FATAL_MSG("Unknown driver '%s' or bad options: \ndriver options: %s\nmutator options: %s\n", driver_name, driver_options, mutator_options);
+	{
+		FATAL_MSG("Unknown driver '%s' or bad options: \n\n\tdriver options: %s\n\n"\
+			"\tmutator options: %s\n\n\tPass %s -h driver for help.\n", driver_name,
+			driver_options, mutator_options, argv[0]);
+	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Main Fuzz Loop ////////////////////////////////////////////////////////////////////////////////////
@@ -283,18 +334,19 @@ int main(int argc, char ** argv)
 	for (iteration = 0; iteration < num_iterations; iteration++)
 	{
 		DEBUG_MSG("Fuzzing the %d iteration", iteration);
+
 		fuzz_result = driver->test_next_input(driver->state);
+
 		if (fuzz_result < 0)
 		{
 			if(fuzz_result == -2)
 				WARNING_MSG("The mutator has run out of mutations to test after %d iterations", iteration);
 			else
-				ERROR_MSG("ERROR: driver failed to test the target program");
+				ERROR_MSG("ERROR: driver failed to test the target program, fuzz_result was %d",fuzz_result);
 			break;
 		}
 
 		new_path = instrumentation->is_new_path(instrumentation_state);
-
 		if (new_path < 0)
 		{
 			printf("ERROR: instrumentation failed to determine the fuzzed process's fuzz_result\n");
@@ -321,7 +373,7 @@ int main(int argc, char ** argv)
 				if (output_directory) {
 					md5((uint8_t *)mutate_buffer, mutate_length, filehash, sizeof(filehash));
 					snprintf(filename, MAX_PATH, "%s/%s/%s", output_directory, directory, filehash);
-					if (access(filename, F_OK)) //If the file already exists, there's no reason to write it again
+					if (!file_exists(filename)) //If the file already exists, there's no reason to write it again
 						write_buffer_to_file(filename, mutate_buffer, mutate_length);
 				}
 				free(mutate_buffer);
@@ -329,7 +381,7 @@ int main(int argc, char ** argv)
 		}
 	}
 
-	INFO_MSG("Ran %ld iterations in %I64d seconds", iteration, time(NULL) - fuzz_begin_time);
+	INFO_MSG("Ran %ld iterations in %lld seconds", iteration, time(NULL) - fuzz_begin_time);
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Cleanup ///////////////////////////////////////////////////////////////////////////////////////////
@@ -360,7 +412,9 @@ int main(int argc, char ** argv)
 
 	//Cleanup everything and exit
 	driver->cleanup(driver->state);
+
 	instrumentation->cleanup(instrumentation_state);
+
 	mutator->cleanup(mutator_state);
 	free(driver);
 	free(instrumentation);
