@@ -27,11 +27,14 @@
 ////////////////////////////////////////////////////////////////
 
 //Uncomment this define to make the IPT parser print each packet
-#define IPT_DEBUG
+//#define IPT_DEBUG
 
 #ifdef IPT_DEBUG
+//Prints each IPT packet and the packet bytes
 #define IPT_DEBUG_MSG_PACKET //DEBUG_MSG
+//Prints status messages about the parser
 #define IPT_DEBUG_MSG        DEBUG_MSG
+
 #else
 #define IPT_DEBUG_MSG_PACKET
 #define IPT_DEBUG_MSG
