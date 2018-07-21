@@ -665,7 +665,38 @@ void linux_ipt_cleanup(void * instrumentation_state)
  */
 void * linux_ipt_merge(void * instrumentation_state, void * other_instrumentation_state)
 {
-  return NULL; //TODO
+  linux_ipt_state_t * merged;
+  struct ipt_hashtable_entry * entry = NULL, * hash = NULL, * tmp = NULL, * match = NULL;
+  linux_ipt_state_t * first = (linux_ipt_state_t *)instrumentation_state;
+  linux_ipt_state_t * second = (linux_ipt_state_t *)other_instrumentation_state;
+
+  merged = linux_ipt_create(NULL, NULL);
+  if (!merged)
+    return NULL;
+
+  //Add the first state's entries
+  HASH_ITER(hh, first->head, hash, tmp)
+  {
+    entry = malloc(sizeof(struct ipt_hashtable_entry));
+    memset(entry, 0, sizeof(entry));
+    entry->id.tip = hash->id.tip;
+    entry->id.tnt = hash->id.tnt;
+    HASH_ADD(hh, merged->head, id, sizeof(struct ipt_hashtable_key), entry);
+  }
+
+  //Add the second state's entries
+  HASH_ITER(hh, second->head, hash, tmp)
+  {
+    entry = malloc(sizeof(struct ipt_hashtable_entry));
+    memset(entry, 0, sizeof(entry));
+    entry->id.tip = hash->id.tip;
+    entry->id.tnt = hash->id.tnt;
+    HASH_FIND(hh, merged->head, &entry->id, sizeof(struct ipt_hashtable_key), match);
+    if(!match)
+      HASH_ADD(hh, merged->head, id, sizeof(struct ipt_hashtable_key), entry);
+  }
+
+  return merged;
 }
 
 /**
@@ -677,10 +708,32 @@ void * linux_ipt_merge(void * instrumentation_state, void * other_instrumentatio
 char * linux_ipt_get_state(void * instrumentation_state)
 {
   linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
-  json_t *state_obj, *temp;
+  json_t *state_obj, *hash_obj, *hash_list, *temp;
+  struct ipt_hashtable_entry * hash = NULL, * tmp = NULL;
   char * ret;
 
   state_obj = json_object();
+  if (!state_obj)
+    return NULL;
+
+  ADD_INT(temp, state->last_status, state_obj, "last_status");
+  ADD_INT(temp, state->process_finished, state_obj, "process_finished");
+  ADD_INT(temp, state->last_fuzz_result, state_obj, "last_fuzz_result");
+  ADD_INT(temp, state->fuzz_results_set, state_obj, "fuzz_results_set");
+  ADD_INT(temp, state->last_is_new_path, state_obj, "last_is_new_path");
+
+  hash_list = json_array();
+  if (!hash_list)
+    return NULL;
+  HASH_ITER(hh, state->head, hash, tmp)
+  {
+    hash_obj = json_mem((const char *)&hash->id, sizeof(struct ipt_hashtable_key));
+    if (!hash_obj)
+      return NULL;
+    json_array_append_new(hash_list, hash_obj);
+  }
+  json_object_set_new(state_obj, "hash_list", hash_list);
+
   ret = json_dumps(state_obj, 0);
   json_decref(state_obj);
   return ret;
@@ -704,12 +757,46 @@ void linux_ipt_free_state(char * state)
 int linux_ipt_set_state(void * instrumentation_state, char * state)
 {
   linux_ipt_state_t * current_state = (linux_ipt_state_t *)instrumentation_state;
+  struct ipt_hashtable_entry * entry = NULL, * hash = NULL, * tmp = NULL, * match = NULL;
+  json_t * hash_obj;
   int result, temp_int;
+  size_t length;
+
   if(!state)
     return 1;
 
   //If a child process is running when the state is being set
   destroy_target_process(current_state); //kill it so we don't orphan it
+
+  //Free any existing hashes already in the hashtable
+  HASH_ITER(hh, current_state->head, hash, tmp) {
+    HASH_DEL(current_state->head, hash);
+    free(hash);
+  }
+
+  GET_INT(temp_int, state, current_state->last_status, "last_status", result);
+  GET_INT(temp_int, state, current_state->process_finished, "process_finished", result);
+  GET_INT(temp_int, state, current_state->last_fuzz_result, "last_fuzz_result", result);
+  GET_INT(temp_int, state, current_state->fuzz_results_set, "fuzz_results_set", result);
+  GET_INT(temp_int, state, current_state->last_is_new_path, "last_is_new_path", result);
+
+  FOREACH_OBJECT_JSON_ARRAY_ITEM_BEGIN(state, hash_list, "hash_list", hash_obj, result)
+
+    length = json_mem_length(hash_obj);
+    if(length != sizeof(struct ipt_hashtable_key))
+      return 1;
+
+    entry = malloc(sizeof(struct ipt_hashtable_entry));
+    if(!entry)
+      return 1;
+
+    memset(entry, 0, sizeof(entry));
+    memcpy(&entry->id, json_mem_value(hash_obj), sizeof(struct ipt_hashtable_key));
+    HASH_FIND(hh, current_state->head, &entry->id, sizeof(struct ipt_hashtable_key), match);
+    if(!match)
+      HASH_ADD(hh, current_state->head, id, sizeof(struct ipt_hashtable_key), entry);
+
+  FOREACH_OBJECT_JSON_ARRAY_ITEM_END(hash_list)
 
   return 0; //No state to set, so just return success
 }
