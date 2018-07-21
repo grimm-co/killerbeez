@@ -744,34 +744,8 @@ int linux_ipt_enable(void * instrumentation_state, pid_t * process, char * cmd_l
   return 0;
 }
 
-/**
- * This function determines whether the process being instrumented has taken a new path.  It should be
- * called after the process has finished processing the tested input.
- * @param instrumentation_state - an instrumentation specific state object previously created by the linux_ipt_create function
- * @return - 1 if the previously setup process (via the enable function) took a new path, 0 if it did not, or -1 on failure.
- */
-int linux_ipt_is_new_path(void * instrumentation_state)
+static int finish_fuzz_round(linux_ipt_state_t * state)
 {
-  linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
-
-  //If we haven't cleaned up the IPT state, then it must not have been
-  if(state->perf_fd >= 0) { //analyzed.  Analyze it now and cleanup the IPT state
-    state->last_is_new_path = analyze_ipt(state);
-    cleanup_ipt(state);
-  }
-  return state->last_is_new_path;
-}
-
-/**
- * This function will return the result of the fuzz job. It should be called
- * after the process has finished processing the tested input.
- * @param instrumentation_state - an instrumentation specific structure previously created by the linux_ipt_create function
- * @return - either FUZZ_NONE, FUZZ_HANG, FUZZ_CRASH, or -1 on error.
- */
-int linux_ipt_get_fuzz_result(void * instrumentation_state)
-{
-  linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
-
   if(!state->fuzz_results_set) {
     //if it's still alive, it's a hang
     if(!linux_ipt_is_process_done(state)) {
@@ -789,6 +763,39 @@ int linux_ipt_get_fuzz_result(void * instrumentation_state)
   }
 
   return state->last_fuzz_result;
+
+}
+
+/**
+ * This function determines whether the process being instrumented has taken a new path.  Calling this function will stop the
+ * process if it is not yet finished.
+ * @param instrumentation_state - an instrumentation specific state object previously created by the linux_ipt_create function
+ * @return - 1 if the previously setup process (via the enable function) took a new path, 0 if it did not, or -1 on failure.
+ */
+int linux_ipt_is_new_path(void * instrumentation_state)
+{
+  linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
+
+  //Ensure that the process has finished parsing the input (or stop it if it's not)
+  finish_fuzz_round(state);
+
+  //If we haven't cleaned up the IPT state, then it must not have been
+  if(state->perf_fd >= 0) { //analyzed.  Analyze it now and cleanup the IPT state
+    state->last_is_new_path = analyze_ipt(state);
+    cleanup_ipt(state);
+  }
+  return state->last_is_new_path;
+}
+
+/**
+ * This function will return the result of the fuzz job. It should be called
+ * after the process has finished processing the tested input.
+ * @param instrumentation_state - an instrumentation specific structure previously created by the linux_ipt_create function
+ * @return - either FUZZ_NONE, FUZZ_HANG, FUZZ_CRASH, or -1 on error.
+ */
+int linux_ipt_get_fuzz_result(void * instrumentation_state)
+{
+  return finish_fuzz_round((linux_ipt_state_t *)instrumentation_state);
 }
 
 /**
