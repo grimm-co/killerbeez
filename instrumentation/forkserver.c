@@ -113,26 +113,10 @@ DYLD_INTERPOSE(NEW_FUNCTION, FUNCTION)
 //Fork Server ////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////
 
-/*
-   american fuzzy lop - LLVM instrumentation bootstrap
-   ---------------------------------------------------
-
-   Written by Laszlo Szekeres <lszekeres@google.com> and
-              Michal Zalewski <lcamtuf@google.com>
-
-   LLVM integration design comes from Laszlo Szekeres.
-
-   Copyright 2015, 2016 Google Inc. All rights reserved.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at:
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
-   The code in this section has been modified from the original to suit the
-   purposes of this project.
-*/
+//The fork server design was inspired by the LLVM mode of AFL. It however,
+//has been modified significantly to suit our purposes.  The LLVM mode of
+//AFL is available at:
+//https://github.com/mirrorer/afl/blob/master/llvm_mode/afl-llvm-rt.o.c#L95
 
 static void forkserver_init(void)
 {
@@ -154,7 +138,7 @@ static void forkserver_init(void)
 
   while (1) {
 
-    // Wait for parent by reading from the pipe. Abort if read fails.
+    // Wait for parent by reading from the pipe. Exit if read fails.
     if (read(FUZZER_TO_FORKSRV, &command, sizeof(command)) != sizeof(command))
 			_exit(1);
 
