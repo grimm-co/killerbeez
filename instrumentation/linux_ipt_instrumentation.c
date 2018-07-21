@@ -26,29 +26,43 @@
 // IPT Packet Analyzer /////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
 
-//Uncomment this define to make the IPT parser print each packet
+//Uncomment this #define to make the IPT parser print each packet and parser details
 //#define IPT_DEBUG
 
 #ifdef IPT_DEBUG
 //Prints each IPT packet and the packet bytes
-#define IPT_DEBUG_MSG_PACKET //DEBUG_MSG
+#define IPT_DEBUG_MSG_PACKET(...) DEBUG_MSG(__VA_ARGS__)
 //Prints status messages about the parser
-#define IPT_DEBUG_MSG        DEBUG_MSG
-
+#define IPT_DEBUG_MSG(...)        DEBUG_MSG(__VA_ARGS__)
 #else
-#define IPT_DEBUG_MSG_PACKET
-#define IPT_DEBUG_MSG
+#define IPT_DEBUG_MSG_PACKET(...)
+#define IPT_DEBUG_MSG(...)
 #endif
 
 #define BYTES_LEFT(num)    ((end - p) >= (num))
 #define BIT_TEST(num, bit) ((num) & (1 << (bit)))
 
-static uint64_t sign_extend(uint64_t val, uint8_t sign)
+/**
+ * This function sign extends a number
+ * @param num - the number to sign extend
+ * @param sign_bit - which bit in num is the value's current sign bit
+ * @return - the sign extended number
+ */
+static uint64_t sign_extend(uint64_t num, uint8_t sign_bit)
 {
-  uint64_t mask = ~0ULL << sign;
-  return val & (1ULL << (sign - 1)) ? val | mask : val & ~mask;
+  uint64_t mask = ~0ULL << sign_bit;
+  return num & (1ULL << (sign_bit - 1)) ? num | mask : num & ~mask;
 }
 
+/**
+ * This function parsers an IPT TIP/FUP packet and obtains the IP address that it refers to
+ * @param outp - The position of the TIP/FUP packet bytes in the IPT packet buffer.  This pointer will
+ * be updated to point after the parsed TIP/FUP packet.
+ * @param end - The end of the IPT packet buffer.  Used to ensure, we don't read past the end
+ * @param last_ip - The IP address that was in the most recent TIP/FUP packet. This value will be
+ * updated with the IP address from the parsed packet.
+ * @return - the IP address from the TIP/FUP packet.
+ */
 static uint64_t handle_ip_packet(unsigned char ** outp, unsigned char *end, uint64_t *last_ip)
 {
   unsigned char *p = *outp;
@@ -94,6 +108,10 @@ static uint64_t handle_ip_packet(unsigned char ** outp, unsigned char *end, uint
   return new_ip;
 }
 
+/**
+ * This function adds any remaining TNT packet bits to the TNT hash being recorded
+ * @param ipt_hashes - A pointer to the hash structure with the TNT hash to update
+ */
 static void finish_tnt_hash(struct ipt_hash_state * ipt_hashes)
 {
   if(ipt_hashes->num_bits != 0) {
@@ -102,6 +120,12 @@ static void finish_tnt_hash(struct ipt_hash_state * ipt_hashes)
   }
 }
 
+/**
+ * This function adds TNT packet bits to the TNT hash being recorded
+ * @param ipt_hashes - A pointer to the hash structure with the TNT hash to update
+ * @param tnt_bits - the TNT bits to add to the hash
+ * @param num_bits - the number of bits in the tnt_bits parameter
+ */
 static void add_tnt_to_hash(struct ipt_hash_state * ipt_hashes, unsigned char * tnt_bits, int num_bits)
 {
   uint64_t i;
@@ -127,6 +151,11 @@ static void add_tnt_to_hash(struct ipt_hash_state * ipt_hashes, unsigned char * 
   }
 }
 
+/**
+ * This function adds a TIP packet's IP address to the TIP hash being recorded
+ * @param ipt_hashes - A pointer to the hash structure with the TIP hash to update
+ * @param tip - the IP address to add to the TIP hash
+ */
 static void add_tip_to_hash(struct ipt_hash_state * ipt_hashes, uint64_t tip)
 {
   IPT_DEBUG_MSG("TIP %lx", tip);
@@ -134,6 +163,11 @@ static void add_tip_to_hash(struct ipt_hash_state * ipt_hashes, uint64_t tip)
     WARNING_MSG("Updating the TIP hash failed!"); //Should never happen
 }
 
+/**
+ * This function determines how many bits are in a TNT packet
+ * @param packet - A pointer to the IPT packet buffer
+ * @param max - the maximum possible bits that could be in a packet
+ */
 static int get_tnt_num_bits(unsigned char * packet, int max_bits)
 {
   int num_bits;
@@ -144,6 +178,12 @@ static int get_tnt_num_bits(unsigned char * packet, int max_bits)
   return num_bits;
 }
 
+/**
+ * This function parses the IPT packet buffer to determine if the execution trace was new or not.  If it was, the
+ * execution trace's hash is added to the hashtable to ensure we do not mark it as new again.
+ * @param state - The linux_ipt_state_t object containing this instrumentation's state
+ * @param return - -1 on error, 0 if the IPT packets in the IPT packet buffer don't describe a unique run, or 1 if they do
+ */
 static int analyze_ipt(linux_ipt_state_t * state)
 {
   unsigned char * p, * start, * end, * psb_pos;
@@ -174,6 +214,9 @@ static int analyze_ipt(linux_ipt_state_t * state)
   write_buffer_to_file("/tmp/ipt_dump", start, end-start);
 #endif
 
+  //Rather than use Intel's libipt, we instead parse the buffer ourselves to ensure we can do so
+  //quickly.  As we only need the TIP/TNT packets, this parser attempts to parse as little else
+  //as possible.
   while(p < end) {
 
     psb_pos = memmem(p, end - p, psb, sizeof(psb));
@@ -279,15 +322,9 @@ static int analyze_ipt(linux_ipt_state_t * state)
       }
 
       if (p[0] == 0x99 && BYTES_LEFT(2)) { // MODE
-        if ((p[1] >> 5) == 1) {
-          IPT_DEBUG_MSG_PACKET("MODE 1");
-          p += 2;
-          continue;
-        } else if ((p[1] >> 5) == 0) {
-          IPT_DEBUG_MSG_PACKET("MODE 2");
-          p += 2;
-          continue;
-        }
+        IPT_DEBUG_MSG_PACKET("MODE");
+        p += 2;
+        continue;
       }
 
       if (p[0] == 0x19 && BYTES_LEFT(8)) { // TSC
@@ -336,6 +373,10 @@ static int analyze_ipt(linux_ipt_state_t * state)
 // Private methods /////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
 
+/**
+ * This function cleans up the IPT related file descriptor and memory mappings
+ * @param state - The linux_ipt_state_t object containing this instrumentation's state
+ */
 static void cleanup_ipt(linux_ipt_state_t * state)
 {
   if(state->perf_aux_buf && state->perf_aux_buf != MAP_FAILED)
@@ -404,6 +445,11 @@ static int create_target_process(linux_ipt_state_t * state, char* cmd_line, char
   return 0;
 }
 
+/**
+ * This function reads a number from the given file
+ * @param filename - the path to the file to read a number from.
+ * @return - The number that was in the specified file, or -1 on error
+ */
 static int get_file_int(char * filename)
 {
   int ret, fd;
@@ -423,13 +469,18 @@ static int get_file_int(char * filename)
   return ret;
 }
 
+/**
+ * This function reads the Intel PT state of the current processor from the sys filesystem
+ * @param state - The linux_ipt_state_t object containing this instrumentation's state
+ * @return - 0 on success, non-zero if IPT or IP address filtering are not supported
+ */
 static int get_ipt_system_info(linux_ipt_state_t * state)
 {
   int ret;
 
   if(access("/sys/devices/intel_pt/", F_OK)) {
     INFO_MSG("Intel PT not supported (/sys/devices/intel_pt/ does not exist)");
-    return 1;
+    return -1;
   }
 
   ret = get_file_int("/sys/devices/intel_pt/type");
@@ -456,12 +507,20 @@ static int get_ipt_system_info(linux_ipt_state_t * state)
   return 0;
 }
 
-//There's no syscall definition in libc for perf_event_open, so we'll define our own
+/**
+ * This function wraps the perf_event_open syscall, which does not have one in libc
+ */
 static long perf_event_open(struct perf_event_attr* hw_event, pid_t pid, int cpu, int group_fd, unsigned long flags)
 {
   return syscall(__NR_perf_event_open, hw_event, (uintptr_t)pid, (uintptr_t)cpu, (uintptr_t)group_fd, (uintptr_t)flags);
 }
 
+/**
+ * This function sets up IPT tracing for the specified process
+ * @param state - The linux_ipt_state_t object containing this instrumentation's state
+ * @param pid - The process ID of the process to trace
+ * @return - 0 on success, non-zero on failure
+ */
 static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
 {
   struct perf_event_attr pe;
@@ -598,8 +657,7 @@ void linux_ipt_cleanup(void * instrumentation_state)
 }
 
 /**
- * This function merges the coverage information from two instrumentation states.  This will always fail for the
- * linux_ipt instrumentation, since it does not record instrumentation data.
+ * This function merges the coverage information from two instrumentation states.
  * @param instrumentation_state - an instrumentation specific state object previously created by the linux_ipt_create function
  * @param other_instrumentation_state - an instrumentation specific state object previously created by the linux_ipt_create function
  * @return - An instrumentation specific state object that contains the combination of both of the passed in instrumentation states
@@ -657,9 +715,9 @@ int linux_ipt_set_state(void * instrumentation_state, char * state)
 }
 
 /**
- * This function enables the instrumentation and runs the fuzzed process.  If the process needs to be restarted, it will be.
+ * This function enables the instrumentation and runs the fuzzed process.
  * @param instrumentation_state - an instrumentation specific state object previously created by the linux_ipt_create function
- * @process - a pointer to return a handle to the process that instrumentation was enabled on
+ * @process - a pointer to return a handle to the process that the instrumentation was enabled on
  * @cmd_line - the command line of the fuzzed process to enable instrumentation on
  * @input - a buffer to the input that should be sent to the fuzzed process on stdin
  * @input_length - the length of the input parameter
@@ -686,6 +744,12 @@ int linux_ipt_enable(void * instrumentation_state, pid_t * process, char * cmd_l
   return 0;
 }
 
+/**
+ * This function determines whether the process being instrumented has taken a new path.  It should be
+ * called after the process has finished processing the tested input.
+ * @param instrumentation_state - an instrumentation specific state object previously created by the linux_ipt_create function
+ * @return - 1 if the previously setup process (via the enable function) took a new path, 0 if it did not, or -1 on failure.
+ */
 int linux_ipt_is_new_path(void * instrumentation_state)
 {
   linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
@@ -700,9 +764,8 @@ int linux_ipt_is_new_path(void * instrumentation_state)
 
 /**
  * This function will return the result of the fuzz job. It should be called
- * after the process has finished processing the tested input, which should always be the case
- * with the linux_ipt instrumentation, since test_next_input should always wait for the process to finish.
- * @param instrumentation_state - an instrumentation specific structure previously created by the create() function
+ * after the process has finished processing the tested input.
+ * @param instrumentation_state - an instrumentation specific structure previously created by the linux_ipt_create function
  * @return - either FUZZ_NONE, FUZZ_HANG, FUZZ_CRASH, or -1 on error.
  */
 int linux_ipt_get_fuzz_result(void * instrumentation_state)
@@ -729,9 +792,7 @@ int linux_ipt_get_fuzz_result(void * instrumentation_state)
 }
 
 /**
- * Checks if the target process is done fuzzing the inputs yet.  If it has finished, it will have
- * written last_status, the result of the fuzz job.
- *
+ * Checks if the target process is done fuzzing the inputs yet.
  * @param state - The dynamorio_state_t object containing this instrumentation's state
  * @return - 0 if the process is not done testing the fuzzed input, non-zero if the process is done.
  */
@@ -753,8 +814,7 @@ int linux_ipt_is_process_done(void * instrumentation_state)
 }
 
 /**
- * This function returns help text for this instrumentation.  This help text will describe the instrumentation and any options
- * that can be passed to linux_ipt_create.
+ * This function returns help text for the Linux IPT instrumentation.
  * @return - a newly allocated string containing the help text.
  */
 char * linux_ipt_help(void)

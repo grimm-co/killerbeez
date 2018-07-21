@@ -32,7 +32,6 @@ static int uses_asan = 0;
 
 /**
  * This function locates the fork server library
- *
  * @param buffer - A buffer to return the path to the fork server library
  * @param buffer_len - The length of the buffer parameter
  */
@@ -52,7 +51,6 @@ static void find_fork_server_library(char * buffer, size_t buffer_len)
 
 /**
  * This function starts a program with the fork server embedded in it
- *
  * @param fs - A forkserver_t structure to hold the fork server state
  * @param target_path - The path to the program to start
  * @param argv - Arguments to pass to the program
@@ -347,7 +345,6 @@ void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int u
 
 /**
  * This function sends a command to the fork server
- *
  * @param fs - A forkserver_t structure to hold the fork server state
  * @param command - the command to send
  * @return - 0 on success, FORKSERVER_ERROR on failure
@@ -361,7 +358,6 @@ static int send_command(forkserver_t * fs, char command)
 
 /**
  * This function reads a response from the fork server
- *
  * @param fs - A forkserver_t structure to hold the fork server state
  * @return - the response value on success, FORKSERVER_ERROR on failure
  */
@@ -375,7 +371,6 @@ static int read_response(forkserver_t * fs)
 
 /**
  * This function tells the forkserver to exit, and closes any open file descriptors to it
- *
  * @param fs - A forkserver_t structure to hold the fork server state
  * @return - the 0 on success, FORKSERVER_ERROR on failure
  */
@@ -392,7 +387,6 @@ int fork_server_exit(forkserver_t * fs)
 
 /**
  * This function tells the forkserver to fork or fork and run, and returns the newly created process's pid
- *
  * @param fs - A forkserver_t structure to hold the fork server state
  * @param command - Either the FORK or FORK_RUN command
  * @return - the newly created process's pid on success, FORKSERVER_ERROR on failure
@@ -407,7 +401,6 @@ static int send_fork(forkserver_t * fs, char command)
 
 /**
  * This function tells the forkserver to fork, and returns the newly created process's pid
- *
  * @param fs - A forkserver_t structure to hold the fork server state
  * @return - the newly created process's pid on success, FORKSERVER_ERROR on failure
  */
@@ -418,7 +411,6 @@ int fork_server_fork(forkserver_t * fs)
 
 /**
  * This function tells the forkserver to fork and run, and returns the newly created process's pid
- *
  * @param fs - A forkserver_t structure to hold the fork server state
  * @return - the newly created process's pid on success, FORKSERVER_ERROR on failure
  */
@@ -429,7 +421,6 @@ int fork_server_fork_run(forkserver_t * fs)
 
 /**
  * This function tells the forkserver to run
- *
  * @param fs - A forkserver_t structure to hold the fork server state
  * @return - 0 on success, FORKSERVER_ERROR on failure
  */
@@ -444,7 +435,6 @@ int fork_server_run(forkserver_t * fs)
 
 /**
  * This function gets the response of prevously sent GET_STATUS command from the fork server (i.e. the process's exit status)
- *
  * @param fs - A forkserver_t structure to hold the fork server state
  * @param wait - whether this function should block or not
  * @return - the finished process's exit status (see waitpid) on success, FORKSERVER_ERROR on failure, or
@@ -472,7 +462,6 @@ int fork_server_get_pending_status(forkserver_t * fs, int wait)
 
 /**
  * This function sends a GET_STATUS command to the fork server and gets the response (i.e. the process's exit status)
- *
  * @param fs - A forkserver_t structure to hold the fork server state
  * @param wait - whether this function should block or not
  * @return - the finished process's exit status (see waitpid) on success, FORKSERVER_ERROR on failure, or
