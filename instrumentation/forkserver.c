@@ -134,7 +134,6 @@ DYLD_INTERPOSE(NEW_FUNCTION, FUNCTION)
    purposes of this project.
 */
 
-
 static void forkserver_init(void)
 {
   int response = 0x41414141;

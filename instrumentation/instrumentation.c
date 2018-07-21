@@ -30,7 +30,13 @@ static int mem_limit = 0;
 //TODO asan detection
 static int uses_asan = 0;
 
-static char * find_fork_server_library(char * buffer, size_t buffer_len)
+/**
+ * This function locates the fork server library
+ *
+ * @param buffer - A buffer to return the path to the fork server library
+ * @param buffer_len - The length of the buffer parameter
+ */
+static void find_fork_server_library(char * buffer, size_t buffer_len)
 {
 #ifdef __APPLE__
   char * library_name = "libforkserver.dylib";
@@ -44,6 +50,16 @@ static char * find_fork_server_library(char * buffer, size_t buffer_len)
     FATAL_MSG("Failed to find the %s in %s.", library_name, directory);
 }
 
+/**
+ * This function starts a program with the fork server embedded in it
+ *
+ * @param fs - A forkserver_t structure to hold the fork server state
+ * @param target_path - The path to the program to start
+ * @param argv - Arguments to pass to the program
+ * @param use_forkserver_library - Whether or not to use LD_PRELOAD/DYLD_INSERT_LIBRARIES to inject the fork server
+ * library or not
+ * @param need_stdin_fd - whether we should open a library for the stdin of the newly created process
+ */
 void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int use_forkserver_library, int needs_stdin_fd)
 {
   static struct itimerval it;
@@ -154,7 +170,11 @@ void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int u
     // Preload the forkserver library
     if(use_forkserver_library) {
       find_fork_server_library(fork_server_library_path, sizeof(fork_server_library_path));
+#ifdef __APPLE__
+      setenv("DYLD_INSERT_LIBRARIES", fork_server_library_path, 1);
+#else
       setenv("LD_PRELOAD", fork_server_library_path, 1);
+#endif
     }
 
     // This should improve performance a bit, since it stops the linker from
@@ -325,6 +345,13 @@ void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int u
   FATAL_MSG("Fork server handshake failed");
 }
 
+/**
+ * This function sends a command to the fork server
+ *
+ * @param fs - A forkserver_t structure to hold the fork server state
+ * @param command - the command to send
+ * @return - 0 on success, FORKSERVER_ERROR on failure
+ */
 static int send_command(forkserver_t * fs, char command)
 {
   if (write(fs->fuzzer_to_forksrv, &command, sizeof(command)) != sizeof(command))
@@ -332,6 +359,12 @@ static int send_command(forkserver_t * fs, char command)
   return 0;
 }
 
+/**
+ * This function reads a response from the fork server
+ *
+ * @param fs - A forkserver_t structure to hold the fork server state
+ * @return - the response value on success, FORKSERVER_ERROR on failure
+ */
 static int read_response(forkserver_t * fs)
 {
   int response;
@@ -340,6 +373,12 @@ static int read_response(forkserver_t * fs)
   return response;
 }
 
+/**
+ * This function tells the forkserver to exit, and closes any open file descriptors to it
+ *
+ * @param fs - A forkserver_t structure to hold the fork server state
+ * @return - the 0 on success, FORKSERVER_ERROR on failure
+ */
 int fork_server_exit(forkserver_t * fs)
 {
   int ret = send_command(fs, EXIT);
@@ -351,6 +390,13 @@ int fork_server_exit(forkserver_t * fs)
   return ret;
 }
 
+/**
+ * This function tells the forkserver to fork or fork and run, and returns the newly created process's pid
+ *
+ * @param fs - A forkserver_t structure to hold the fork server state
+ * @param command - Either the FORK or FORK_RUN command
+ * @return - the newly created process's pid on success, FORKSERVER_ERROR on failure
+ */
 static int send_fork(forkserver_t * fs, char command)
 {
   if(send_command(fs, command))
@@ -359,16 +405,34 @@ static int send_fork(forkserver_t * fs, char command)
   return read_response(fs); //Wait for the target pid
 }
 
+/**
+ * This function tells the forkserver to fork, and returns the newly created process's pid
+ *
+ * @param fs - A forkserver_t structure to hold the fork server state
+ * @return - the newly created process's pid on success, FORKSERVER_ERROR on failure
+ */
 int fork_server_fork(forkserver_t * fs)
 {
   return send_fork(fs, FORK);
 }
 
+/**
+ * This function tells the forkserver to fork and run, and returns the newly created process's pid
+ *
+ * @param fs - A forkserver_t structure to hold the fork server state
+ * @return - the newly created process's pid on success, FORKSERVER_ERROR on failure
+ */
 int fork_server_fork_run(forkserver_t * fs)
 {
   return send_fork(fs, FORK_RUN);
 }
 
+/**
+ * This function tells the forkserver to run
+ *
+ * @param fs - A forkserver_t structure to hold the fork server state
+ * @return - 0 on success, FORKSERVER_ERROR on failure
+ */
 int fork_server_run(forkserver_t * fs)
 {
   if(send_command(fs, RUN))
@@ -378,6 +442,14 @@ int fork_server_run(forkserver_t * fs)
   return 0;
 }
 
+/**
+ * This function gets the response of prevously sent GET_STATUS command from the fork server (i.e. the process's exit status)
+ *
+ * @param fs - A forkserver_t structure to hold the fork server state
+ * @param wait - whether this function should block or not
+ * @return - the finished process's exit status (see waitpid) on success, FORKSERVER_ERROR on failure, or
+ * FORKSERVER_NO_RESULTS_READY when not blocking and the forkserver has not responded yet
+ */
 int fork_server_get_pending_status(forkserver_t * fs, int wait)
 {
   unsigned long bytes_available = 0;
@@ -398,6 +470,14 @@ int fork_server_get_pending_status(forkserver_t * fs, int wait)
   return FORKSERVER_NO_RESULTS_READY;
 }
 
+/**
+ * This function sends a GET_STATUS command to the fork server and gets the response (i.e. the process's exit status)
+ *
+ * @param fs - A forkserver_t structure to hold the fork server state
+ * @param wait - whether this function should block or not
+ * @return - the finished process's exit status (see waitpid) on success, FORKSERVER_ERROR on failure, or
+ * FORKSERVER_NO_RESULTS_READY when not blocking and the forkserver has not responded yet
+ */
 int fork_server_get_status(forkserver_t * fs, int wait)
 {
   if(!fs->sent_get_status) {
