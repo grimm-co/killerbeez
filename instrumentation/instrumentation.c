@@ -49,6 +49,10 @@ static void find_fork_server_library(char * buffer, size_t buffer_len)
     FATAL_MSG("Failed to find the %s in %s.", library_name, directory);
 }
 
+//////////////////////////////////////////////////////////////
+// Fork Server Initialization ////////////////////////////////
+//////////////////////////////////////////////////////////////
+
 /**
  * This function starts a program with the fork server embedded in it
  * @param fs - A forkserver_t structure to hold the fork server state
@@ -88,9 +92,11 @@ void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int u
 
   DEBUG_MSG("Spinning up the fork server...");
 
-  ////////////////////////////////////////////////////////////////////////////////////
-  //This code is loosely based on the AFL startup fork server present in afl-fuzz.c //
-  ////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////
+  // This code is based on the AFL startup fork server present in afl-fuzz.c //////////
+  // The AFL forkserver initialization code is available at this URL: /////////////////
+  // https://github.com/mirrorer/afl/blob/master/afl-fuzz.c#L1968 /////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////
 
   if(pipe(st_pipe) || pipe(ctl_pipe))
     FATAL_MSG("pipe() failed");
@@ -342,6 +348,10 @@ void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int u
 
   FATAL_MSG("Fork server handshake failed");
 }
+
+//////////////////////////////////////////////////////////////
+// Fork Server Communication Functions ///////////////////////
+//////////////////////////////////////////////////////////////
 
 /**
  * This function sends a command to the fork server

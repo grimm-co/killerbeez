@@ -216,7 +216,8 @@ static int analyze_ipt(linux_ipt_state_t * state)
 
   //Rather than use Intel's libipt, we instead parse the buffer ourselves to ensure we can do so
   //quickly.  As we only need the TIP/TNT packets, this parser attempts to parse as little else
-  //as possible.
+  //as possible.  Further, we only record hashes of the TIP/TNT packets, as full decoding of the
+  //IPT packets to match them to the basic blocks transitions is far too slow.
   while(p < end) {
 
     psb_pos = memmem(p, end - p, psb, sizeof(psb));
