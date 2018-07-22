@@ -349,7 +349,7 @@ int main(int argc, char ** argv)
 		new_path = instrumentation->is_new_path(instrumentation_state);
 		if (new_path < 0)
 		{
-			printf("The instrumentation failed to determine the fuzzed process's fuzz_result\n");
+			ERROR_MSG("The instrumentation failed to determine the fuzzed process's fuzz_result");
 			break;
 		}
 
