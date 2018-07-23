@@ -462,6 +462,7 @@ static int get_file_int(char * filename)
 
   memset(buffer, 0, sizeof(buffer));
   ret = read(fd, buffer, sizeof(buffer));
+  buffer[sizeof(buffer)-1] = 0;
   if(ret > 0)
     ret = atoi(buffer);
   else
