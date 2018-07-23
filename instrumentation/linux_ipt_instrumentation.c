@@ -841,7 +841,6 @@ static int finish_fuzz_round(linux_ipt_state_t * state)
     if(!linux_ipt_is_process_done(state)) {
       destroy_target_process(state);
       state->last_fuzz_result = FUZZ_HANG;
-      return state->last_fuzz_result;
     }
     //If it died from a signal (and it wasn't SIGKILL, that we send), it's a crash
     else if(WIFSIGNALED(state->last_status) && WTERMSIG(state->last_status) != SIGKILL)
