@@ -454,15 +454,14 @@ static int create_target_process(linux_ipt_state_t * state, char* cmd_line, char
 static int get_file_int(char * filename)
 {
   int ret, fd;
-  char buffer[100];
+  char buffer[16];
 
   fd = open(filename, O_RDONLY);
   if(fd < 0)
     return -1;
 
   memset(buffer, 0, sizeof(buffer));
-  ret = read(fd, buffer, sizeof(buffer));
-  buffer[sizeof(buffer)-1] = 0;
+  ret = read(fd, buffer, sizeof(buffer)-1);
   if(ret > 0)
     ret = atoi(buffer);
   else
