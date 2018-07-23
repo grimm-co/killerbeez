@@ -92,11 +92,28 @@ void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int u
 
   DEBUG_MSG("Spinning up the fork server...");
 
-  /////////////////////////////////////////////////////////////////////////////////////
-  // This code is based on the AFL startup fork server present in afl-fuzz.c //////////
-  // The AFL forkserver initialization code is available at this URL: /////////////////
-  // https://github.com/mirrorer/afl/blob/master/afl-fuzz.c#L1968 /////////////////////
-  /////////////////////////////////////////////////////////////////////////////////////
+/*
+  The code in the rest of this function is based on the AFL startup fork server
+  present in afl-fuzz.c, available at this URL:
+  https://github.com/mirrorer/afl/blob/master/afl-fuzz.c#L1968.
+  AFL's license is as shown below:
+
+  american fuzzy lop - fuzzer code
+  --------------------------------
+  Written and maintained by Michal Zalewski <lcamtuf@google.com>
+
+  Forkserver design by Jann Horn <jannhorn@googlemail.com>
+
+  Copyright 2013, 2014, 2015, 2016, 2017 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+ */
+
+
 
   if(pipe(st_pipe) || pipe(ctl_pipe))
     FATAL_MSG("pipe() failed");
