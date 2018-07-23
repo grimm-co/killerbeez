@@ -889,7 +889,7 @@ int linux_ipt_get_fuzz_result(void * instrumentation_state)
 
 /**
  * Checks if the target process is done fuzzing the inputs yet.
- * @param state - The dynamorio_state_t object containing this instrumentation's state
+ * @param state - The linux_ipt_state_t object containing this instrumentation's state
  * @return - 0 if the process is not done testing the fuzzed input, non-zero if the process is done.
  */
 int linux_ipt_is_process_done(void * instrumentation_state)
