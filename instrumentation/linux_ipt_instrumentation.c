@@ -640,7 +640,7 @@ void linux_ipt_cleanup(void * instrumentation_state)
     state->fork_server_setup = 0;
   }
 
-  //Cleanup our xxhash's
+  //Cleanup our xxhashes
   if(state->ipt_hashes.tnt != NULL)
     XXH64_freeState(state->ipt_hashes.tip);
   if(state->ipt_hashes.tnt != NULL)
