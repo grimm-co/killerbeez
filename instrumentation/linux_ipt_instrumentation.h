@@ -38,6 +38,8 @@ struct ipt_hash_state
 
 struct linux_ipt_state
 {
+  int persistence_max_cnt;
+
   int num_address_ranges;
   int fork_server_setup;
   int intel_pt_type;

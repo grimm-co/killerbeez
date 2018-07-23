@@ -398,8 +398,10 @@ static void cleanup_ipt(linux_ipt_state_t * state)
 static void destroy_target_process(linux_ipt_state_t * state)
 {
   if(state->child_pid) {
-    kill(state->child_pid, SIGKILL);
-    state->child_pid = 0;
+    if(!state->persistence_max_cnt) {
+      kill(state->child_pid, SIGKILL);
+      state->child_pid = 0;
+    }
     state->last_status = fork_server_get_status(&state->fs, 1);
   }
 }
@@ -420,7 +422,7 @@ static int create_target_process(linux_ipt_state_t * state, char* cmd_line, char
   if(!state->fork_server_setup) {
     if(split_command_line(cmd_line, &state->target_path, &argv))
       return -1;
-    fork_server_init(&state->fs, state->target_path, argv, 1, stdin_length != 0);
+    fork_server_init(&state->fs, state->target_path, argv, 1, state->persistence_max_cnt, stdin_length != 0);
     state->fork_server_setup = 1;
     for(i = 0; argv[i]; i++)
       free(argv[i]);
@@ -584,6 +586,32 @@ static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
 ////////////////////////////////////////////////////////////////
 
 /**
+ * This function creates a linux_ipt_state_t object based on the given options.
+ * @param options - A JSON string of the options to set in the new linux_ipt_state_t. See the
+ * help function for more information on the specific options available.
+ * @return the linux_ipt_state_t generated from the options in the JSON options string, or NULL on failure
+ */
+static linux_ipt_state_t * setup_options(char * options)
+{
+  linux_ipt_state_t * state;
+  size_t i, length;
+  char * temp;
+  char buffer[MAX_PATH];
+
+  state = malloc(sizeof(linux_ipt_state_t));
+  if(!state)
+    return NULL;
+  memset(state, 0, sizeof(linux_ipt_state_t));
+  if(!options)
+    return state;
+
+  //Parse the options
+  PARSE_OPTION_INT(state, options, persistence_max_cnt, "persistence_max_cnt", linux_ipt_cleanup);
+
+  return state;
+}
+
+/**
  * This function allocates and initializes a new instrumentation specific state object based on the given options.
  * @param options - a JSON string that contains the instrumentation specific string of options
  * @param state - an instrumentation specific JSON string previously returned from linux_ipt_get_state that should be loaded
@@ -591,12 +619,7 @@ static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
  */
 void * linux_ipt_create(char * options, char * state)
 {
-  // Allocate and initialize linux_ipt state object.
-  linux_ipt_state_t * linux_ipt_state;
-  linux_ipt_state = malloc(sizeof(linux_ipt_state_t));
-  if(!linux_ipt_state)
-    return NULL;
-  memset(linux_ipt_state, 0, sizeof(linux_ipt_state_t));
+  linux_ipt_state_t * linux_ipt_state = setup_options(options);
 
   if(get_ipt_system_info(linux_ipt_state)) {
     linux_ipt_cleanup(linux_ipt_state);
@@ -610,8 +633,7 @@ void * linux_ipt_create(char * options, char * state)
     return NULL;
   }
 
-  if(state && linux_ipt_set_state(linux_ipt_state, state))
-  {
+  if(state && linux_ipt_set_state(linux_ipt_state, state)) {
     linux_ipt_cleanup(linux_ipt_state);
     return NULL;
   }
@@ -915,10 +937,11 @@ int linux_ipt_is_process_done(void * instrumentation_state)
 char * linux_ipt_help(void)
 {
   return strdup(
-      "ipt - Linux IPT instrumentation\n"
-      "Options:\n"
-      "\tNone\n"
-      "\n"
-      );
+    "ipt - Linux IPT instrumentation\n"
+    "Options:\n"
+    "\tpersistence_max_cnt  The number of executions to run in one process while\n"
+    "\t                     fuzzing in persistence mode\n"
+    "\n"
+  );
 }
 

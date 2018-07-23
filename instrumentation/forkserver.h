@@ -1,12 +1,20 @@
 #pragma once
 
+int killerbeez_loop(void);
+#define KILLERBEEZ_LOOP() killerbeez_loop()
+
+#define PERSIST_MAX_VAR "PERSISTENCE_MAX_CNT"
+
 //Designated file descriptors for read/write to the forkserver
 //and target process
 #define FUZZER_TO_FORKSRV   198
 #define FORKSRV_TO_FUZZER   199
-#define MAX_FORKSRV_FD      200
+#define FORKSRV_TO_TARGET   200
+#define TARGET_TO_FORKSRV   201
+#define MAX_FORKSRV_FD      202
 
-//Commands that the fuzzer can send to the forkserver
+//Commands that the fuzzer can send to the forkserver, or the forkserver
+//sends to the target
 #define EXIT       0
 #define FORK       1
 #define RUN        2
@@ -25,7 +33,8 @@ struct forkserver {
 };
 typedef struct forkserver forkserver_t;
 
-void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int use_forkserver_library, int needs_stdin_fd);
+void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int use_forkserver_library,
+  int persistence_max_cnt, int needs_stdin_fd);
 int fork_server_exit(forkserver_t * fs);
 int fork_server_fork(forkserver_t * fs);
 int fork_server_fork_run(forkserver_t * fs);
