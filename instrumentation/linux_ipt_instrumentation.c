@@ -528,6 +528,7 @@ static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
   struct perf_event_attr pe;
   char filter[256];
   struct stat statbuf;
+  size_t pagesize = getpagesize();
 
   memset(&pe, 0, sizeof(struct perf_event_attr));
   pe.size = sizeof(struct perf_event_attr);
@@ -551,8 +552,8 @@ static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
       return 1;
     }
     state->target_path_filter_size = statbuf.st_size;
-    if(state->target_path_filter_size != state->target_path_filter_size % 0x1000)
-      state->target_path_filter_size = (((state->target_path_filter_size + 0x1000) / 0x1000) * 0x1000);
+    if(state->target_path_filter_size != state->target_path_filter_size % pagesize)
+      state->target_path_filter_size = (((state->target_path_filter_size + pagesize) / pagesize) * pagesize);
   }
 
   //See https://elixir.bootlin.com/linux/v4.17.8/source/kernel/events/core.c#L8806 for the filter format
