@@ -380,12 +380,12 @@ static int analyze_ipt(linux_ipt_state_t * state)
  */
 static void cleanup_ipt(linux_ipt_state_t * state)
 {
-  if(state->perf_aux_buf && state->perf_aux_buf != MAP_FAILED)
+  if(state->perf_aux_buf && state->perf_aux_buf != MAP_FAILED && state->pem && state->pem != MAP_FAILED) {
     munmap(state->perf_aux_buf, state->pem->aux_size);
-  state->perf_aux_buf = NULL;
-  if(state->pem && state->pem != MAP_FAILED)
+    state->perf_aux_buf = NULL;
     munmap(state->pem, PERF_MMAP_SIZE + getpagesize());
-  state->pem = NULL;
+    state->pem = NULL;
+  }
   if(state->perf_fd >= 0)
     close(state->perf_fd);
   state->perf_fd = -1;
