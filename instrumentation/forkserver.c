@@ -43,7 +43,7 @@ static int is_persistent = 0;
 #define FUNCTION CUSTOM_FUNCTION_NAME
 #define NEW_FUNCTION new_##FUNCTION
 #define DYLD_INTERPOSE(_replacment,_replacee) \
-__attribute__((used)) static struct{ const void* replacment; const void* replacee; } _interpose_##_replacee \
+  __attribute__((used)) static struct{ const void* replacment; const void* replacee; } _interpose_##_replacee \
 __attribute__ ((section ("__DATA,__interpose"))) = { (const void*)(unsigned long)&_replacment, (const void*)(unsigned long)&_replacee };
 #else
 
@@ -72,121 +72,121 @@ static orig_function_type orig_main = NULL;
 
 void * NEW_FUNCTION(void * a0, void * a1, void * a2, void * a3, void * a4, void * a5, void * a6, void * a7)
 {
-	void * ret;
+  void * ret;
 
-	if(orig_func == NULL)
-		orig_func = (orig_function_type)dlsym(RTLD_NEXT, FUNCTION_NAME);
+  if(orig_func == NULL)
+    orig_func = (orig_function_type)dlsym(RTLD_NEXT, FUNCTION_NAME);
 
 #if USE_LIBC_START_MAIN //we're hooking __libc_start_main
 
-	orig_main = a0;
-	ret = orig_func((void *)fake_main, a1, a2, a3, a4, a5, a6, a7);
+  orig_main = a0;
+  ret = orig_func((void *)fake_main, a1, a2, a3, a4, a5, a6, a7);
 
 #else //We're hooking a custom function
 
 #if RUN_BEFORE_CUSTOM_FUNCTION //If we want to run before the hooked function
-	if(!init_done) forkserver_init();
+  if(!init_done) forkserver_init();
 #endif
 
-	ret = orig_func(a0, a1, a2, a3, a4, a5, a6, a7);
+  ret = orig_func(a0, a1, a2, a3, a4, a5, a6, a7);
 
 #if !RUN_BEFORE_CUSTOM_FUNCTION //If we want to run after the hooked function
-	if(!init_done) forkserver_init();
+  if(!init_done) forkserver_init();
 #endif
 
 #endif
 
-	return ret;
+  return ret;
 }
 
 void * fake_main(void * a0, void * a1, void * a2, void * a3, void * a4, void * a5, void * a6, void * a7)
 {
-	forkserver_init();
-	return orig_main(a0, a1, a2, a3, a4, a5, a6, a7);
+  forkserver_init();
+  return orig_main(a0, a1, a2, a3, a4, a5, a6, a7);
 }
 
 #ifdef __APPLE__
 DYLD_INTERPOSE(NEW_FUNCTION, FUNCTION)
 #endif
 
-//////////////////////////////////////////////////////////////
-//Fork Server ////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////
+  //Fork Server ////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////
 
-//The fork server design was inspired by the LLVM mode of AFL. It however,
-//has been modified significantly to suit our purposes.  The LLVM mode of
-//AFL is available at:
-//https://github.com/mirrorer/afl/blob/master/llvm_mode/afl-llvm-rt.o.c#L95
+  //The fork server design was inspired by the LLVM mode of AFL. It however,
+  //has been modified significantly to suit our purposes.  The LLVM mode of
+  //AFL is available at:
+  //https://github.com/mirrorer/afl/blob/master/llvm_mode/afl-llvm-rt.o.c#L95
 
 static void forkserver_init(void)
 {
   int response = 0x41414141;
   char command;
   int child_pid;
-	int target_pipe[2];
+  int target_pipe[2];
 
-	//Ensure children don't try to also run the forkserver
-	init_done = 1;
+  //Ensure children don't try to also run the forkserver
+  init_done = 1;
 
   // Phone home and tell the parent that we're OK. If parent isn't there,
   // assume we're not running in forkserver mode and just execute program.
   if (write(FORKSRV_TO_FUZZER, &response, sizeof(int)) != sizeof(int))
-		return;
+    return;
 
-	if(pipe(target_pipe))
-		_exit(1);
+  if(pipe(target_pipe))
+    _exit(1);
 
   while (1) {
 
     // Wait for parent by reading from the pipe. Exit if read fails.
     if (read(FUZZER_TO_FORKSRV, &command, sizeof(command)) != sizeof(command))
-			_exit(1);
+      _exit(1);
 
-		switch(command) {
+    switch(command) {
 
-			case EXIT:
-				_exit(0);
-				break;
+      case EXIT:
+        _exit(0);
+        break;
 
-			case FORK:
-			case FORK_RUN:
+      case FORK:
+      case FORK_RUN:
 
-				child_pid = fork();
-				if (child_pid < 0)
-					_exit(1);
+        child_pid = fork();
+        if (child_pid < 0)
+          _exit(1);
 
-				//In child process: close fds, resume execution.
-				if (!child_pid) {
-					close(FUZZER_TO_FORKSRV);
-					close(FORKSRV_TO_FUZZER);
-					close(target_pipe[1]);
+        //In child process: close fds, resume execution.
+        if (!child_pid) {
+          close(FUZZER_TO_FORKSRV);
+          close(FORKSRV_TO_FUZZER);
+          close(target_pipe[1]);
 
-					//If we're just forking, wait for the forkserver to tell us to go
-					if (command == FORK && read(target_pipe[0], &response, sizeof(int)) != sizeof(int))
-						_exit(1);
+          //If we're just forking, wait for the forkserver to tell us to go
+          if (command == FORK && read(target_pipe[0], &response, sizeof(int)) != sizeof(int))
+            _exit(1);
 
-					close(target_pipe[0]);
-					return;
-				}
-				response = child_pid;
+          close(target_pipe[0]);
+          return;
+        }
+        response = child_pid;
 
-				break;
+        break;
 
-			case RUN:
-				//Tell the target process to go
-				response = 0;
-				if (write(target_pipe[1], &response, sizeof(int)) != sizeof(int))
-					_exit(1);
-				break;
+      case RUN:
+        //Tell the target process to go
+        response = 0;
+        if (write(target_pipe[1], &response, sizeof(int)) != sizeof(int))
+          _exit(1);
+        break;
 
-			case GET_STATUS:
-				if (waitpid(child_pid, &response, 0) < 0)
-					_exit(1);
-				break;
-		}
+      case GET_STATUS:
+        if (waitpid(child_pid, &response, 0) < 0)
+          _exit(1);
+        break;
+    }
 
     if (write(FORKSRV_TO_FUZZER, &response, sizeof(int)) != sizeof(int))
-			_exit(1);
+      _exit(1);
   }
 }
 
