@@ -201,8 +201,9 @@ static void forkserver_init(void)
 //Persistence Mode ///////////////////////////////////////////
 //////////////////////////////////////////////////////////////
 
-static long max_cnt = 0;
-static long cycle_cnt = 0;
+static int max_cnt = 0;
+static int cycle_cnt = 0;
+static int forkserver_cycle_cnt = 0;
 
 static void forkserver_persistence_init(void)
 {
@@ -225,14 +226,25 @@ static void forkserver_persistence_init(void)
 
       case EXIT:
 
-        kill(child_pid, SIGKILL);
+        if(child_pid != -1)
+          kill(child_pid, SIGKILL);
         _exit(0);
         break;
 
       case FORK:
       case FORK_RUN:
 
-        if(child_pid == -1) {
+        if(child_pid == -1 || forkserver_cycle_cnt == max_cnt) {
+
+          if(child_pid != -1 && forkserver_cycle_cnt == max_cnt) {
+            //if we've hit the maximum cycle count, continue the child, so it may exit
+            //and clean up.  We do this now, rather than in GET_STATUS commands, to ensure that
+            //the exit portion of the target process does not get traced.
+            kill(child_pid, SIGCONT);
+            if(waitpid(child_pid, &response, 0) < 0)
+              _exit(1);
+            forkserver_cycle_cnt = 0;
+          }
 
           child_pid = fork();
           if(child_pid < 0)
@@ -259,6 +271,7 @@ static void forkserver_persistence_init(void)
       case RUN:
         //Tell the target process to go
         kill(child_pid, SIGCONT);
+        forkserver_cycle_cnt++;
         if(command != FORK_RUN) //Don't overwrite the FORK case's response
           response = 0;
         break;
@@ -282,12 +295,7 @@ static void forkserver_persistence_init(void)
 }
 
 int killerbeez_loop(void) {
-
-  cycle_cnt++;
-  if(cycle_cnt == max_cnt)
-    return 0;
-
   raise(SIGSTOP);
-  return 1;
+  return cycle_cnt++ != max_cnt;
 }
 

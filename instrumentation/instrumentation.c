@@ -174,8 +174,8 @@ void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int u
     }
     else
       dup2(dev_null_fd, 0);
-    //dup2(dev_null_fd, 1);
-    //dup2(dev_null_fd, 2);
+    dup2(dev_null_fd, 1);
+    dup2(dev_null_fd, 2);
 
     // Set up control and status pipes, close the unneeded original fds.
     if (dup2(ctl_pipe[0], FUZZER_TO_FORKSRV) < 0)

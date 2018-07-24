@@ -527,7 +527,6 @@ static int create_target_process(linux_ipt_state_t * state, char* cmd_line, char
   //Take care of the stdin input, write over the file, then truncate it accordingly
   lseek(state->fs.target_stdin, 0, SEEK_SET);
   if(stdin_input != NULL && stdin_length != 0) {
-    DEBUG_MSG("Writing %c%c%c%c to target stdin\n", stdin_input[0], stdin_input[1], stdin_input[2], stdin_input[3]);
     if(write(state->fs.target_stdin, stdin_input, stdin_length) != stdin_length)
       FATAL_MSG("Short write to target's stdin file");
   }
@@ -887,7 +886,6 @@ static int finish_fuzz_round(linux_ipt_state_t * state)
   }
 
   return state->last_fuzz_result;
-
 }
 
 /**
