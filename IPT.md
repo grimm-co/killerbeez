@@ -79,7 +79,7 @@ before.
 
 This approach has the advantage of not requiring disassembling in order to walk
 the execution trace. Additionally, our IPT packet parser is able to ignore
-irrelevant packets and only focus TNT and TIP packets. These characteristics
+irrelevant packets and only focus on TNT and TIP packets. These characteristics
 make the Killerbeez IPT packet parser very fast. However, this approach does
 have the disadvantage of requiring IPT instruction pointer address filtering, to
 ensure unnecessary libraries are not also traced. This also helps reduce the
@@ -90,13 +90,12 @@ exactly the same in each execution.
 
 As compared to basic block transitions, this implementation may overestimate
 which execution traces are consider interesting. For instance, imagine two
-executions: run A and run B. If run B's execute trace is a subset of run A's
+executions: run A and run B. If run B's execution trace is a subset of run A's
 execution trace, our implementation will report it as being interesting, despite
 a basic block transition based instrumentation not reporting it as interesting.
-
 Run B may or may not be interesting depending on the specific code being
-executed. For instance, run B doesn't exercise any more code, so it may not be
-interesting, however if a bug in the program can only be exercised by not
+executed. For instance, run B doesn't exercise any additional code, so it may
+not be interesting, however if a bug in the program can only be exercised by not
 executing a specific piece of code, or executing it fewer times, run B may be
 interesting.
 
@@ -128,9 +127,9 @@ implementation is available in the [honggfuzz repository on github](https://gith
 
 ## kAFL
 
-kAFL utilizes Intel PT support to trace execution while fuzzing the Operating
-System kernels. Rather than hashing TIP/TNT packets, kAFL utilizes a custom
-packet decoder that caches disassembly. Similar to Killerbeez, kAFL also ignores
+kAFL utilizes Intel PT support to trace execution while fuzzing Operating System
+kernels. Rather than hashing TIP/TNT packets, kAFL utilizes a custom packet
+decoder that caches disassembly. Similar to Killerbeez, kAFL also ignores
 non-relevant IPT packets. As described above, the Killerbeez implementation does
 not a use a disassembler and thus will be faster than kAFL, but is unable to
 obtain the basic block transitions that kAFL can. kAFL's IPT implementation is
@@ -141,19 +140,19 @@ available in the [kAFL repository on github](https://github.com/RUB-SysSec/kAFL/
 In order to utilize Killerbeez's IPT instrumentation, your processor and Linux
 kernel must support IPT. To check for support, look for the directory
 `/sys/devices/intel_pt/`. Additionally, Killerbeez's IPT instrumentation
-requires address filtering; the number of address filters supported your system
-is available in the `/sys/devices/intel_pt/caps/num_address_ranges` file.
+requires address filtering; the number of address filters supported on your
+system is available in the `/sys/devices/intel_pt/caps/num_address_ranges` file.
 
 The IPT instrumentation can be used as any other instrumentation module would,
-i.e. by specifying "ipt" as the instrumentation type. Currently, the IPT
+i.e. by specifying the name as the instrumentation type. Currently, the IPT
 instrumentation module does not have any options. The TNT and TIP hashes are
 outputted as DEBUG messages, and can be viewed by increasing the logging level
 (with the option `-l "{\"level\":0}"`
 
-An example command utilizing the IPT module usage is shown below. This example
-runs 10 iterations of the test-linux binary, mutates the input with the bit_flip
-mutator, and feeds the input over stdin to the target program. This command will
-cause a crash in the test-linux binary on the seventh iteration.
+An example command illustrating the IPT module's usage is shown below. This
+example runs 10 iterations of the test-linux binary, mutates the input with the
+bit_flip mutator, and feeds the input over stdin to the target program. This
+command will cause a crash in the test-linux binary on the seventh iteration.
 ```
 ./fuzzer stdin ipt bit_flip -d "{\"path\":\"$HOME/killerbeez/corpus/test/test-linux\"}" -n 10 -sf $HOME/killerbeez/corpus/test/inputs/close.txt
 ```
