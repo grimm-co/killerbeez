@@ -38,7 +38,7 @@ static int is_persistent = 0;
 //Function Hooking ///////////////////////////////////////////
 //////////////////////////////////////////////////////////////
 
-#ifdef __APPLE__ 
+#ifdef __APPLE__
 //On APPLE, we need the definition of the function we're hooking, so we include the library
 #include <stdio.h>
 
@@ -201,20 +201,18 @@ static void forkserver_init(void)
 //Persistence Mode ///////////////////////////////////////////
 //////////////////////////////////////////////////////////////
 
+static long max_cnt = 0;
+static long cycle_cnt = 0;
+
 static void forkserver_persistence_init(void)
 {
   int response = 0x41414141;
   char command, target_command;
-  int forksrv_to_target[2];
-  int cycle_cnt = 0, max_cnt;
   int child_pid = -1;
 
   //Get the maximum number of persistent executions
   max_cnt = atoi(getenv(PERSIST_MAX_VAR));
   if(!max_cnt)
-    _exit(1);
-
-  if(pipe(forksrv_to_target))
     _exit(1);
 
   while (1) {
@@ -223,30 +221,18 @@ static void forkserver_persistence_init(void)
     if(read(FUZZER_TO_FORKSRV, &command, sizeof(command)) != sizeof(command))
       _exit(1);
 
-//    printf("Forkserver %d: got Command %d\n", getpid(), command);
-
     switch(command) {
 
       case EXIT:
 
-        //Tell the target process to exit too
-        kill(child_pid, SIGCONT);
-        if(write(forksrv_to_target[1], &command, sizeof(command)) != sizeof(command))
-          _exit(1);
+        kill(child_pid, SIGKILL);
         _exit(0);
         break;
 
       case FORK:
       case FORK_RUN:
 
-        if(child_pid == -1 || cycle_cnt == max_cnt) {
-
-          if(child_pid != -1) {
-            target_command = EXIT;
-            kill(child_pid, SIGCONT);
-            if(write(forksrv_to_target[1], &target_command, sizeof(target_command)) != sizeof(target_command))
-              _exit(1);
-          }
+        if(child_pid == -1) {
 
           child_pid = fork();
           if(child_pid < 0)
@@ -256,9 +242,6 @@ static void forkserver_persistence_init(void)
           if(!child_pid) {
             close(FUZZER_TO_FORKSRV);
             close(FORKSRV_TO_FUZZER);
-            dup2(forksrv_to_target[0], FORKSRV_TO_TARGET);
-            close(forksrv_to_target[1]);
-            close(forksrv_to_target[0]);
             return;
           }
 
@@ -267,9 +250,7 @@ static void forkserver_persistence_init(void)
             kill(child_pid, SIGKILL);
             child_pid = -1;
           }
-          cycle_cnt = 0;
         }
-        cycle_cnt++;
         response = child_pid;
 
         if(command != FORK_RUN && response != -1) //If the command is FORK_RUN, fall into the RUN case
@@ -278,21 +259,19 @@ static void forkserver_persistence_init(void)
       case RUN:
         //Tell the target process to go
         kill(child_pid, SIGCONT);
-        if(write(forksrv_to_target[1], &command, sizeof(command)) != sizeof(command))
-          _exit(1);
         if(command != FORK_RUN) //Don't overwrite the FORK case's response
           response = 0;
         break;
 
       case GET_STATUS:
-        
+
         if(waitpid(child_pid, &response, WUNTRACED) < 0)
           _exit(1);
 
-        if(WIFSTOPPED(response)) //If we hit a SIGSTOP, then
-          response = 0;          //the child didn't die
-        else
-          child_pid = -1;
+        if(WIFEXITED(response) || WIFSIGNALED(response)) //The process ended, either
+          child_pid = -1; //by hitting the max_cnt count and exiting, or by crashing
+        else if(WIFSTOPPED(response)) //If we hit a SIGSTOP, then the child didn't
+          response = 0;               //die, just return 0 to the parent
 
         break;
     }
@@ -303,19 +282,12 @@ static void forkserver_persistence_init(void)
 }
 
 int killerbeez_loop(void) {
-  int response = 0;
-  char command;
+
+  cycle_cnt++;
+  if(cycle_cnt == max_cnt)
+    return 0;
 
   raise(SIGSTOP);
-
-  if(read(FORKSRV_TO_TARGET, &command, sizeof(command)) != sizeof(command))
-    _exit(1);
-
-//  printf("Target %d: got Command %d\n", getpid(), command);
-
-  if(command == EXIT)
-    close(FORKSRV_TO_TARGET);
-
-  return command != EXIT;
+  return 1;
 }
 
