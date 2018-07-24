@@ -13,7 +13,7 @@ Beginning with the 5th generation Intel Processors, Intel introduced Intel
 Processor Trace to provide an efficient way to trace the execution of a
 processor. In order to reduce the overhead and increase the speed of tracing,
 IPT records as little information is possible, while still allowing for an exact
-trace of execution to be determined.
+trace of execution to be obtained.
 
 IPT works by recording packets which detail the execution trace in memory. IPT
 can be configured to limit packet generation based on the address of the
@@ -22,13 +22,13 @@ generating unnecessary trace information for any libraries used. Each IPT packet
 contains a different type of information relating to the execution trace,
 however the only two packets that Killerbeez uses are:
 
-1) TNT packets, which contain the results of conditional branches (i.e. jnz, jz,
+* TNT packets - which contain the results of conditional branches (i.e. jnz, jz,
 ja, etc). These packets contain a set of bits which correspond to whether the
 last several branches were Taken (T) or Not Taken (NT). Depending on the
 processor, IPT may send TNT packets in either the short (maximum 6 TNT bits) or
 long (maximum 47 TNT bits) form.
 
-2) TIP packets, which contain the results of indirect calls/jumps (i.e. call
+* TIP packets - which contain the results of indirect calls/jumps (i.e. call
 rax) and if enabled, the saved instruction pointer of ret instructions.
 
 With a recording of these two packets for an execution trace, software can
@@ -138,12 +138,12 @@ is available in the [kAFL repository on github](https://github.com/RUB-SysSec/kA
 # Example
 
 In order to utilize Killerbeez's IPT instrumentation, your processor and Linux
-kernel most support IPT.  To check for support, look for the directory
-`/sys/devices/intel_pt/`.  Additionally, Killerbeez's IPT instrumentation
-requires address filtering.  The number of address filters supported your system
+kernel must support IPT. To check for support, look for the directory
+`/sys/devices/intel_pt/`. Additionally, Killerbeez's IPT instrumentation
+requires address filtering; the number of address filters supported your system
 is available in the `/sys/devices/intel_pt/caps/num_address_ranges` file.
 
-The IPT instrumentation can be used as would any other instrumentation module,
+The IPT instrumentation can be used as any other instrumentation module would,
 i.e. by specifying "ipt" as the instrumentation type.  Currently, the IPT
 instrumentation module does not have any options.  The TNT and TIP hashes are
 outputted as DEBUG messages, and can be viewed by increasing the logging level
@@ -154,6 +154,6 @@ runs 10 iterations of the test-linux binary, mutates the input with the bit_flip
 mutator, and feeds the input over stdin to the target program.  This command
 will cause a crash in the test-linux binary on the seventh iteration.
 ```
-./fuzzer stdin ipt bit_flip -d "{\"path\":\"$HOME/killerbeez/Killerbeez/corpus/test/test-linux\"}" -n 10 -sf $HOME/killerbeez/Killerbeez/corpus/test/inputs/close.txt
+./fuzzer stdin ipt bit_flip -d "{\"path\":\"$HOME/killerbeez/corpus/test/test-linux\"}" -n 10 -sf $HOME/killerbeez/corpus/test/inputs/close.txt
 ```
 
