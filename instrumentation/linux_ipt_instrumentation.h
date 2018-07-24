@@ -16,8 +16,6 @@ int linux_ipt_is_process_done(void * instrumentation_state);
 int linux_ipt_get_fuzz_result(void * instrumentation_state);
 char * linux_ipt_help(void);
 
-#define PERF_MMAP_SIZE 1024*1024
-
 struct ipt_hashtable_key {
   uint64_t tip;
   uint64_t tnt;
@@ -40,6 +38,7 @@ struct ipt_hash_state
 struct linux_ipt_state
 {
   int persistence_max_cnt;
+  int ipt_mmap_size;
 
   int num_address_ranges;
   int fork_server_setup;

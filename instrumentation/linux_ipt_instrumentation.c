@@ -199,6 +199,14 @@ static int analyze_ipt(linux_ipt_state_t * state)
     0x02, 0x82, 0x02, 0x82, 0x02, 0x82, 0x02, 0x82
   };
 
+  if (state->pem->aux_head == state->pem->aux_tail) {
+    WARNING_MSG("No IPT trace data was recorded, something is likely wrong.");
+    return -1;
+  } else if (state->pem->aux_head < state->pem->aux_tail) {
+    WARNING_MSG("The IPT trace data has been overflown. Use the ipt_mmap_size option to increase the size.");
+    return -1;
+  }
+
   //Reset the IPT hashes struct
   state->ipt_hashes.tnt_bits = 0;
   state->ipt_hashes.num_bits = 0;
@@ -396,7 +404,7 @@ static void cleanup_ipt(linux_ipt_state_t * state)
   if(state->perf_aux_buf && state->perf_aux_buf != MAP_FAILED && state->pem && state->pem != MAP_FAILED) {
     munmap(state->perf_aux_buf, state->pem->aux_size);
     state->perf_aux_buf = NULL;
-    munmap(state->pem, PERF_MMAP_SIZE + getpagesize());
+    munmap(state->pem, state->ipt_mmap_size + getpagesize());
     state->pem = NULL;
   }
   if(state->perf_fd >= 0)
@@ -439,7 +447,7 @@ static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
       return 1;
     }
     state->target_path_filter_size = statbuf.st_size;
-    if(state->target_path_filter_size != state->target_path_filter_size % pagesize)
+    if(state->target_path_filter_size % pagesize == 0)
       state->target_path_filter_size = (((state->target_path_filter_size + pagesize) / pagesize) * pagesize);
   }
 
@@ -452,14 +460,14 @@ static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
     return 1;
   }
 
-  state->pem = mmap(NULL, PERF_MMAP_SIZE + getpagesize(), PROT_READ|PROT_WRITE, MAP_SHARED, state->perf_fd, 0);
+  state->pem = mmap(NULL, state->ipt_mmap_size + getpagesize(), PROT_READ|PROT_WRITE, MAP_SHARED, state->perf_fd, 0);
   if(state->pem == MAP_FAILED) {
     ERROR_MSG("Perf mmap failed\n");
     return 1;
   }
 
   state->pem->aux_offset = state->pem->data_offset + state->pem->data_size;
-  state->pem->aux_size = PERF_MMAP_SIZE;
+  state->pem->aux_size = state->ipt_mmap_size;
   state->perf_aux_buf = mmap(NULL, state->pem->aux_size, PROT_READ, MAP_SHARED, state->perf_fd, state->pem->aux_offset);
   if(state->perf_aux_buf == MAP_FAILED) {
     ERROR_MSG("Perf mmap failed\n");
@@ -614,6 +622,7 @@ static linux_ipt_state_t * setup_options(char * options)
   size_t i, length;
   char * temp;
   char buffer[MAX_PATH];
+  size_t pagesize = getpagesize();
 
   state = malloc(sizeof(linux_ipt_state_t));
   if(!state)
@@ -622,8 +631,17 @@ static linux_ipt_state_t * setup_options(char * options)
   if(!options)
     return state;
 
+  //Setup defaults
+  state->ipt_mmap_size = 1024*1024; //1MB
+
   //Parse the options
   PARSE_OPTION_INT(state, options, persistence_max_cnt, "persistence_max_cnt", linux_ipt_cleanup);
+  PARSE_OPTION_INT(state, options, ipt_mmap_size, "ipt_mmap_size", linux_ipt_cleanup);
+
+  printf("ipt_mmap_size = %d\n", state->ipt_mmap_size);
+  if(state->ipt_mmap_size % pagesize != 0)
+    state->ipt_mmap_size = (((state->ipt_mmap_size + pagesize) / pagesize) * pagesize);
+  printf("ipt_mmap_size = %d\n", state->ipt_mmap_size);
 
   return state;
 }
@@ -952,6 +970,7 @@ char * linux_ipt_help(void)
     "Options:\n"
     "\tpersistence_max_cnt  The number of executions to run in one process while\n"
     "\t                     fuzzing in persistence mode\n"
+    "\tipt_mmap_size        The amount of memory to use for the IPT trace data buffer\n"
     "\n"
   );
 }
