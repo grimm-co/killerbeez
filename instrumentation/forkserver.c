@@ -281,8 +281,10 @@ static void forkserver_persistence_init(void)
         if(waitpid(child_pid, &response, WUNTRACED) < 0)
           _exit(1);
 
-        if(WIFEXITED(response) || WIFSIGNALED(response)) //The process ended, either
+        if(WIFEXITED(response) || WIFSIGNALED(response)) { //The process ended, either
           child_pid = -1; //by hitting the max_cnt count and exiting, or by crashing
+          forkserver_cycle_cnt = 0;
+        }
         else if(WIFSTOPPED(response)) //If we hit a SIGSTOP, then the child didn't
           response = 0;               //die, just return 0 to the parent
 

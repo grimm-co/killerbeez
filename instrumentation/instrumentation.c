@@ -71,7 +71,7 @@ void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int u
   int rlen = -1, timed_out = 1;
   char fork_server_library_path[MAX_PATH];
   char stdin_filename[100];
-  char buffer[100];
+  char buffer[16];
   time_t start_time;
 
   if(dev_null_fd < 0) {

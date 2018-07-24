@@ -260,6 +260,7 @@ static int analyze_ipt(linux_ipt_state_t * state)
         IPT_DEBUG_MSG("Skipping %d bytes", psb_pos - p);
       p = psb_pos + sizeof(psb);
       state->last_ip = 0;
+      unknown_packet_hit = 0;
     }
 
     while(p < end)
@@ -683,6 +684,8 @@ static linux_ipt_state_t * setup_options(char * options)
 void * linux_ipt_create(char * options, char * state)
 {
   linux_ipt_state_t * linux_ipt_state = setup_options(options);
+  if(!linux_ipt_state)
+    return NULL;
 
   if(get_ipt_system_info(linux_ipt_state)) {
     linux_ipt_cleanup(linux_ipt_state);

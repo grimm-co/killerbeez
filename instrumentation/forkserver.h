@@ -11,8 +11,7 @@ int killerbeez_loop(void);
 #define FORKSRV_TO_FUZZER   199
 #define MAX_FORKSRV_FD      200
 
-//Commands that the fuzzer can send to the forkserver, or the forkserver
-//sends to the target
+//Commands that the fuzzer can send to the forkserver
 #define EXIT       0
 #define FORK       1
 #define RUN        2
