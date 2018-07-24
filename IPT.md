@@ -39,7 +39,7 @@ Software Developer's manual.
 # Intel PT and Fuzzing
 
 While great in theory, IPT is not perfect for fuzzing. It is a step
-forward and can be useful, but there are a few issues must be accommodated.
+forward and can be useful, but there are a few issues that must be accommodated.
 
 In an ideal implementation, IPT would provide a set of basic block transitions,
 such as those obtained in the AFL fuzzer or Killerbeez's DynamoRIO
@@ -52,9 +52,9 @@ parsing of these traces can be very slow.
 
 One possible optimization for parsing IPT execution traces, is to obtain a
 complete Control Flow Graph (CFG) prior to decoding and utilizing the CFG to
-replace the disassembling of instructions. However, obtaining a complete CFG of
-real world programs is a hard problem, and becomes especially troublesome when a
-target calls a library API with a callback function.
+replace the disassembling of instructions. However, statically obtaining a
+complete CFG of real world programs is a hard problem, and becomes especially
+troublesome when a target calls a library API with a callback function.
 
 Another concern is the asynchronous nature and caching of TIP and TNT packets.
 TNT bits can be built up and cached for as long as the processor decides, or may
@@ -68,22 +68,23 @@ portions of the execution trace.
 
 To compensate for the previously mentioned issues, Killerbeez's implementation
 of IPT-based fuzzing does not attempt to disassemble packets. Rather, Killerbeez
-maintains a set of hashes which encode the TIP and TNT packets in the execution
+maintains a set of hashes which encode the TIP and TNT data in the execution
 trace. As mentioned above, the order of TIP and TNT packets are not always the
 same, so each of the two packets are hashed independently. The instruction
 pointer address is extracted from the TIP packets and hashed into the trace's
 TIP hash, while the TNT bits are extracted from the TNT packets and hashed into
-the trace's TNT hash  After the hashes have been generated, a hash table is then
+the trace's TNT hash. After the hashes have been generated, a hash table is then
 used to lookup these hashes and determine if an execution trace has been seen
 before.
 
 This approach has the advantage of not requiring disassembling in order to walk
-the execution trace. As such, our IPT packet parser is very fast because it only
-analyzes the packets relevant to our fuzzer (TNT and TIP packets). However, this
-approach does have the disadvantage of requiring IPT instruction pointer address
-filtering, to ensure unnecessary libraries are not also traced. This also helps
-reduce the non-determinism in the execution trace, as some libraries do not
-always trace exactly the same in each execution.
+the execution trace. Additionally, our IPT packet parser is able to ignore
+irrelevant packets and only focus TNT and TIP packets. These characteristics
+make the Killerbeez IPT packet parser very fast. However, this approach does
+have the disadvantage of requiring IPT instruction pointer address filtering, to
+ensure unnecessary libraries are not also traced. This also helps reduce the
+non-determinism in the execution trace, as some libraries do not always trace
+exactly the same in each execution.
 
 # Execution Traces vs Basic Block Transitions
 
@@ -130,10 +131,10 @@ implementation is available in the [honggfuzz repository on github](https://gith
 kAFL utilizes Intel PT support to trace execution while fuzzing the Operating
 System kernels. Rather than hashing TIP/TNT packets, kAFL utilizes a custom
 packet decoder that caches disassembly. Similar to Killerbeez, kAFL also ignores
-non-relevant IPT packets.  As described above, the Killerbeez implementation
-does not a use a disassembler and thus will be faster than kAFL, but is unable
-to obtain the basic block transitions that kAFL can.  kAFL's IPT implementation
-is available in the [kAFL repository on github](https://github.com/RUB-SysSec/kAFL/blob/master/QEMU-PT/pt/).
+non-relevant IPT packets. As described above, the Killerbeez implementation does
+not a use a disassembler and thus will be faster than kAFL, but is unable to
+obtain the basic block transitions that kAFL can. kAFL's IPT implementation is
+available in the [kAFL repository on github](https://github.com/RUB-SysSec/kAFL/blob/master/QEMU-PT/pt/).
 
 # Example
 
@@ -144,15 +145,15 @@ requires address filtering; the number of address filters supported your system
 is available in the `/sys/devices/intel_pt/caps/num_address_ranges` file.
 
 The IPT instrumentation can be used as any other instrumentation module would,
-i.e. by specifying "ipt" as the instrumentation type.  Currently, the IPT
-instrumentation module does not have any options.  The TNT and TIP hashes are
+i.e. by specifying "ipt" as the instrumentation type. Currently, the IPT
+instrumentation module does not have any options. The TNT and TIP hashes are
 outputted as DEBUG messages, and can be viewed by increasing the logging level
 (with the option `-l "{\"level\":0}"`
 
-An example command utilizing the IPT module usage is shown below.  This example
+An example command utilizing the IPT module usage is shown below. This example
 runs 10 iterations of the test-linux binary, mutates the input with the bit_flip
-mutator, and feeds the input over stdin to the target program.  This command
-will cause a crash in the test-linux binary on the seventh iteration.
+mutator, and feeds the input over stdin to the target program. This command will
+cause a crash in the test-linux binary on the seventh iteration.
 ```
 ./fuzzer stdin ipt bit_flip -d "{\"path\":\"$HOME/killerbeez/corpus/test/test-linux\"}" -n 10 -sf $HOME/killerbeez/corpus/test/inputs/close.txt
 ```
