@@ -485,7 +485,7 @@ static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
 
   state->pem = mmap(NULL, state->ipt_mmap_size + getpagesize(), PROT_READ|PROT_WRITE, MAP_SHARED, state->perf_fd, 0);
   if(state->pem == MAP_FAILED) {
-    ERROR_MSG("Perf mmap failed\n");
+    ERROR_MSG("Perf mmap failed (ipt_mmap_size=%d)\n", state->ipt_mmap_size);
     return 1;
   }
 
@@ -493,7 +493,7 @@ static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
   state->pem->aux_size = state->ipt_mmap_size;
   state->perf_aux_buf = mmap(NULL, state->pem->aux_size, PROT_READ, MAP_SHARED, state->perf_fd, state->pem->aux_offset);
   if(state->perf_aux_buf == MAP_FAILED) {
-    ERROR_MSG("Perf mmap failed\n");
+    ERROR_MSG("Perf AUX mmap failed (ipt_mmap_size=%d)\n", state->ipt_mmap_size);
     return 1;
   }
   return 0;
@@ -651,19 +651,21 @@ static linux_ipt_state_t * setup_options(char * options)
   if(!state)
     return NULL;
   memset(state, 0, sizeof(linux_ipt_state_t));
-  if(!options)
-    return state;
 
   //Setup defaults
   state->ipt_mmap_size = 1024*1024; //1MB
 
   //Parse the options
-  PARSE_OPTION_INT(state, options, persistence_max_cnt, "persistence_max_cnt", linux_ipt_cleanup);
-  PARSE_OPTION_INT(state, options, ipt_mmap_size, "ipt_mmap_size", linux_ipt_cleanup);
+  if(options) {
+    PARSE_OPTION_INT(state, options, persistence_max_cnt, "persistence_max_cnt", linux_ipt_cleanup);
+    PARSE_OPTION_INT(state, options, ipt_mmap_size, "ipt_mmap_size", linux_ipt_cleanup);
+  }
 
+  //Fix up the IPT mmap size if it's not page aligned
   if(state->ipt_mmap_size % pagesize != 0)
     state->ipt_mmap_size = (((state->ipt_mmap_size + pagesize) / pagesize) * pagesize);
 
+  //If we're in persistence mode, allocate the reorder buffer
   if(state->persistence_max_cnt) {
     state->reorder_buffer = malloc(state->ipt_mmap_size);
     if(!state->reorder_buffer) {
