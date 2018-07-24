@@ -45,7 +45,7 @@ static int is_persistent = 0;
 #define FUNCTION CUSTOM_FUNCTION_NAME
 #define NEW_FUNCTION new_##FUNCTION
 #define DYLD_INTERPOSE(_replacment,_replacee) \
-__attribute__((used)) static struct{ const void* replacment; const void* replacee; } _interpose_##_replacee \
+  __attribute__((used)) static struct{ const void* replacment; const void* replacee; } _interpose_##_replacee \
 __attribute__ ((section ("__DATA,__interpose"))) = { (const void*)(unsigned long)&_replacment, (const void*)(unsigned long)&_replacee };
 #else
 
@@ -111,14 +111,14 @@ void * fake_main(void * a0, void * a1, void * a2, void * a3, void * a4, void * a
 DYLD_INTERPOSE(NEW_FUNCTION, FUNCTION)
 #endif
 
-//////////////////////////////////////////////////////////////
-//Fork Server ////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////
+  //Fork Server ////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////
 
-//The fork server design was inspired by the LLVM mode of AFL. It however,
-//has been modified significantly to suit our purposes.  The LLVM mode of
-//AFL is available at:
-//https://github.com/mirrorer/afl/blob/master/llvm_mode/afl-llvm-rt.o.c#L95
+  //The fork server design was inspired by the LLVM mode of AFL. It however,
+  //has been modified significantly to suit our purposes.  The LLVM mode of
+  //AFL is available at:
+  //https://github.com/mirrorer/afl/blob/master/llvm_mode/afl-llvm-rt.o.c#L95
 
 static void forkserver_init(void)
 {

@@ -380,12 +380,12 @@ static int analyze_ipt(linux_ipt_state_t * state)
  */
 static void cleanup_ipt(linux_ipt_state_t * state)
 {
-  if(state->perf_aux_buf && state->perf_aux_buf != MAP_FAILED)
+  if(state->perf_aux_buf && state->perf_aux_buf != MAP_FAILED && state->pem && state->pem != MAP_FAILED) {
     munmap(state->perf_aux_buf, state->pem->aux_size);
-  state->perf_aux_buf = NULL;
-  if(state->pem && state->pem != MAP_FAILED)
+    state->perf_aux_buf = NULL;
     munmap(state->pem, PERF_MMAP_SIZE + getpagesize());
-  state->pem = NULL;
+    state->pem = NULL;
+  }
   if(state->perf_fd >= 0)
     close(state->perf_fd);
   state->perf_fd = -1;
@@ -456,14 +456,14 @@ static int create_target_process(linux_ipt_state_t * state, char* cmd_line, char
 static int get_file_int(char * filename)
 {
   int ret, fd;
-  char buffer[100];
+  char buffer[16];
 
   fd = open(filename, O_RDONLY);
   if(fd < 0)
     return -1;
 
   memset(buffer, 0, sizeof(buffer));
-  ret = read(fd, buffer, sizeof(buffer));
+  ret = read(fd, buffer, sizeof(buffer)-1);
   if(ret > 0)
     ret = atoi(buffer);
   else
@@ -529,6 +529,7 @@ static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
   struct perf_event_attr pe;
   char filter[256];
   struct stat statbuf;
+  size_t pagesize = getpagesize();
 
   memset(&pe, 0, sizeof(struct perf_event_attr));
   pe.size = sizeof(struct perf_event_attr);
@@ -552,8 +553,8 @@ static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
       return 1;
     }
     state->target_path_filter_size = statbuf.st_size;
-    if(state->target_path_filter_size != state->target_path_filter_size % 0x1000)
-      state->target_path_filter_size = (((state->target_path_filter_size + 0x1000) / 0x1000) * 0x1000);
+    if(state->target_path_filter_size != state->target_path_filter_size % pagesize)
+      state->target_path_filter_size = (((state->target_path_filter_size + pagesize) / pagesize) * pagesize);
   }
 
   //See https://elixir.bootlin.com/linux/v4.17.8/source/kernel/events/core.c#L8806 for the filter format
@@ -660,7 +661,7 @@ void linux_ipt_cleanup(void * instrumentation_state)
     state->fork_server_setup = 0;
   }
 
-  //Cleanup our xxhash's
+  //Cleanup our xxhashes
   if(state->ipt_hashes.tnt != NULL)
     XXH64_freeState(state->ipt_hashes.tip);
   if(state->ipt_hashes.tnt != NULL)
@@ -861,7 +862,6 @@ static int finish_fuzz_round(linux_ipt_state_t * state)
     if(!linux_ipt_is_process_done(state)) {
       destroy_target_process(state);
       state->last_fuzz_result = FUZZ_HANG;
-      return state->last_fuzz_result;
     }
     //If it died from a signal (and it wasn't SIGKILL, that we send), it's a crash
     else if(WIFSIGNALED(state->last_status) && WTERMSIG(state->last_status) != SIGKILL)
@@ -910,7 +910,7 @@ int linux_ipt_get_fuzz_result(void * instrumentation_state)
 
 /**
  * Checks if the target process is done fuzzing the inputs yet.
- * @param state - The dynamorio_state_t object containing this instrumentation's state
+ * @param state - The linux_ipt_state_t object containing this instrumentation's state
  * @return - 0 if the process is not done testing the fuzzed input, non-zero if the process is done.
  */
 int linux_ipt_is_process_done(void * instrumentation_state)
