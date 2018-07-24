@@ -118,6 +118,9 @@ static void finish_tnt_hash(struct ipt_hash_state * ipt_hashes)
     if(XXH64_update(ipt_hashes->tnt, &ipt_hashes->tnt_bits, sizeof(uint64_t)) == XXH_ERROR)
       WARNING_MSG("Updating the TNT hash failed!"); //Should never happen
   }
+  //Add in the total number of bits, so we can differentiate between a packet with TNN and a packet with TN
+  if(XXH64_update(ipt_hashes->tnt, &ipt_hashes->total_num_bits, sizeof(uint64_t)) == XXH_ERROR)
+    WARNING_MSG("Updating the TNT hash failed!"); //Should never happen
 }
 
 /**
@@ -149,6 +152,7 @@ static void add_tnt_to_hash(struct ipt_hash_state * ipt_hashes, unsigned char * 
       ipt_hashes->num_bits = 0;
     }
   }
+  ipt_hashes->total_num_bits += num_bits;
 }
 
 /**
@@ -198,6 +202,7 @@ static int analyze_ipt(linux_ipt_state_t * state)
   //Reset the IPT hashes struct
   state->ipt_hashes.tnt_bits = 0;
   state->ipt_hashes.num_bits = 0;
+  state->ipt_hashes.total_num_bits = 0;
   if(XXH64_reset(state->ipt_hashes.tnt, 0) == XXH_ERROR ||
       XXH64_reset(state->ipt_hashes.tip, 0) == XXH_ERROR)
     return -1;
@@ -375,6 +380,14 @@ static int analyze_ipt(linux_ipt_state_t * state)
 ////////////////////////////////////////////////////////////////
 
 /**
+ * This function wraps the perf_event_open syscall, which does not have one in libc
+ */
+static long perf_event_open(struct perf_event_attr* hw_event, pid_t pid, int cpu, int group_fd, unsigned long flags)
+{
+  return syscall(__NR_perf_event_open, hw_event, (uintptr_t)pid, (uintptr_t)cpu, (uintptr_t)group_fd, (uintptr_t)flags);
+}
+
+/**
  * This function cleans up the IPT related file descriptor and memory mappings
  * @param state - The linux_ipt_state_t object containing this instrumentation's state
  */
@@ -389,133 +402,6 @@ static void cleanup_ipt(linux_ipt_state_t * state)
   if(state->perf_fd >= 0)
     close(state->perf_fd);
   state->perf_fd = -1;
-}
-
-/**
- * This function terminates the fuzzed process.
- * @param state - The linux_ipt_state_t object containing this instrumentation's state
- */
-static void destroy_target_process(linux_ipt_state_t * state)
-{
-  if(state->child_pid) {
-    if(!state->persistence_max_cnt) {
-      kill(state->child_pid, SIGKILL);
-      state->child_pid = 0;
-    }
-    state->last_status = fork_server_get_status(&state->fs, 1);
-  }
-}
-
-/**
- * This function starts the fuzzed process
- * @param state - The linux_ipt_state_t object containing this instrumentation's state
- * @param cmd_line - the command line of the fuzzed process to start
- * @param stdin_input - the input to pass to the fuzzed process's stdin
- * @param stdin_length - the length of the stdin_input parameter
- * @return - zero on success, non-zero on failure.
- */
-static int create_target_process(linux_ipt_state_t * state, char* cmd_line, char * stdin_input, size_t stdin_length)
-{
-  char ** argv;
-  int i, pid;
-
-  if(!state->fork_server_setup) {
-    if(split_command_line(cmd_line, &state->target_path, &argv))
-      return -1;
-    fork_server_init(&state->fs, state->target_path, argv, 1, state->persistence_max_cnt, stdin_length != 0);
-    state->fork_server_setup = 1;
-    for(i = 0; argv[i]; i++)
-      free(argv[i]);
-    free(argv);
-  }
-
-  cleanup_ipt(state);
-  pid = fork_server_fork(&state->fs);
-  if(pid < 0)
-    return -1;
-
-  //Take care of the stdin input, write over the file, then truncate it accordingly
-  lseek(state->fs.target_stdin, 0, SEEK_SET);
-  if(stdin_input != NULL && stdin_length != 0) {
-    if(write(state->fs.target_stdin, stdin_input, stdin_length) != stdin_length)
-      FATAL_MSG("Short write to target's stdin file");
-  }
-  if(ftruncate(state->fs.target_stdin, stdin_length))
-    FATAL_MSG("ftruncate() failed");
-  lseek(state->fs.target_stdin, 0, SEEK_SET);
-
-  state->child_pid = pid;
-  return 0;
-}
-
-/**
- * This function reads a number from the given file
- * @param filename - the path to the file to read a number from.
- * @return - The number that was in the specified file, or -1 on error
- */
-static int get_file_int(char * filename)
-{
-  int ret, fd;
-  char buffer[16];
-
-  fd = open(filename, O_RDONLY);
-  if(fd < 0)
-    return -1;
-
-  memset(buffer, 0, sizeof(buffer));
-  ret = read(fd, buffer, sizeof(buffer)-1);
-  if(ret > 0)
-    ret = atoi(buffer);
-  else
-    ret = -1;
-  close(fd);
-  return ret;
-}
-
-/**
- * This function reads the Intel PT state of the current processor from the sys filesystem
- * @param state - The linux_ipt_state_t object containing this instrumentation's state
- * @return - 0 on success, non-zero if IPT or IP address filtering are not supported
- */
-static int get_ipt_system_info(linux_ipt_state_t * state)
-{
-  int ret;
-
-  if(access("/sys/devices/intel_pt/", F_OK)) {
-    INFO_MSG("Intel PT not supported (/sys/devices/intel_pt/ does not exist)");
-    return -1;
-  }
-
-  ret = get_file_int("/sys/devices/intel_pt/type");
-  if(ret <= 0) {
-    INFO_MSG("Intel PT not supported");
-    return -1;
-  }
-  state->intel_pt_type = ret;
-
-  //For the moment, we'll only support Intel PT with address filtering
-  ret = get_file_int("/sys/devices/intel_pt/caps/ip_filtering");
-  if(ret <= 0) {
-    INFO_MSG("Intel PT address filtering not supported");
-    return -1;
-  }
-
-  ret = get_file_int("/sys/devices/intel_pt/caps/num_address_ranges");
-  if(ret <= 0) {
-    INFO_MSG("Intel PT address filtering not supported");
-    return -1;
-  }
-  state->num_address_ranges = ret;
-
-  return 0;
-}
-
-/**
- * This function wraps the perf_event_open syscall, which does not have one in libc
- */
-static long perf_event_open(struct perf_event_attr* hw_event, pid_t pid, int cpu, int group_fd, unsigned long flags)
-{
-  return syscall(__NR_perf_event_open, hw_event, (uintptr_t)pid, (uintptr_t)cpu, (uintptr_t)group_fd, (uintptr_t)flags);
 }
 
 /**
@@ -579,6 +465,137 @@ static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
     ERROR_MSG("Perf mmap failed\n");
     return 1;
   }
+  return 0;
+}
+
+
+/**
+ * This function terminates the fuzzed process.
+ * @param state - The linux_ipt_state_t object containing this instrumentation's state
+ */
+static void destroy_target_process(linux_ipt_state_t * state)
+{
+  if(state->child_pid) {
+    if(!state->persistence_max_cnt) {
+      kill(state->child_pid, SIGKILL);
+      state->child_pid = 0;
+    }
+    state->last_status = fork_server_get_status(&state->fs, 1);
+  }
+}
+
+/**
+ * This function starts the fuzzed process
+ * @param state - The linux_ipt_state_t object containing this instrumentation's state
+ * @param cmd_line - the command line of the fuzzed process to start
+ * @param stdin_input - the input to pass to the fuzzed process's stdin
+ * @param stdin_length - the length of the stdin_input parameter
+ * @return - zero on success, non-zero on failure.
+ */
+static int create_target_process(linux_ipt_state_t * state, char* cmd_line, char * stdin_input, size_t stdin_length)
+{
+  char ** argv;
+  int i, pid;
+
+  if(!state->fork_server_setup) {
+    if(split_command_line(cmd_line, &state->target_path, &argv))
+      return -1;
+    fork_server_init(&state->fs, state->target_path, argv, 1, state->persistence_max_cnt, stdin_length != 0);
+    state->fork_server_setup = 1;
+    for(i = 0; argv[i]; i++)
+      free(argv[i]);
+    free(argv);
+  }
+
+  pid = fork_server_fork(&state->fs);
+  if(pid < 0)
+    return -1;
+
+  if(pid != state->child_pid) { //New target process, cleanp the old IPT state, and set it up for the new target
+    state->child_pid = pid;
+    cleanup_ipt(state);
+    if(setup_ipt(state, state->child_pid))
+      return -1;
+  } else { //Persistence mode, with the same target process being used, just reinitialize IPT
+
+    //TODO change this to just reset the state
+    cleanup_ipt(state);
+    if(setup_ipt(state, state->child_pid))
+      return -1;
+  }
+
+  //Take care of the stdin input, write over the file, then truncate it accordingly
+  lseek(state->fs.target_stdin, 0, SEEK_SET);
+  if(stdin_input != NULL && stdin_length != 0) {
+    DEBUG_MSG("Writing %c%c%c%c to target stdin\n", stdin_input[0], stdin_input[1], stdin_input[2], stdin_input[3]);
+    if(write(state->fs.target_stdin, stdin_input, stdin_length) != stdin_length)
+      FATAL_MSG("Short write to target's stdin file");
+  }
+  if(ftruncate(state->fs.target_stdin, stdin_length))
+    FATAL_MSG("ftruncate() failed");
+  lseek(state->fs.target_stdin, 0, SEEK_SET);
+  return 0;
+}
+
+/**
+ * This function reads a number from the given file
+ * @param filename - the path to the file to read a number from.
+ * @return - The number that was in the specified file, or -1 on error
+ */
+static int get_file_int(char * filename)
+{
+  int ret, fd;
+  char buffer[16];
+
+  fd = open(filename, O_RDONLY);
+  if(fd < 0)
+    return -1;
+
+  memset(buffer, 0, sizeof(buffer));
+  ret = read(fd, buffer, sizeof(buffer)-1);
+  if(ret > 0)
+    ret = atoi(buffer);
+  else
+    ret = -1;
+  close(fd);
+  return ret;
+}
+
+/**
+ * This function reads the Intel PT state of the current processor from the sys filesystem
+ * @param state - The linux_ipt_state_t object containing this instrumentation's state
+ * @return - 0 on success, non-zero if IPT or IP address filtering are not supported
+ */
+static int get_ipt_system_info(linux_ipt_state_t * state)
+{
+  int ret;
+
+  if(access("/sys/devices/intel_pt/", F_OK)) {
+    INFO_MSG("Intel PT not supported (/sys/devices/intel_pt/ does not exist)");
+    return -1;
+  }
+
+  ret = get_file_int("/sys/devices/intel_pt/type");
+  if(ret <= 0) {
+    INFO_MSG("Intel PT not supported");
+    return -1;
+  }
+  state->intel_pt_type = ret;
+
+  //For the moment, we'll only support Intel PT with address filtering
+  ret = get_file_int("/sys/devices/intel_pt/caps/ip_filtering");
+  if(ret <= 0) {
+    INFO_MSG("Intel PT address filtering not supported");
+    return -1;
+  }
+
+  ret = get_file_int("/sys/devices/intel_pt/caps/num_address_ranges");
+  if(ret <= 0) {
+    INFO_MSG("Intel PT address filtering not supported");
+    return -1;
+  }
+  state->num_address_ranges = ret;
+
   return 0;
 }
 
@@ -845,9 +862,6 @@ int linux_ipt_enable(void * instrumentation_state, pid_t * process, char * cmd_l
   state->process_finished = 0;
   state->fuzz_results_set = 0;
 
-  if(setup_ipt(state, state->child_pid))
-    return -1;
-
   if(fork_server_run(&state->fs))
     return -1;
 
@@ -890,10 +904,9 @@ int linux_ipt_is_new_path(void * instrumentation_state)
   finish_fuzz_round(state);
 
   //If we haven't cleaned up the IPT state, then it must not have been
-  if(state->perf_fd >= 0) { //analyzed.  Analyze it now and cleanup the IPT state
+  if(state->perf_fd >= 0) //analyzed.  Analyze it now and cleanup the IPT state
     state->last_is_new_path = analyze_ipt(state);
-    cleanup_ipt(state);
-  }
+
   return state->last_is_new_path;
 }
 
