@@ -556,7 +556,7 @@ static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
       return 1;
     }
     state->target_path_filter_size = statbuf.st_size;
-    if(state->target_path_filter_size != state->target_path_filter_size % pagesize)
+    if(state->target_path_filter_size % pagesize != 0)
       state->target_path_filter_size = (((state->target_path_filter_size + pagesize) / pagesize) * pagesize);
   }
 
