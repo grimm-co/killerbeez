@@ -326,7 +326,7 @@ static int putty_run(putty_state_t * state, char ** inputs, size_t * lengths, si
  * @param driver_state - a driver specific structure previously created by the putty_create function
  * @param input - the input that should be tested
  * @param length - the length of the input parameter
- * @return - 0 on success or -1 on failure
+ * @return - <= 0 on success or FUZZ_ERROR on failure
  */
 int putty_test_input(void * driver_state, char * input, size_t length)
 {
@@ -334,16 +334,21 @@ int putty_test_input(void * driver_state, char * input, size_t length)
 	char ** inputs;
 	size_t * input_lengths;
 	size_t i, inputs_count;
-	int ret = -1;
+	int ret = FUZZ_ERROR;
 
-	if (decode_mem_array(input, &inputs, &input_lengths, &inputs_count)){}
-		return -1;
-	if (inputs_count)
+	if (decode_mem_array(input, &inputs, &input_lengths, &inputs_count))
+		ret = FUZZ_ERROR;
+	if (inputs_count && (ret != FUZZ_ERROR))
 		ret = putty_run(state, inputs, input_lengths, inputs_count);
+	
+	//clean up time
 	for (i = 0; i < inputs_count; i++)
 		free(inputs[i]);
+
 	free(inputs);
 	free(input_lengths);
+
+	ret = get_fuzz_result(state->instrumentation, state->instrumentation_state);
 	return ret;
 }
 
