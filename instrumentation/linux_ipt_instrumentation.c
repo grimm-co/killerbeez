@@ -192,18 +192,24 @@ static int analyze_ipt(linux_ipt_state_t * state)
 {
   unsigned char * p, * start, * end, * psb_pos;
   struct ipt_hashtable_entry * hashes, * match = NULL;
-  uint64_t ip_address, last_ip = 0;
+  uint64_t ip_address;
+  size_t num_bytes_at_end;
+  int unknown_packet_hit = 0;
 
   const unsigned char psb[0x10] = {
     0x02, 0x82, 0x02, 0x82, 0x02, 0x82, 0x02, 0x82,
     0x02, 0x82, 0x02, 0x82, 0x02, 0x82, 0x02, 0x82
   };
 
+  //Disable IPT while we're analyzing it
+  ioctl(state->perf_fd, PERF_EVENT_IOC_DISABLE, 0);
+
+  //Perform a quick sanity check to ensure the IPT trace data is sane
   if (state->pem->aux_head == state->pem->aux_tail) {
     WARNING_MSG("No IPT trace data was recorded, something is likely wrong.");
     return -1;
-  } else if (state->pem->aux_head < state->pem->aux_tail) {
-    WARNING_MSG("The IPT trace data has been overflown. Use the ipt_mmap_size option to increase the size.");
+  } else if (state->persistence_max_cnt == 0 && state->pem->aux_head < state->pem->aux_tail) {
+    WARNING_MSG("The IPT trace data has overflown. Use the ipt_mmap_size option to increase the size.");
     return -1;
   }
 
@@ -219,9 +225,20 @@ static int analyze_ipt(linux_ipt_state_t * state)
   if(!hashes)
     return -1;
 
-  start = (char *)state->perf_aux_buf + state->pem->aux_tail;
-  p = (char *)state->perf_aux_buf + state->pem->aux_tail;
-  end = (char *)state->perf_aux_buf + state->pem->aux_head;
+  //Reorder the buffer if it wrapped around to make parsing easier
+  if(state->pem->aux_head < state->pem->aux_tail) {
+    state->reorder_buffer = malloc(state->ipt_mmap_size);
+    num_bytes_at_end = state->pem->aux_size - state->pem->aux_tail;
+    memcpy(state->reorder_buffer, state->perf_aux_buf + state->pem->aux_tail, num_bytes_at_end);
+    memcpy(state->reorder_buffer + num_bytes_at_end, state->perf_aux_buf, state->pem->aux_head);
+
+    start = state->reorder_buffer;
+    end = state->reorder_buffer + num_bytes_at_end + state->pem->aux_head;
+  } else {
+    start = (char *)state->perf_aux_buf + state->pem->aux_tail;
+    end = (char *)state->perf_aux_buf + state->pem->aux_head;
+  }
+  p = start;
 
 #ifdef IPT_DEBUG
   write_buffer_to_file("/tmp/ipt_dump", start, end-start);
@@ -233,15 +250,17 @@ static int analyze_ipt(linux_ipt_state_t * state)
   //IPT packets to match them to the basic blocks transitions is far too slow.
   while(p < end) {
 
-    psb_pos = memmem(p, end - p, psb, sizeof(psb));
-    if(!psb_pos) {
-      DEBUG_MSG("Couldn't find PSB packet");
-      break;
+    if(unknown_packet_hit) {
+      psb_pos = memmem(p, end - p, psb, sizeof(psb));
+      if(!psb_pos) {
+        DEBUG_MSG("Couldn't find PSB packet");
+        break;
+      }
+      if(psb_pos - p != 0)
+        IPT_DEBUG_MSG("Skipping %d bytes", psb_pos - p);
+      p = psb_pos + sizeof(psb);
+      state->last_ip = 0;
     }
-    if(psb_pos - p != 0)
-      IPT_DEBUG_MSG("Skipping %d bytes", psb_pos - p);
-    p = psb_pos + sizeof(psb);
-    last_ip = 0;
 
     while(p < end)
     {
@@ -279,7 +298,7 @@ static int analyze_ipt(linux_ipt_state_t * state)
         if (p[1] == 0x82 && BYTES_LEFT(16) && !memcmp(p, psb, 16)) { // PSB
           IPT_DEBUG_MSG_PACKET("PSB");
           p += 16;
-          last_ip = 0;
+          state->last_ip = 0;
           continue;
         }
         if (p[1] == 0x23) { // PSBEND
@@ -327,7 +346,7 @@ static int analyze_ipt(linux_ipt_state_t * state)
       char tip_type = p[0] & 0x1f;
       if(tip_type == TIP_TYPE_TIP || tip_type == TIP_TYPE_TIP_PGE
           || tip_type == TIP_TYPE_TIP_PGD || tip_type == TIP_TYPE_FUP) {
-        ip_address = handle_ip_packet(&p, end, &last_ip);
+        ip_address = handle_ip_packet(&p, end, &state->last_ip);
         IPT_DEBUG_MSG_PACKET("TIP/PGE/PGD/FUP");
         if(tip_type == TIP_TYPE_TIP)
           add_tip_to_hash(&state->ipt_hashes, ip_address);
@@ -363,6 +382,7 @@ static int analyze_ipt(linux_ipt_state_t * state)
       }
 
       WARNING_MSG("Hit unknown packet type at offset 0x%lx", p - start);
+      unknown_packet_hit = 1;
       break;
     }
   }
@@ -424,6 +444,8 @@ static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
   char filter[256];
   struct stat statbuf;
   size_t pagesize = getpagesize();
+
+  state->last_ip = 0;
 
   memset(&pe, 0, sizeof(struct perf_event_attr));
   pe.size = sizeof(struct perf_event_attr);
@@ -519,17 +541,17 @@ static int create_target_process(linux_ipt_state_t * state, char* cmd_line, char
   if(pid < 0)
     return -1;
 
-  if(pid != state->child_pid) { //New target process, cleanp the old IPT state, and set it up for the new target
+  if(pid != state->child_pid) {
+    //New target process, cleanup the old IPT state and set it up for the new target
     state->child_pid = pid;
     cleanup_ipt(state);
     if(setup_ipt(state, state->child_pid))
       return -1;
-  } else { //Persistence mode, with the same target process being used, just reinitialize IPT
-
-    //TODO change this to just reset the state
-    cleanup_ipt(state);
-    if(setup_ipt(state, state->child_pid))
-      return -1;
+  } else {
+    //Persistence mode with the same target process being used, adjust the ring buffers and reenable IPT
+    __sync_synchronize(); //smp_mb()
+    __atomic_store_n(&state->pem->aux_tail, state->pem->aux_head, __ATOMIC_SEQ_CST);
+    ioctl(state->perf_fd, PERF_EVENT_IOC_ENABLE, 0);
   }
 
   //Take care of the stdin input, write over the file, then truncate it accordingly
@@ -638,10 +660,16 @@ static linux_ipt_state_t * setup_options(char * options)
   PARSE_OPTION_INT(state, options, persistence_max_cnt, "persistence_max_cnt", linux_ipt_cleanup);
   PARSE_OPTION_INT(state, options, ipt_mmap_size, "ipt_mmap_size", linux_ipt_cleanup);
 
-  printf("ipt_mmap_size = %d\n", state->ipt_mmap_size);
   if(state->ipt_mmap_size % pagesize != 0)
     state->ipt_mmap_size = (((state->ipt_mmap_size + pagesize) / pagesize) * pagesize);
-  printf("ipt_mmap_size = %d\n", state->ipt_mmap_size);
+
+  if(state->persistence_max_cnt) {
+    state->reorder_buffer = malloc(state->ipt_mmap_size);
+    if(!state->reorder_buffer) {
+      linux_ipt_cleanup(state);
+      return NULL;
+    }
+  }
 
   return state;
 }
@@ -710,6 +738,7 @@ void linux_ipt_cleanup(void * instrumentation_state)
     free(hash);
   }
 
+  free(state->reorder_buffer);
   free(state->target_path);
   free(state);
 }

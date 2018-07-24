@@ -47,6 +47,8 @@ struct linux_ipt_state
   int perf_fd;
   struct perf_event_mmap_page * pem;
   void * perf_aux_buf;
+  char * reorder_buffer;
+  uint64_t last_ip;
 
   struct ipt_hash_state ipt_hashes;
   struct ipt_hashtable_entry * head;
