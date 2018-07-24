@@ -118,6 +118,9 @@ static void finish_tnt_hash(struct ipt_hash_state * ipt_hashes)
     if(XXH64_update(ipt_hashes->tnt, &ipt_hashes->tnt_bits, sizeof(uint64_t)) == XXH_ERROR)
       WARNING_MSG("Updating the TNT hash failed!"); //Should never happen
   }
+  //Add in the total number of bits, so we can differentiate between a packet with TNN and a packet with TN
+  if(XXH64_update(ipt_hashes->tnt, &ipt_hashes->total_num_bits, sizeof(uint64_t)) == XXH_ERROR)
+    WARNING_MSG("Updating the TNT hash failed!"); //Should never happen
 }
 
 /**
@@ -149,6 +152,7 @@ static void add_tnt_to_hash(struct ipt_hash_state * ipt_hashes, unsigned char * 
       ipt_hashes->num_bits = 0;
     }
   }
+  ipt_hashes->total_num_bits += num_bits;
 }
 
 /**
@@ -198,6 +202,7 @@ static int analyze_ipt(linux_ipt_state_t * state)
   //Reset the IPT hashes struct
   state->ipt_hashes.tnt_bits = 0;
   state->ipt_hashes.num_bits = 0;
+  state->ipt_hashes.total_num_bits = 0;
   if(XXH64_reset(state->ipt_hashes.tnt, 0) == XXH_ERROR ||
       XXH64_reset(state->ipt_hashes.tip, 0) == XXH_ERROR)
     return -1;
