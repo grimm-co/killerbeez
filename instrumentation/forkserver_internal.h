@@ -25,6 +25,7 @@ struct forkserver {
   int target_stdin;
   int sent_get_status;
   int last_status;
+  int pid;
 };
 typedef struct forkserver forkserver_t;
 
