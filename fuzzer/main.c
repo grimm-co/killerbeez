@@ -15,6 +15,7 @@
 #else
 #include <libgen.h>     // dirname
 #include <unistd.h>     // access, F_OK, W_OK
+#include <signal.h>
 #include <sys/stat.h>   // mkdir
 #include <sys/types.h>
 #include <errno.h>      // output directory creation
@@ -58,11 +59,32 @@ void usage(char * program_name, char * mutator_directory)
 	exit(1);
 }
 
+//The global mutator state objects
+static driver_t * driver = NULL;
+static mutator_t * mutator = NULL;
+static void * mutator_state = NULL;
+static instrumentation_t * instrumentation = NULL;
+static void * instrumentation_state;
+
+static void cleanup_modules(void)
+{
+	driver->cleanup(driver->state);
+	instrumentation->cleanup(instrumentation_state);
+	mutator->cleanup(mutator_state);
+	free(driver);
+	free(instrumentation);
+	free(mutator);
+}
+
+static void sigint_handler(int sig)
+{
+	printf("CTRL-c detected, exiting\n");
+	cleanup_modules();
+	exit(0);
+}
+
 int main(int argc, char ** argv)
 {
-	driver_t * driver;
-	mutator_t * mutator;
-	instrumentation_t * instrumentation;
 	char *driver_name, *driver_options = NULL,
 		*mutator_name, *mutator_options = NULL, *mutator_saved_state = NULL, *mutation_state_dump_file = NULL, *mutation_state_load_file = NULL,
 		*mutate_buffer = NULL, *mutator_directory = NULL, *mutator_directory_cli = NULL,
@@ -71,11 +93,9 @@ int main(int argc, char ** argv)
 		*instrumentation_name = NULL, *instrumentation_options = NULL, 
 		*instrumentation_state_string = NULL, *instrumentation_state_load_file = NULL,
 		*instrumentation_state_dump_file = NULL;
-	void * instrumentation_state;
 	int seed_length = 0, mutate_length = 0, instrumentation_length = 0, mutator_state_length;
 	time_t fuzz_begin_time;
 	int iteration = 0, fuzz_result = FUZZ_NONE, new_path = 0;
-	void * mutator_state = NULL;
 	char filename[MAX_PATH];
 	char filehash[256];
 	char * directory;
@@ -190,6 +210,8 @@ int main(int argc, char ** argv)
 			usage(argv[0], mutator_directory);
 		}
 	}
+
+	signal(SIGINT, sigint_handler);
 
 	if (setup_logging(logging_options))
 	{
@@ -411,13 +433,6 @@ int main(int argc, char ** argv)
 	}
 
 	//Cleanup everything and exit
-	driver->cleanup(driver->state);
-
-	instrumentation->cleanup(instrumentation_state);
-
-	mutator->cleanup(mutator_state);
-	free(driver);
-	free(instrumentation);
-	free(mutator);
+	cleanup_modules();
 	return 0;
 }
