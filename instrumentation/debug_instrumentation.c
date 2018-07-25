@@ -310,6 +310,7 @@ int debug_enable(void * instrumentation_state, HANDLE * process, char * cmd_line
 	if (create_target_process(state, cmd_line, input, input_length))
 		return -1;
 	*process = state->child_handle;
+	state->enable_called = 1;
 	return 0;
 }
 
@@ -321,6 +322,8 @@ int debug_enable(void * instrumentation_state, HANDLE * process, char * cmd_line
  */
 int debug_is_new_path(void * instrumentation_state)
 {
+	if (!state->enable_called)
+		return -1;
 	return 0; //We don't gather instrumentation data, so we can't ever tell if we hit a new path.
 }
 
@@ -333,6 +336,8 @@ int debug_is_new_path(void * instrumentation_state)
 int debug_get_fuzz_result(void * instrumentation_state)
 {
 	debug_state_t * state = (debug_state_t *)instrumentation_state;
+	if (!state->enable_called)
+		return -1;
 	finish_fuzz_round(state);
 	return state->last_status;
 }
@@ -342,13 +347,15 @@ int debug_get_fuzz_result(void * instrumentation_state)
  * written last_status, the result of the fuzz job.
  *
  * @param state - The dynamorio_state_t object containing this instrumentation's state
- * @return - 0 if the process has not finished testing the fuzzed input, 1 if the process is done.
- * NOTE: this particular implementation of is_process_done cannot error.
+ * @return - 0 if the process has not finished testing the fuzzed input, 1 if the process is done,
+ * or -1 on error.
  */
 int debug_is_process_done(void * instrumentation_state)
 {
 	debug_state_t * state = (debug_state_t *)instrumentation_state;
 
+	if (!state->enable_called)
+		return -1;
 	if (state->process_running)
 		return 0;
 	else
