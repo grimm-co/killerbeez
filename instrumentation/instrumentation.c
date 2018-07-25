@@ -11,8 +11,12 @@
 #include <unistd.h>
 
 #include "instrumentation.h"
-#include "forkserver_internal.h"
 #include "utils.h"
+
+#ifndef _WIN32
+//The forkserver is not supported on Windows
+
+#include "forkserver_internal.h"
 
 #define STRINGIFY_INTERNAL(x) #x
 #define STRINGIFY(x) STRINGIFY_INTERNAL(x)
@@ -512,3 +516,4 @@ int fork_server_get_status(forkserver_t * fs, int wait)
   return fork_server_get_pending_status(fs, wait);
 }
 
+#endif //!_WIN32
