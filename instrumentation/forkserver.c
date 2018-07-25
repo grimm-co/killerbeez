@@ -166,6 +166,10 @@ static void forkserver_persistence_init(void)
 
       case RUN:
         //Tell the target process to go
+        if(child_pid == -1) {
+          response = FORKSERVER_ERROR;
+          break;
+        }
         kill(child_pid, SIGCONT);
         forkserver_cycle_cnt++;
         if(command != FORK_RUN) //Don't overwrite the FORK case's response
