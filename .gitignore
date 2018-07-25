@@ -27,6 +27,7 @@ corpus/persist/deferred
 corpus/persist/deferred_nohook
 corpus/persist/nopersist
 corpus/persist/persist
+corpus/persist/persist_hang
 
 
 # Visual Studio 2015 cache/options directory
