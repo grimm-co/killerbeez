@@ -146,8 +146,8 @@ system is available in the `/sys/devices/intel_pt/caps/num_address_ranges` file.
 The IPT instrumentation can be used as any other instrumentation module would,
 i.e. by specifying the name as the instrumentation type. Currently, the IPT
 instrumentation module does not have any options. The TNT and TIP hashes are
-outputted as DEBUG messages, and can be viewed by increasing the logging level
-(with the option `-l "{\"level\":0}"`
+output as DEBUG messages, and can be viewed by increasing the logging level
+(with the option `-l "{\"level\":0}"`).
 
 An example command illustrating the IPT module's usage is shown below. This
 example runs 10 iterations of the test-linux binary, mutates the input with the
