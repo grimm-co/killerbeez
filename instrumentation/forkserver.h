@@ -18,6 +18,7 @@ int killerbeez_loop(void);
 #define FORK_RUN   3
 #define GET_STATUS 4
 
+//Possible response codes returned from the forkserver
 #define FORKSERVER_ERROR -1
 #define FORKSERVER_NO_RESULTS_READY -2
 
@@ -30,6 +31,8 @@ struct forkserver {
 };
 typedef struct forkserver forkserver_t;
 
+//These functions control all interactions with the forkserver, sending the
+//commands listed above
 void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int use_forkserver_library,
   int persistence_max_cnt, int needs_stdin_fd);
 int fork_server_exit(forkserver_t * fs);

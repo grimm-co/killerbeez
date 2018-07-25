@@ -6,5 +6,8 @@ persist:
 nopersist:
 	$(CC) test.c -o nopersist
 
+deferred:
+	$(CC) -DSLOW_STARTUP test.c -o deferred
+
 clean:
 	rm -f persist nopersist

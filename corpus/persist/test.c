@@ -50,6 +50,10 @@ int test_func()
 
 int main()
 {
+#ifdef SLOW_STARTUP
+  sleep(5);
+#endif
+
 #ifdef PERSIST
   while(KILLERBEEZ_LOOP()) {
 #endif
