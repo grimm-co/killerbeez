@@ -24,6 +24,7 @@ bld/
 
 # Test program builds
 corpus/persist/deferred
+corpus/persist/deferred_nohook
 corpus/persist/nopersist
 corpus/persist/persist
 

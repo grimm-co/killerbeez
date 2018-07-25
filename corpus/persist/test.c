@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#ifdef PERSIST
+#if defined(PERSIST) || defined(DEFERRED_NOHOOK)
 #include "forkserver.h"
 #endif
 
@@ -52,6 +52,10 @@ int main()
 {
 #ifdef SLOW_STARTUP
   sleep(5);
+#endif
+
+#ifdef DEFERRED_NOHOOK
+  KILLERBEEZ_INIT();
 #endif
 
 #ifdef PERSIST

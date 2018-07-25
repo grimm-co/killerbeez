@@ -15,7 +15,7 @@
 
 #include "instrumentation.h"
 #include "linux_ipt_instrumentation.h"
-#include "forkserver.h"
+#include "forkserver_internal.h"
 #include "uthash.h"
 #include "xxhash.h"
 

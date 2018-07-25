@@ -1,6 +1,6 @@
 #pragma once
 
-#include "forkserver.h"
+#include "forkserver_internal.h"
 #include "uthash.h"
 #include "xxhash.h"
 

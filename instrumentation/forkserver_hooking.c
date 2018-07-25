@@ -1,7 +1,10 @@
 #define _GNU_SOURCE
 #include <dlfcn.h>
 
+#include "forkserver.h"
 #include "forkserver_config.h"
+
+#if !DISABLE_HOOKING
 
 //////////////////////////////////////////////////////////////
 //Types, Function Prototypes, and Globals ////////////////////
@@ -11,9 +14,6 @@
 //function as having a ton of void * arguments.  This allows us to pass these arguments on (regardless
 //of whether they actually exist or not).
 typedef void * (*orig_function_type)(void *, void *, void *, void *, void *, void *, void *, void *);
-
-//Implementation contained in forkserver.c
-void forkserver_init(void);
 
 //Whether or not we've already started the forkserver
 static int init_done = 0;
@@ -58,7 +58,7 @@ static orig_function_type orig_main = 0;
 
 void * fake_main(void * a0, void * a1, void * a2, void * a3, void * a4, void * a5, void * a6, void * a7)
 {
-  forkserver_init();
+  __forkserver_init();
   return orig_main(a0, a1, a2, a3, a4, a5, a6, a7);
 }
 #endif
@@ -79,7 +79,7 @@ void * NEW_FUNCTION(void * a0, void * a1, void * a2, void * a3, void * a4, void 
 
 #if RUN_BEFORE_CUSTOM_FUNCTION //If we want to run before the hooked function
   if(!init_done) {
-    forkserver_init();
+    __forkserver_init();
     init_done = 1;
   }
 #endif
@@ -88,7 +88,7 @@ void * NEW_FUNCTION(void * a0, void * a1, void * a2, void * a3, void * a4, void 
 
 #if !RUN_BEFORE_CUSTOM_FUNCTION //If we want to run after the hooked function
   if(!init_done) {
-    forkserver_init();
+    __forkserver_init();
     init_done = 1;
   }
 #endif
@@ -102,3 +102,4 @@ void * NEW_FUNCTION(void * a0, void * a1, void * a2, void * a3, void * a4, void 
 DYLD_INTERPOSE(NEW_FUNCTION, FUNCTION)
 #endif
 
+#endif //!DISABLE_HOOKING

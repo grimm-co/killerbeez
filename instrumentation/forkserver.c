@@ -6,7 +6,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "forkserver.h"
+#include "forkserver_internal.h"
 
 static void forkserver_persistence_init(void);
 
@@ -19,7 +19,7 @@ static void forkserver_persistence_init(void);
 //AFL is available at:
 //https://github.com/mirrorer/afl/blob/master/llvm_mode/afl-llvm-rt.o.c#L95
 
-void forkserver_init(void)
+void __forkserver_init(void)
 {
   int response = 0x41414141;
   char command;
@@ -192,7 +192,7 @@ static void forkserver_persistence_init(void)
   }
 }
 
-int killerbeez_loop(void) {
+int __killerbeez_loop(void) {
   raise(SIGSTOP);
   return cycle_cnt++ != max_cnt;
 }

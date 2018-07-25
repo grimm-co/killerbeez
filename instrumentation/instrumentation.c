@@ -11,7 +11,7 @@
 #include <unistd.h>
 
 #include "instrumentation.h"
-#include "forkserver.h"
+#include "forkserver_internal.h"
 #include "utils.h"
 
 #define STRINGIFY_INTERNAL(x) #x

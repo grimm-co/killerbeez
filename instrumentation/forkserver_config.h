@@ -4,6 +4,10 @@
 //be made to start much later in the target process, allowing for reduced
 //startup code of each new process.
 
+//Whether to disable function hooking.  This should only be set if the target
+//program has been modified to explicitly call KILLERBEEZ_INIT().
+#define DISABLE_HOOKING 0
+
 //Whether we should hook __libc_start_main or not.  This is a default option
 //that should work for most Linux programs.
 #define USE_LIBC_START_MAIN 1
