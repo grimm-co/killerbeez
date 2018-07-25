@@ -15,17 +15,16 @@
 #else
 #include <libgen.h>     // dirname
 #include <unistd.h>     // access, F_OK, W_OK
-#include <signal.h>
 #include <sys/stat.h>   // mkdir
 #include <sys/types.h>
 #include <errno.h>      // output directory creation
 #endif
 
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
-
 
 /**
  * This function prints out the usage information for the fuzzer and each of the individual components
@@ -59,18 +58,21 @@ void usage(char * program_name, char * mutator_directory)
 	exit(1);
 }
 
-//The global mutator state objects
+//The global module state objects
 static driver_t * driver = NULL;
 static mutator_t * mutator = NULL;
 static void * mutator_state = NULL;
 static instrumentation_t * instrumentation = NULL;
-static void * instrumentation_state;
+static void * instrumentation_state = NULL;
 
 static void cleanup_modules(void)
 {
-	driver->cleanup(driver->state);
-	instrumentation->cleanup(instrumentation_state);
-	mutator->cleanup(mutator_state);
+	if(driver)
+		driver->cleanup(driver->state);
+	if(instrumentation && instrumentation_state)
+		instrumentation->cleanup(instrumentation_state);
+	if(mutator && mutator_state)
+		mutator->cleanup(mutator_state);
 	free(driver);
 	free(instrumentation);
 	free(mutator);
