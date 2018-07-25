@@ -766,6 +766,9 @@ int dynamorio_is_process_done(void * instrumentation_state)
 	dynamorio_state_t * state = (dynamorio_state_t *)instrumentation_state;
 	DWORD num_bytes_available;
 
+	if (!state->enable_called)
+		return -1;
+
 	if (!PeekNamedPipe(state->pipe_handle, NULL, 0, NULL, &num_bytes_available, NULL))
 		return -1;
 
@@ -1405,6 +1408,7 @@ int dynamorio_enable(void * instrumentation_state, HANDLE * process, char * cmd_
 	//Tell the child instrumentation to go
 	WriteFile(state->pipe_handle, "F", 1, &num_written, NULL);
 	state->analyzed_last_round = 0;
+	state->enable_called = 1;
 
 	return 0;
 }
@@ -1496,6 +1500,8 @@ static int has_new_coverage_per_module(dynamorio_state_t * state)
 int dynamorio_is_new_path(void * instrumentation_state)
 {
 	dynamorio_state_t * state = (dynamorio_state_t *)instrumentation_state;
+	if (!state->enable_called)
+		return -1;
 	return finish_fuzz_round(state);
 }
 
@@ -1508,6 +1514,8 @@ int dynamorio_is_new_path(void * instrumentation_state)
 int dynamorio_get_fuzz_result(void * instrumentation_state)
 {
 	dynamorio_state_t * state = (dynamorio_state_t *)instrumentation_state;
+	if (!state->enable_called)
+		return -1;
 	if (finish_fuzz_round(state) < 0)
 		return -1;
 	return state->last_process_status;
@@ -1535,6 +1543,8 @@ int dynamorio_get_module_info(void * instrumentation_state, int index, int * is_
 	target_module_t * target_module;
 
 	if (info || is_new) {
+		if (!state->enable_called)
+			return -1;
 		if (finish_fuzz_round(state) < 0)
 			return -1;
 	}
@@ -1572,6 +1582,9 @@ instrumentation_edges_t * dynamorio_get_edges(void * instrumentation_state, int 
 {
 	dynamorio_state_t * state = (dynamorio_state_t *)instrumentation_state;
 	target_module_t * target_module;
+
+	if (!state->enable_called)
+		return -1;
 
 	if (!state->edges) //If they didn't ask for edges ahead of time, we don't have them
 		return NULL;

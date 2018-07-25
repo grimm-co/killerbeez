@@ -187,8 +187,8 @@ int return_code_enable(void * instrumentation_state, pid_t * process, char * cmd
 int return_code_is_new_path(void * instrumentation_state)
 {
 	return_code_state_t * state = (return_code_state_t *)instrumentation_state;
-	if(!state->enable_called) //You can't check if a process is done,
-		return -1; //if you haven't started it
+	if(!state->enable_called)
+		return -1;
 	return 0; //We don't gather instrumentation data, so we can't ever tell if we hit a new path.
 }
 
@@ -202,8 +202,8 @@ int return_code_is_new_path(void * instrumentation_state)
 int return_code_get_fuzz_result(void * instrumentation_state)
 {
 	return_code_state_t * state = (return_code_state_t *)instrumentation_state;
-	if(!state->enable_called) //You can't check if a process is done,
-		return -1; //if you haven't started it
+	if(!state->enable_called)
+		return -1;
 	return state->last_status;
 }
 
@@ -218,8 +218,8 @@ int return_code_is_process_done(void * instrumentation_state)
 {
 	return_code_state_t * state = (return_code_state_t *)instrumentation_state;
 
-	if(!state->enable_called) //You can't check if a process is done,
-		return -1; //if you haven't started it
+	if(!state->enable_called)
+		return -1;
 
 	if (state->process_reaped == 1) 
 	{
