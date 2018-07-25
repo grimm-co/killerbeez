@@ -12,5 +12,5 @@
 #define CUSTOM_FUNCTION_NAME custom_function_to_hook
 
 //If we're not hooking __libc_start_main, this defines whether we should start
-//the forkserver before (0) or after (1) the function that we are hooking
+//the forkserver before (1) or after (0) the function that we are hooking
 #define RUN_BEFORE_CUSTOM_FUNCTION 0

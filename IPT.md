@@ -176,12 +176,12 @@ for persistence mode is one that has very little global state, or the state can
 easily be reset. The structure of a persistence mode program, is shown below,
 where the `KILLERBEEZ_LOOP` macro is used to call the fork server. One thing
 to note is that the target process must reread any input data, to ensure it is
-running with the newly mutated input each iteration.  In order to compile the
+running with the newly mutated input each iteration. In order to compile the
 instrumented source code, it must include the forkserver.h header file (so that
 the `KILLERBEEZ_LOOP` macro is defined) and the linker arguments must be
-modified to link against the forkserver library. A more complete example program
-and Makefile that can be used with IPT persistence mode is available in the
-corpus/persist/ directory of this repository.
+modified to link against the fork server library. A more complete example
+program and Makefile that can be used with IPT persistence mode is available in
+the corpus/persist/ directory of this repository.
 
 ```
   while(KILLERBEEZ_LOOP()) {
@@ -204,4 +204,36 @@ program. The IPT module will run 1000 iterations per persist process.
 ```
 ./fuzzer stdin ipt afl -i "{\"persistence_max_cnt\":1000}" -d "{\"path\":\"$HOME/killerbeez/corpus/persist/persist\"}" -n 5000 -sf $HOME/killerbeez/corpus/test/inputs/close.txt
 ```
+
+# Deferred Startup Mode
+
+Killerbeez's fork server tries to optimize performance of the target process by
+executing the target binary until it reaches the `main` function, and then
+forking all new processes from the copy stopped at `main`. This ensures all of
+the startup code that is executed prior to the `main` function is only ever run
+once. However, if a target process has a large startup cost, fuzzing will still
+be slow. In these cases, it is beneficial to use the fork server's deferred
+startup mode, to wait until after the process has finished starting up.
+Killerbeez's deferred startup mode is based off the deferred instrumentation
+mode available in the [LLVM instrumentation included in
+AFL](https://github.com/mirrorer/afl/tree/master/llvm_mode).
+
+Unlike the LLVM mode in AFL, the Killerbeez fork server uses library injection
+and function hooking in order to execute code in a target process. In order to
+use the Killerbeez deferred startup mode, the hooked function must be
+customized. In the instrumentation/ directory of this repository is the
+forkserver_config.h file. This file controls which function is hooked and
+whether the fork server is run before or after that function.
+
+In forkserver_config.h, there are 3 preprocessor macros that control the fork
+server behavior:
+* `USE_LIBC_START_MAIN` - This macro controls whether the default function
+(`__libc_start_main`) is hooked or not.  To customize the hooked function, this
+must be set to 0.
+* `CUSTOM_FUNCTION_NAME` - This macro should contain the name of the function to
+hook.  The name should NOT be placed in quotes.
+* `RUN_BEFORE_CUSTOM_FUNCTION` - This macro determines whether the fork server
+should startup before or after the function that is hooked.  Set it to 0 to
+start the fork server after the hooked function, or 1 to start the fork server
+before the hooked function.
 
