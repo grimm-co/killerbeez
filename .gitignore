@@ -27,6 +27,7 @@ corpus/persist/deferred
 corpus/persist/deferred_nohook
 corpus/persist/nopersist
 corpus/persist/persist
+corpus/persist/persist_hang
 corpus/libtest/libtest1.so
 corpus/libtest/libtest2.so
 corpus/libtest/test
