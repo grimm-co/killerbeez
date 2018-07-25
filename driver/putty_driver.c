@@ -276,30 +276,16 @@ static int putty_run(putty_state_t * state, char ** inputs, size_t * lengths, si
 	{
 		return FUZZ_ERROR;
 	}
-	//Start the process and give it our input
-	if (state->instrumentation)
-	{
-		//Have the instrumentation start the new process, since it needs to do so in a custom environment
-		state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0);
-	}
-	else
-	{
-		//kill any previous processes so they release the file we're gonna write to
-		cleanup_process(state);
 
-		//Start the new process
-		if (start_process_and_write_to_stdin(state->cmd_line, NULL, 0, &state->process))
-		{
-			cleanup_process(state);
-			return FUZZ_ERROR;
-		}
-	}
+	//Have the instrumentation start the new process, since it needs to do so in a custom environment
+	state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0);
+
 	//Now accept the client connection
 	clientSock = accept(serverSock, NULL, NULL);
 	if (clientSock == INVALID_SOCKET)
 	{
-		printf("accept failed with error: %d\n", WSAGetLastError());
-		return 1;
+		FATAL_MSG("accept() failed with error: %d\n", WSAGetLastError());
+		return FUZZ_ERROR;
 	}
 	closesocket(serverSock);
 
@@ -309,8 +295,7 @@ static int putty_run(putty_state_t * state, char ** inputs, size_t * lengths, si
 			Sleep(state->sleeps[i]);
 		if (send_tcp_input(&clientSock, inputs[i], lengths[i]))
 		{
-			ret = FUZZ_ERROR;
-			break;
+			return FUZZ_ERROR;
 		}
 	}
 	closesocket(clientSock);
@@ -364,7 +349,7 @@ int putty_test_next_input(void * driver_state)
 	int i, ret;
 
 	if (!state->mutator)
-		return -1;
+		return FUZZ_ERROR;
 
 	memset(state->mutate_last_sizes, 0, sizeof(int) * state->num_inputs);
 	for (i = 0; i < state->num_inputs; i++)
@@ -372,8 +357,8 @@ int putty_test_next_input(void * driver_state)
 		state->mutate_last_sizes[i] = state->mutator->mutate_extended(state->mutator_state,
 			state->mutate_buffers[i], state->mutate_buffer_lengths[i], MUTATE_MULTIPLE_INPUTS | i);
 		if (state->mutate_last_sizes[i] < 0)
-			return -1;
-		else if (state->mutate_last_sizes[i] == 0)
+			return FUZZ_ERROR;
+		if (state->mutate_last_sizes[i] == 0)
 			return -2;
 	}
 	ret = putty_run(state, state->mutate_buffers, state->mutate_last_sizes, state->num_inputs);
