@@ -26,8 +26,9 @@ static orig_function_type orig_func = 0;
 //////////////////////////////////////////////////////////////
 
 #ifdef __APPLE__
-//On APPLE, we need the definition of the function we're hooking, so we add the prototype here:
-unsigned int sleep(unsigned int seconds);
+
+//Define a fake prototype here, otherwise it will complain when it's used.
+void CUSTOM_FUNCTION_NAME(void);
 
 #define FUNCTION CUSTOM_FUNCTION_NAME
 #define NEW_FUNCTION new_##FUNCTION
