@@ -157,3 +157,51 @@ command will cause a crash in the test-linux binary on the seventh iteration.
 ./fuzzer stdin ipt bit_flip -d "{\"path\":\"$HOME/killerbeez/corpus/test/test-linux\"}" -n 10 -sf $HOME/killerbeez/corpus/test/inputs/close.txt
 ```
 
+# Persistence Mode
+
+The IPT instrumentation module provides the ability to use persistence mode to
+increase the speed of fuzzing. Persistence mode involves executing multiple
+inputs without restarting the target process. While this approach can be much
+quicker, it can cause instabilities in the target process if not setup
+properly. The IPT instrumentation module's persistence mode is based off the
+persistence mode available in the [LLVM instrumentation included in
+AFL](https://github.com/mirrorer/afl/tree/master/llvm_mode). As such, it has
+similar advantages and disadvantages.
+
+In the IPT instrumentation module, persistence mode is accomplished by modifying
+the source code of the target program to repeatedly call the Killerbeez fork
+server library's `killerbeez_loop` function. This function is used to mark the
+start and stop of the target process testing a single input. An ideal program
+for persistence mode is one that has very little global state, or the state can
+easily be reset. The structure of a persistence mode program, is shown below,
+where the `KILLERBEEZ_LOOP` macro is used to call the fork server. One thing
+to note is that the target process must reread any input data, to ensure it is
+running with the newly mutated input each iteration.  In order to compile the
+instrumented source code, it must include the forkserver.h header file (so that
+the `KILLERBEEZ_LOOP` macro is defined) and the linker arguments must be
+modified to link against the forkserver library. A more complete example program
+and Makefile that can be used with IPT persistence mode is available in the
+corpus/persist/ directory of this repository.
+
+```
+  while(KILLERBEEZ_LOOP()) {
+    // Read input data.
+    // Call library code to be fuzzed.
+    // Reset state.
+  }
+```
+
+Once a program has been instrumented, persistence mode can be enabled by setting
+the IPT instrumentation's `persistence_max_cnt` option. The
+`persistence_max_cnt` option defines how many inputs to test in a single process
+before restarting the target program. This value can be determined
+experimentally, but a good starting value is 1000.
+
+An example command illustrating the IPT module's usage with persistence mode is
+shown below. This example runs 5000 iterations of the persist binary, mutates
+the input with the afl mutator, and feeds the input over stdin to the target
+program. The IPT module will run 1000 iterations per persist process.
+```
+./fuzzer stdin ipt afl -i "{\"persistence_max_cnt\":1000}" -d "{\"path\":\"$HOME/killerbeez/corpus/persist/persist\"}" -n 5000 -sf $HOME/killerbeez/corpus/test/inputs/close.txt
+```
+
