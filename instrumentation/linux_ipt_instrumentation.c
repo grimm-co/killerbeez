@@ -434,6 +434,53 @@ static void cleanup_ipt(linux_ipt_state_t * state)
 }
 
 /**
+ * This function determines the size used in an IPT filter for the specified filename.
+ * @param filename - the filename determine the IPT filter size for
+ * @return - the size that should be specified in an IPT filter for the given filename
+ */
+static size_t get_file_filter_size(char * filename)
+{
+  struct stat statbuf;
+  size_t pagesize = getpagesize();
+  size_t ret;
+
+  if(stat(filename, &statbuf))
+    FATAL_MSG("Couldn't get size of \"%s\"", filename);
+
+  ret = statbuf.st_size;
+  if(ret % pagesize != 0)
+    ret = (((ret + pagesize) / pagesize) * pagesize);
+  return ret;
+}
+
+/**
+ * This function creates an IPT filter for the the coverage libraries specified in a linux_ipt_state
+ * @param state - The linux_ipt_state_t object containing this instrumentation's state
+ * @return - an IPT filter that can be passed to the Linux perf subsystem, which will instruction IPT to only
+ * generate IPT packets for the regions defined in the linux_ipt_state.
+ */
+static char * create_ipt_filter(linux_ipt_state_t * state)
+{
+  char item_filter[1000], filter[4096];
+  size_t i;
+
+  //See https://elixir.bootlin.com/linux/v4.17.8/source/kernel/events/core.c#L8806 for the filter format
+  //start is autodetected by the kernel
+  memset(filter, 0, sizeof(filter));
+  if(state->num_coverage_libraries) {
+    for(i = 0; i < state->num_coverage_libraries; i++) {
+      snprintf(item_filter, sizeof(item_filter), "filter 0/%ld@%s%s", get_file_filter_size(state->coverage_libraries[i]),
+        state->coverage_libraries[i], i != state->num_coverage_libraries - 1 ? "\n" : "");
+      strncat(filter, item_filter, sizeof(filter) - (strlen(filter) + 1));
+    }
+  } else
+    snprintf(filter, sizeof(filter), "filter 0/%ld@%s", get_file_filter_size(state->target_path), state->target_path);
+
+  IPT_DEBUG_MSG("Using filter: %s", filter);
+  return strdup(filter);
+}
+
+/**
  * This function sets up IPT tracing for the specified process
  * @param state - The linux_ipt_state_t object containing this instrumentation's state
  * @param pid - The process ID of the process to trace
@@ -442,9 +489,6 @@ static void cleanup_ipt(linux_ipt_state_t * state)
 static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
 {
   struct perf_event_attr pe;
-  char filter[256];
-  struct stat statbuf;
-  size_t pagesize = getpagesize();
 
   state->last_ip = 0;
 
@@ -464,21 +508,9 @@ static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
     return 1;
   }
 
-  if(!state->target_path_filter_size) {
-    if(stat(state->target_path, &statbuf)) {
-      ERROR_MSG("Couldn't get size of target executable (%s)", state->target_path);
-      return 1;
-    }
-    state->target_path_filter_size = statbuf.st_size;
-    if(state->target_path_filter_size % pagesize == 0)
-      state->target_path_filter_size = (((state->target_path_filter_size + pagesize) / pagesize) * pagesize);
-  }
-
-  //See https://elixir.bootlin.com/linux/v4.17.8/source/kernel/events/core.c#L8806 for the filter format
-  //start is autodetected by the kernel
-  snprintf(filter, sizeof(filter), "filter 0/%ld@%s", state->target_path_filter_size, state->target_path);
-  IPT_DEBUG_MSG("Using filter: %s", filter);
-  if(ioctl(state->perf_fd, PERF_EVENT_IOC_SET_FILTER, filter)) {
+  if(!state->filter)
+    state->filter = create_ipt_filter(state);
+  if(ioctl(state->perf_fd, PERF_EVENT_IOC_SET_FILTER, state->filter)) {
     ERROR_MSG("perf filter failed! (errno %d: %s)", errno, strerror(errno));
     return 1;
   }
@@ -624,6 +656,11 @@ static int get_ipt_system_info(linux_ipt_state_t * state)
     INFO_MSG("Intel PT address filtering not supported");
     return -1;
   }
+  if(ret < state->num_coverage_libraries) {
+    INFO_MSG("Too many coverage libraries specified. Intel PT address filtering on "
+      "this system only supports %d, but %d were specified.", ret, state->num_coverage_libraries);
+    return -1;
+  }
   state->num_address_ranges = ret;
 
   return 0;
@@ -642,9 +679,7 @@ static int get_ipt_system_info(linux_ipt_state_t * state)
 static linux_ipt_state_t * setup_options(char * options)
 {
   linux_ipt_state_t * state;
-  size_t i, length;
-  char * temp;
-  char buffer[MAX_PATH];
+  size_t i;
   size_t pagesize = getpagesize();
 
   state = malloc(sizeof(linux_ipt_state_t));
@@ -659,6 +694,20 @@ static linux_ipt_state_t * setup_options(char * options)
   if(options) {
     PARSE_OPTION_INT(state, options, persistence_max_cnt, "persistence_max_cnt", linux_ipt_cleanup);
     PARSE_OPTION_INT(state, options, ipt_mmap_size, "ipt_mmap_size", linux_ipt_cleanup);
+    PARSE_OPTION_ARRAY(state, options, coverage_libraries, num_coverage_libraries, "coverage_libraries", linux_ipt_cleanup);
+  }
+
+  if(state->num_coverage_libraries && get_file_int("/proc/sys/kernel/randomize_va_space") != 0) {
+    WARNING_MSG("ASLR enabled while tracing libraries. IPT Hashes generated during this run will not be reuseable on another run!");
+    WARNING_MSG("Consider turning off ASLR with this command: echo 0 | sudo tee /proc/sys/kernel/randomize_va_space");
+  }
+
+  for(i = 0; i < state->num_coverage_libraries; i++) {
+    if(!file_exists(state->coverage_libraries[i])) {
+      ERROR_MSG("Could not access the specified coverage library \"%s\" does not exist", state->coverage_libraries[i]);
+      linux_ipt_cleanup(state);
+      return NULL;
+    }
   }
 
   //Fix up the IPT mmap size if it's not page aligned
@@ -717,6 +766,7 @@ void * linux_ipt_create(char * options, char * state)
 void linux_ipt_cleanup(void * instrumentation_state)
 {
   struct ipt_hashtable_entry * hash, * tmp;
+  size_t i;
   linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
 
   //Kill any remaining target processes
@@ -743,7 +793,11 @@ void linux_ipt_cleanup(void * instrumentation_state)
     free(hash);
   }
 
+  for(i = 0; i < state->num_coverage_libraries; i++)
+    free(state->coverage_libraries[i]);
+  free(state->coverage_libraries);
   free(state->reorder_buffer);
+  free(state->filter);
   free(state->target_path);
   free(state);
 }
@@ -1005,6 +1059,8 @@ char * linux_ipt_help(void)
     "\tpersistence_max_cnt  The number of executions to run in one process while\n"
     "\t                     fuzzing in persistence mode\n"
     "\tipt_mmap_size        The amount of memory to use for the IPT trace data buffer\n"
+    "\tcoverage_libraries   An array of library or executable filenames that IPT should record\n"
+    "\t                     trace information.  By default, only the executable is traced.\n"
     "\n"
   );
 }

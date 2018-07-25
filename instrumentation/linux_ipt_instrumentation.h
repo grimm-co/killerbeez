@@ -39,6 +39,8 @@ struct linux_ipt_state
 {
   int persistence_max_cnt;
   int ipt_mmap_size;
+  char ** coverage_libraries;
+  size_t num_coverage_libraries;
 
   int num_address_ranges;
   int fork_server_setup;
@@ -54,7 +56,7 @@ struct linux_ipt_state
   struct ipt_hashtable_entry * head;
 
   char * target_path;
-  size_t target_path_filter_size;
+  char * filter;
 
   pid_t child_pid;
   forkserver_t fs;
