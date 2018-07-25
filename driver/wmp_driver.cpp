@@ -269,7 +269,7 @@ char * wmp_help(void)
 {
 	return strdup(
 		"wmp - Windows Media Player driver (Fuzzes wmplayer.exe)\n"
-		"Options:\n"
+		"Optional Arguments:\n"
 		"\textension             The file extension of the input files to wmplayer.exe\n"
 		"\tpath                  The path to the wmplayer.exe\n"
 		"\tratio                 The ratio of mutation buffer size to input size when given a mutator\n"
