@@ -321,9 +321,10 @@ static int putty_run(putty_state_t * state, char ** inputs, size_t * lengths, si
 }
 
 /**
- * This function will run the fuzzed program and test it with the given input. This function
- * blocks until the program has finished processing the input.
- * @param driver_state - a driver specific structure previously created by the putty_create function
+ * This function will run the fuzzed program and test it with the given input.
+ * This function blocks until the program has finished processing the input.
+ * @param driver_state - a driver specific structure previously created by the
+ * 		putty_create function
  * @param input - the input that should be tested
  * @param length - the length of the input parameter
  * @return - <= 0 on success or FUZZ_ERROR on failure
