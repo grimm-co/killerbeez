@@ -42,7 +42,7 @@ void usage(char * program_name, char * mutator_directory)
 		"\t -isd instrumentation_state_file   Set the file containing that the instrumentation state should dump to\n"
 		"\t -isf instrumentation_state_file   Set the file containing that the instrumentation state should load from\n"
 		"\t -l logging_options                Set the options for logging\n"
-		"\t -n num_iterations                 The number of iterations to run [infinite]\n"
+		"\t -n num_iterations                 Limit the number of iterations to run [infinite]\n"
 		"\t -m mutator_options                Set the options for the mutator\n"
 		"\t -md mutator_directory             The directory to look for mutator DLLs in (must be specified to view help for specific mutators)\n"
 		"\t -ms mutator_state                 Set the state that the mutator should load\n"
@@ -85,6 +85,8 @@ static void sigint_handler(int sig)
 	exit(0);
 }
 
+#define NUM_ITERATIONS_INFINITE -1
+
 int main(int argc, char ** argv)
 {
 	char *driver_name, *driver_options = NULL,
@@ -103,7 +105,7 @@ int main(int argc, char ** argv)
 	char * directory;
 
 	//Default options
-	int num_iterations = 1;
+	int num_iterations = NUM_ITERATIONS_INFINITE; //default to infinite
 	char * output_directory = "output";
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -222,7 +224,7 @@ int main(int argc, char ** argv)
 	}
 
 	//Check number of iterations for valid number of rounds
-	if (num_iterations <= 0)
+	if (num_iterations != NUM_ITERATIONS_INFINITE && num_iterations <= 0)
 		FATAL_MSG("Invalid number of iterations %d", num_iterations);
 
 	if (mutator_directory_cli) 
@@ -355,7 +357,7 @@ int main(int argc, char ** argv)
 	fuzz_begin_time = time(NULL);
 
 	//Copy the input, mutate it, and run the fuzzed program
-	for (iteration = 0; iteration < num_iterations; iteration++)
+	for (iteration = 0; num_iterations == NUM_ITERATIONS_INFINITE || iteration < num_iterations; iteration++)
 	{
 		DEBUG_MSG("Fuzzing the %d iteration", iteration);
 
