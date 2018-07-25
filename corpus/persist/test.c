@@ -61,6 +61,11 @@ int main()
 #ifdef PERSIST
   while(KILLERBEEZ_LOOP()) {
 #endif
+
+#ifdef HANG
+    while(1);
+#endif
+
     test_func();
 #ifdef PERSIST
   }

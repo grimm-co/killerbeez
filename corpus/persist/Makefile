@@ -1,10 +1,13 @@
 BUILD_DIR=../../../build/killerbeez/
 KILLERBEEZ_FLAGS=-L$(BUILD_DIR) -lforkserver -I../../instrumentation/
 
-all: persist nopersist deferred deferred_nohook
+all: persist persist_hang nopersist deferred deferred_nohook
 
 persist:
 	$(CC) -DPERSIST test.c -o persist $(KILLERBEEZ_FLAGS)
+
+persist_hang:
+	$(CC) -DPERSIST -DHANG test.c -o persist_hang $(KILLERBEEZ_FLAGS)
 
 nopersist:
 	$(CC) test.c -o nopersist
@@ -16,4 +19,4 @@ deferred_nohook:
 	$(CC) -DSLOW_STARTUP -DDEFERRED_NOHOOK test.c -o deferred_nohook $(KILLERBEEZ_FLAGS)
 
 clean:
-	rm -f persist nopersist deferred deferred_nohook
+	rm -f persist persist_hang nopersist deferred deferred_nohook
