@@ -8,41 +8,41 @@
 
 int test_func()
 {
-	char buffer[4];
-	char * nil = NULL;
-	FILE * fp = stdin;
-	memset(buffer, 0, 4);
+  char buffer[4];
+  char * nil = NULL;
+  FILE * fp = stdin;
+  memset(buffer, 0, 4);
   read(0, buffer, sizeof(buffer));
 
-	if (buffer[0] == 'A')
-	{
-		if (buffer[1] == 'B')
-		{
-			if (buffer[2] == 'C')
-			{
-				if (buffer[3] == 'D')
-				{
-					*nil = 'E';
-				}
-				else
-				{
-					puts("Wrong 3");
-				}
-			}
-			else
-			{
-				puts("Wrong 2");
-			}
-		}
-		else
-		{
-			puts("Wrong 1");
-		}
-	}
-	else
-	{
-		puts("Wrong 0");
-	}
+  if (buffer[0] == 'A')
+  {
+    if (buffer[1] == 'B')
+    {
+      if (buffer[2] == 'C')
+      {
+        if (buffer[3] == 'D')
+        {
+          *nil = 'E';
+        }
+        else
+        {
+          puts("Wrong 3");
+        }
+      }
+      else
+      {
+        puts("Wrong 2");
+      }
+    }
+    else
+    {
+      puts("Wrong 1");
+    }
+  }
+  else
+  {
+    puts("Wrong 0");
+  }
 
   return 0;
 }
