@@ -322,6 +322,7 @@ int debug_enable(void * instrumentation_state, HANDLE * process, char * cmd_line
  */
 int debug_is_new_path(void * instrumentation_state)
 {
+	debug_state_t * state = (debug_state_t *)instrumentation_state;
 	if (!state->enable_called)
 		return -1;
 	return 0; //We don't gather instrumentation data, so we can't ever tell if we hit a new path.
