@@ -1,3 +1,5 @@
+#ifndef _WIN32
+//Headers necessary for the forkserver
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -9,9 +11,11 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#endif
 
 #include "instrumentation.h"
 #include "utils.h"
+
 
 #ifndef _WIN32
 //The forkserver is not supported on Windows
