@@ -165,9 +165,9 @@ to track coverage information for. The below command illustrates how to use this
 option with the included example program. This command tracks the code coverage
 of libtest1.so and libtest2.so.
 ```
-env LD_LIBRARY_PATH=$HOME/killerbeez/killerbeez/corpus/libtest/ ./fuzzer stdin ipt bit_flip
-  -d "{\"path\":\"$HOME/killerbeez/killerbeez/corpus/libtest/test\"}" -n 10
-  -i '{"coverage_libraries":["$HOME/killerbeez/killerbeez/corpus/libtest/libtest1.so","$HOME/killerbeez/killerbeez/corpus/libtest/libtest2.so"]}'
+env LD_LIBRARY_PATH=$HOME/killerbeez/killerbeez/corpus/libtest/ ./fuzzer stdin ipt bit_flip \
+  -d "{\"path\":\"$HOME/killerbeez/killerbeez/corpus/libtest/test\"}" -n 10 \
+  -i '{"coverage_libraries":["$HOME/killerbeez/killerbeez/corpus/libtest/libtest1.so","$HOME/killerbeez/killerbeez/corpus/libtest/libtest2.so"]}' \
   -sf $HOME/killerbeez/killerbeez/corpus/test/inputs/close.txt
 ```
 
