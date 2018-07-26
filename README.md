@@ -182,8 +182,7 @@ change into the right directory and run the fuzzer.  Here's an example of
 running it on a test program from our corpus.
 
 ```
-# assuming that you're in the same directory as the above commands
-# ($WORKDIR/build)
+# assuming that you're in the same directory as above ($WORKDIR/build)
 cd ../build/killerbeez/
 ./fuzzer file return_code honggfuzz -n 20 \
 	-sf /bin/bash -d '{"path":"../../killerbeez/corpus/test/test-linux","arguments":"@@"}'
