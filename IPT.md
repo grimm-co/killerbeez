@@ -154,7 +154,7 @@ example runs 10 iterations of the test-linux binary, mutates the input with the
 bit_flip mutator, and feeds the input over stdin to the target program. This
 command will cause a crash in the test-linux binary on the seventh iteration.
 ```
-./fuzzer stdin ipt bit_flip -d "{\"path\":\"$HOME/killerbeez/corpus/test/test-linux\"}" -n 10 -sf $HOME/killerbeez/corpus/test/inputs/close.txt
+./fuzzer stdin ipt bit_flip -d "{\"path\":\"$HOME/killerbeez/killerbeez/corpus/test/test-linux\"}" -n 10 -sf $HOME/killerbeez/killerbeez/corpus/test/inputs/close.txt
 ```
 
 # Persistence Mode
@@ -202,7 +202,12 @@ shown below. This example runs 5000 iterations of the persist binary, mutates
 the input with the afl mutator, and feeds the input over stdin to the target
 program. The IPT module will run 1000 iterations per persist process.
 ```
-./fuzzer stdin ipt afl -i "{\"persistence_max_cnt\":1000}" -d "{\"path\":\"$HOME/killerbeez/corpus/persist/persist\"}" -n 5000 -sf $HOME/killerbeez/corpus/test/inputs/close.txt
+./fuzzer stdin ipt afl -i "{\"persistence_max_cnt\":1000}" -d "{\"path\":\"$HOME/killerbeez/killerbeez/corpus/persist/persist\"}" -n 5000 -sf $HOME/killerbeez/killerbeez/corpus/test/inputs/close.txt
+```
+For comparison, a non-persistence mode run with a similar binary can be started
+with this command:
+```
+./fuzzer stdin ipt afl -d "{\"path\":\"$HOME/killerbeez/killerbeez/corpus/persist/nopersist\"}" -n 5000 -sf $HOME/killerbeez/killerbeez/corpus/test/inputs/close.txt
 ```
 
 # Deferred Startup Mode
