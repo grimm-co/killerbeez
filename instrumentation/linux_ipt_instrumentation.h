@@ -40,6 +40,16 @@ struct linux_ipt_state
   int persistence_max_cnt;
   int ipt_mmap_size;
 
+  char ** coverage_libraries;
+  uint64_t * library_starts;
+  uint64_t * library_ends;
+  uint32_t * library_hashes;
+  size_t num_coverage_libraries;
+
+  char * target_path;
+  uint64_t target_start;
+  uint64_t target_end;
+
   int num_address_ranges;
   int fork_server_setup;
   int intel_pt_type;
@@ -49,12 +59,10 @@ struct linux_ipt_state
   void * perf_aux_buf;
   char * reorder_buffer;
   uint64_t last_ip;
+  char * filter;
 
   struct ipt_hash_state ipt_hashes;
   struct ipt_hashtable_entry * head;
-
-  char * target_path;
-  size_t target_path_filter_size;
 
   pid_t child_pid;
   forkserver_t fs;

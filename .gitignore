@@ -28,7 +28,10 @@ corpus/persist/deferred_nohook
 corpus/persist/nopersist
 corpus/persist/persist
 corpus/persist/persist_hang
-
+corpus/libtest/libtest1.so
+corpus/libtest/libtest2.so
+corpus/libtest/test
+corpus/libtest/pie
 
 # Visual Studio 2015 cache/options directory
 .vs/

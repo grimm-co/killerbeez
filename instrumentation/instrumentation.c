@@ -241,6 +241,7 @@ void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int u
 
   fs->fuzzer_to_forksrv = ctl_pipe[1];
   fs->forksrv_to_fuzzer = st_pipe[0];
+  fs->pid = forksrv_pid;
 
   // Wait for the fork server to come up, but don't wait too long.
   // Note, we do this looping, rather than blocking on read and using

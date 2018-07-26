@@ -144,17 +144,31 @@ requires address filtering; the number of address filters supported on your
 system is available in the `/sys/devices/intel_pt/caps/num_address_ranges` file.
 
 The IPT instrumentation can be used as any other instrumentation module would,
-i.e. by specifying the name as the instrumentation type. Currently, the IPT
-instrumentation module does not have any options. The TNT and TIP hashes are
-output as DEBUG messages, and can be viewed by increasing the logging level
+i.e. by specifying the name as the instrumentation type. The TNT and TIP hashes
+are output as DEBUG messages, and can be viewed by increasing the logging level
 (with the option `-l "{\"level\":0}"`).
 
 An example command illustrating the IPT module's usage is shown below. This
 example runs 10 iterations of the test-linux binary, mutates the input with the
 bit_flip mutator, and feeds the input over stdin to the target program. This
 command will cause a crash in the test-linux binary on the seventh iteration.
+The IPT instrumentation tracks the TNT and TIP packets that are generated from
+the main test-linux executable.
 ```
 ./fuzzer stdin ipt bit_flip -d "{\"path\":\"$HOME/killerbeez/killerbeez/corpus/test/test-linux\"}" -n 10 -sf $HOME/killerbeez/killerbeez/corpus/test/inputs/close.txt
+```
+
+If instead of tracking code coverage for the main executable, you wish to track
+the coverage of a library, then you can use the `coverage_libraries` option.
+This option specifies an array of libraries for the IPT instrumentation module
+to track coverage information for. The below command illustrates how to use this
+option with the included example program. This command tracks the code coverage
+of libtest1.so and libtest2.so.
+```
+env LD_LIBRARY_PATH=$HOME/killerbeez/killerbeez/corpus/libtest/ ./fuzzer stdin ipt bit_flip \
+  -d "{\"path\":\"$HOME/killerbeez/killerbeez/corpus/libtest/test\"}" -n 10 \
+  -i '{"coverage_libraries":["$HOME/killerbeez/killerbeez/corpus/libtest/libtest1.so","$HOME/killerbeez/killerbeez/corpus/libtest/libtest2.so"]}' \
+  -sf $HOME/killerbeez/killerbeez/corpus/test/inputs/close.txt
 ```
 
 # Persistence Mode
