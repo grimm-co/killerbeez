@@ -1,14 +1,13 @@
 #include "stdin_driver.h"
 
+#include <global_types.h>     // for mutator_t
 #include <utils.h>
 #include <jansson_helper.h>
 #include <instrumentation.h>
-#include "driver.h"
 
 //c headers
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 
 #ifdef _WIN32
 //Windows API
@@ -16,8 +15,6 @@
 #include <process.h>
 #else // linux
 #include <string.h>    // memset, strlen
-#include <sys/types.h> // kill
-#include <signal.h>    // kill
 #endif
 
 /**

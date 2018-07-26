@@ -1,7 +1,8 @@
 #pragma once
-#include "driver.h"
 #include "instrumentation.h"
 #include <global_types.h>
+#include <sys/types.h>        // for pid_t
+
 
 void * stdin_create(char * options, instrumentation_t * instrumentation, void * instrumentation_state,
 	mutator_t * mutator, void * mutator_state);
