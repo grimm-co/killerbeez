@@ -15,7 +15,7 @@ WINDOWS_BUILD_PATH=$WINDOWS_BASE_PATH"build/X64/Debug/killerbeez"
 LINUX_BASE_PATH="$HOME/killerbeez/"
 LINUX_BUILD_PATH="$LINUX_BASE_PATH/build/killerbeez"
 
-FUZZER_WITH_GDB="gdb -q -ex run --args ./fuzzer"
+FUZZER_WITH_GDB="gdb -q -ex run -ex quit --args ./fuzzer"
 
 # https://stackoverflow.com/a/3466183
 unameOut="$(uname -s)"
@@ -81,6 +81,38 @@ then
 		-d '{"timeout":3, "path":"C:\\killerbeez\\Killerbeez\\corpus\\hang\\hang.exe", "arguments":"@@"}'
 	fi
 
+	# Tests a single packet via the network driver. If you're sending multiple
+	# packets, consider the manager mutator instead.
+	if [ $KILLERBEEZ_TEST = "network" ]
+	then
+		cd $WINDOWS_BUILD_PATH
+
+		./fuzzer \
+		network debug bit_flip \
+		-n 10 \
+		-l '{"level":0}' \
+		-sf 'C:\killerbeez\killerbeez\corpus\network\close.txt' \
+		-d '{"timeout":20,
+			"path":"C:\\killerbeez\\killerbeez\\corpus\\network\\server\\server.exe",
+			"ip":"127.0.0.1",
+			"port":4444}'
+	fi
+
+    if [ $KILLERBEEZ_TEST = "network_client" ]
+    then
+        cd $WINDOWS_BUILD_PATH
+
+        ./fuzzer \
+        network_client debug bit_flip \
+        -n 10 \
+        -l '{"level":0}' \
+        -sf 'C:\killerbeez\killerbeez\corpus\network\close.txt' \
+        -d '{"timeout":20,
+            "path":"C:\\killerbeez\\killerbeez\\corpus\\network\\client\\client.exe",
+            "ip":"127.0.0.1",
+            "port":4444}'
+
+    fi
 fi
 
 
@@ -140,6 +172,21 @@ then
 		-sf $LINUX_BASE_PATH'/killerbeez/killerbeez/corpus/test/inputs/close.txt' \
 		-d '{"timeout":20, "path":"'$LINUX_BASE_PATH'/killerbeez/killerbeez/corpus/test/test-linux"}'
 	fi
+
+	# Tests a single packet via the network driver. If you're sending multiple
+	# packets, consider the manager mutator instead.
+	if [ $KILLERBEEZ_TEST = "network" ]
+	then
+		cd $LINUX_BUILD_PATH
+
+		$FUZZER_WITH_GDB \
+		network return_code bit_flip \
+		-n 10 \
+		-l '{"level":0}' \
+		-sf $LINUX_BASE_PATH'/killerbeez/corpus/network/close.txt' \
+		-d '{"timeout":20,"path":"'$LINUX_BASE_PATH'/killerbeez/killerbeez/corpus/network/server/server","ip":"127.0.0.1","port":4444}'
+	fi
+
 fi
 
 # successful output should look like:
