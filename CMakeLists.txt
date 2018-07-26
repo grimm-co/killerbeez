@@ -29,6 +29,18 @@ endif (WIN32)
 include_directories (${CMAKE_SOURCE_DIR}/../killerbeez-utils/jansson/)
 include_directories (${CMAKE_SOURCE_DIR}/../killerbeez-utils/utils/)
 
+if (UNIX)
+	find_program(iwyu_path NAMES include-what-you-use iwyu)
+	if(NOT iwyu_path)
+		# can be installed with sudo apt install iwyu -y
+		message(STATUS "Could not find include-what-you-use, continuing without it")
+	else()
+		message(STATUS "Found include-what-you-use, displaying its suggestions")
+		set(CMAKE_C_INCLUDE_WHAT_YOU_USE ${iwyu_path})
+		set(CMAKE_CXX_INCLUDE_WHAT_YOU_USE ${iwyu_path})
+	endif()
+endif(UNIX)
+
 # compile mutators, which will compile utils
 add_subdirectory(${CMAKE_SOURCE_DIR}/../killerbeez-mutators/ ${CMAKE_BINARY_DIR}/killerbeez-mutators/)
 
