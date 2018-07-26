@@ -1,4 +1,3 @@
-#define _CRT_RAND_S
 #include <windows.h>
 #include <stdlib.h>
 #include <ntstatus.h>
