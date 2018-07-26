@@ -1084,7 +1084,7 @@ static dynamorio_state_t * setup_options(char * options)
 	//Verify winafl.dll exists
 	snprintf(buffer, sizeof(buffer) - 1, "%s\\winafl.dll", state->winafl_dir);
 	if (access(buffer, 0))
-		FATAL_MSG("Failed to find the winafl.dll in %s.  Use the winafl_dir option to modify the directory to look for winafl.dll", state->winafl_dir);
+		FATAL_MSG("Failed to find the winafl.dll in %s. Use the winafl_dir option to modify the directory to look for winafl.dll, and ensure that you have matching bitness (bin32 vs 64) between winafl.dll and the fuzz target.", state->winafl_dir);
 
 	//printf("Modules (%zu):\n", state->num_modules);
 	for (i = 0; i < state->num_modules; i++)
