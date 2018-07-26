@@ -3,20 +3,16 @@
 #include <utils.h>
 #include <jansson_helper.h>
 #include <instrumentation.h>
-#include "driver.h"
 
 //c headers
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 
 #ifdef _WIN32
 #include <Shlwapi.h>
 #include <process.h>
 #else
 #include <string.h> // memset
-#include <sys/types.h> // kill()
-#include <signal.h>
 #include <unistd.h> // unlink
 #endif
 
