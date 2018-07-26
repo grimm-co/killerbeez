@@ -4,6 +4,7 @@
 #include <utils.h>
 #include <jansson_helper.h>
 #include <instrumentation.h>
+#include "driver.h" // IWYU pragma: keep
 
 //c headers
 #include <stdio.h>

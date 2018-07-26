@@ -1,4 +1,10 @@
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#include "instrumentation.h"
 #include "driver_factory.h"
+#include "driver.h"  // for driver_t
 
 #include "file_driver.h"
 #include "stdin_driver.h"
@@ -7,11 +13,6 @@
 #include "network_driver.h"
 #endif
 
-#include "instrumentation.h"
-
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
 
 #define FACTORY_ERROR()  { free(ret); return NULL; }
 
