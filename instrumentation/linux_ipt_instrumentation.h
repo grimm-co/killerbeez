@@ -43,6 +43,7 @@ struct linux_ipt_state
   char ** coverage_libraries;
   uint64_t * library_starts;
   uint64_t * library_ends;
+  uint32_t * library_hashes;
   size_t num_coverage_libraries;
 
   char * target_path;

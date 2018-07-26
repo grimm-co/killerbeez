@@ -177,13 +177,12 @@ static void add_tip_to_hash(linux_ipt_state_t * state, uint64_t tip)
       }
     }
 
-    //Normalize the address.  We add an offset based on the library the address is in,
-    //in order to ensure there are not collisions when two separate libraries report a TIP
-    //at the same offset
+    //Normalize the address, then mix in the hash of the library to ensure there are not collisions
+    //when two separate libraries report a TIP at the same offset
     if(index != -1)
-      adjusted_address = (tip - state->library_starts[i]) + (index << 32);
-  } else if(state->target_start <= tip && tip < state->target_end)
-    adjusted_address = tip - state->target_start;
+      adjusted_address = (tip - state->library_starts[i]) | (((uint64_t)state->library_hashes[i]) << 32);
+  } else if(state->target_start <= tip && tip < state->target_end) //if the address is in the target executable
+    adjusted_address = tip - state->target_start; //normalize the address with the target's start address
 
   if(XXH64_update(state->ipt_hashes.tip, &adjusted_address, sizeof(uint64_t)) == XXH_ERROR)
     WARNING_MSG("Updating the TIP hash failed!"); //Should never happen
@@ -563,15 +562,18 @@ static void record_fork_server_address_info(linux_ipt_state_t * state)
   char filename[64], line[1024+MAX_PATH], map_filename[MAX_PATH], last_filename[MAX_PATH];
   FILE * fp;
   uint64_t start, end;
-  int count, index;
+  int count, index, file_len;
   size_t i;
+  char * file_buffer;
+  XXH32_state_t * hash;
 
   //Allocate the library start/end arrays
   if(state->num_coverage_libraries) {
     state->library_starts = calloc(state->num_coverage_libraries, sizeof(uint64_t));
     state->library_ends = calloc(state->num_coverage_libraries, sizeof(uint64_t));
-    if(!state->library_starts || !state->library_ends)
-      FATAL_MSG("Failed allocating memory for library address ranges");
+    state->library_hashes = calloc(state->num_coverage_libraries, sizeof(uint32_t));
+    if(!state->library_starts || !state->library_ends || !state->library_hashes)
+      FATAL_MSG("Failed allocating memory for library address ranges and hashes");
   }
 
   //Open /proc/$pid/maps
@@ -611,6 +613,22 @@ static void record_fork_server_address_info(linux_ipt_state_t * state)
         WARNING_MSG("Could not determine the address of the %s library in memory.  The generated hashes will be specific to "
           "this run if ASLR is enabled.", state->coverage_libraries[i]);
         state->library_starts[i] = state->library_ends[i] = 0;
+      } else {
+        //Read the library
+        file_len = read_file(state->coverage_libraries[i], &file_buffer);
+        if(file_len < 0)
+          FATAL_MSG("Couldn't open the library %s to calculate its hash", state->coverage_libraries[i]);
+
+        //Calculate the library's hash
+        hash = XXH32_createState();
+        if(XXH32_reset(hash, 0) == XXH_ERROR ||
+            XXH32_update(hash, file_buffer, file_len) == XXH_ERROR)
+          FATAL_MSG("Failed calculating hash of library %s", state->coverage_libraries[i]); //Should never happen
+        state->library_hashes[i] = XXH32_digest(hash);
+
+        //Deallocate the hash and file contents
+        XXH32_freeState(hash);
+        free(file_buffer);
       }
     }
 
@@ -882,6 +900,7 @@ void linux_ipt_cleanup(void * instrumentation_state)
     free(state->coverage_libraries[i]);
   free(state->library_starts);
   free(state->library_ends);
+  free(state->library_hashes);
   free(state->coverage_libraries);
   free(state->reorder_buffer);
   free(state->filter);
