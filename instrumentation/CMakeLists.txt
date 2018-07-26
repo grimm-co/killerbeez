@@ -12,12 +12,21 @@ if (WIN32)
 		${PROJECT_SOURCE_DIR}/debug_instrumentation.c
 		${PROJECT_SOURCE_DIR}/dynamorio_instrumentation.c
 	)
-else (WIN32)
+elseif (UNIX)
+	set(INSTRUMENTATION_SRC
+		${INSTRUMENTATION_SRC}
+		${PROJECT_SOURCE_DIR}/return_code_instrumentation.c
+		${PROJECT_SOURCE_DIR}/linux_ipt_instrumentation.c
+	)
+
+	add_library(forkserver SHARED ${PROJECT_SOURCE_DIR}/forkserver.c)
+	target_link_libraries(forkserver dl)
+else ()
 	set(INSTRUMENTATION_SRC
 		${INSTRUMENTATION_SRC}
 		${PROJECT_SOURCE_DIR}/return_code_instrumentation.c
 	)
-endif (WIN32)
+endif ()
 
 source_group("Library Sources" FILES ${INSTRUMENTATION_SRC})
 

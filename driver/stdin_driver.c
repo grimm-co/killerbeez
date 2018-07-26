@@ -134,7 +134,8 @@ int stdin_test_input(void * driver_state, char * input, size_t length)
 	stdin_state_t * state = (stdin_state_t *)driver_state;
 
 	//Start the process and give it our input
-	state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, input, length);
+	if(state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, input, length))
+		return FUZZ_ERROR;
 
 	//Wait for it to be done
 	return generic_wait_for_process_completion(state->process, state->timeout,
