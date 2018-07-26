@@ -48,7 +48,7 @@ for example `C:\killerbeez`
 ```
 mkdir C:\killerbeez
 set WORKDIR=C:/killerbeez
-:: We'll use forward slashes for minimal escaping
+:: We'll use forward slashes for minimal escaping, Windows doesn't care
 ```
 
 4. Build [Radamsa](https://gitlab.com/akihe/radamsa) (optional).
@@ -123,12 +123,12 @@ expected, and a few are not.
 
 Let's start by fuzzing a test program first, to keep things simple.
 ```
-REM Assuming you set WORKDIR=C:/killerbeez
+REM Assuming you: set WORKDIR=C:/killerbeez
 REM Note if using backslashes they need to be escaped to be proper JSON.
 
-cd %WORKDIR%\build\x64\Debug\killerbeez
+cd %WORKDIR%/build/x64/Debug/killerbeez
 fuzzer.exe file debug bit_flip -n 9 ^
-	-sf "%WORKDIR%\killerbeez\corpus\test\inputs\close.txt" ^
+	-sf "%WORKDIR%/killerbeez/corpus/test/inputs/close.txt" ^
 	-d "{\"path\":\"%WORKDIR%/killerbeez/corpus/test/test.exe\",\"arguments\":\"@@\"}"
 ```
 
@@ -182,7 +182,7 @@ change into the right directory and run the fuzzer.  Here's an example of
 running it on a test program from our corpus.
 
 ```
-# assuming that you're in the same directory as the above commands (%WORKDIR%/build)
+# assuming that you're in the same directory as above ($WORKDIR/build)
 cd ../build/killerbeez/
 ./fuzzer file return_code honggfuzz -n 20 \
 	-sf /bin/bash -d '{"path":"../../killerbeez/corpus/test/test-linux","arguments":"@@"}'
