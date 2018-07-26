@@ -1,6 +1,6 @@
 #pragma once
 
-#include "forkserver.h"
+#include "forkserver_internal.h"
 #include "uthash.h"
 #include "xxhash.h"
 
@@ -15,8 +15,6 @@ int linux_ipt_is_new_path(void * instrumentation_state);
 int linux_ipt_is_process_done(void * instrumentation_state);
 int linux_ipt_get_fuzz_result(void * instrumentation_state);
 char * linux_ipt_help(void);
-
-#define PERF_MMAP_SIZE 1024*1024
 
 struct ipt_hashtable_key {
   uint64_t tip;
@@ -39,6 +37,9 @@ struct ipt_hash_state
 
 struct linux_ipt_state
 {
+  int persistence_max_cnt;
+  int ipt_mmap_size;
+
   int num_address_ranges;
   int fork_server_setup;
   int intel_pt_type;
@@ -46,6 +47,8 @@ struct linux_ipt_state
   int perf_fd;
   struct perf_event_mmap_page * pem;
   void * perf_aux_buf;
+  char * reorder_buffer;
+  uint64_t last_ip;
 
   struct ipt_hash_state ipt_hashes;
   struct ipt_hashtable_entry * head;

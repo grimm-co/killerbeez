@@ -1,3 +1,5 @@
+#ifndef _WIN32
+//Headers necessary for the forkserver
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -9,14 +11,16 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#endif
 
 #include "instrumentation.h"
 #include "utils.h"
 
+
 #ifndef _WIN32
 //The forkserver is not supported on Windows
 
-#include "forkserver.h"
+#include "forkserver_internal.h"
 
 #define STRINGIFY_INTERNAL(x) #x
 #define STRINGIFY(x) STRINGIFY_INTERNAL(x)
@@ -66,7 +70,8 @@ static void find_fork_server_library(char * buffer, size_t buffer_len)
  * library or not
  * @param need_stdin_fd - whether we should open a library for the stdin of the newly created process
  */
-void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int use_forkserver_library, int needs_stdin_fd)
+void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int use_forkserver_library,
+  int persistence_max_cnt, int needs_stdin_fd)
 {
   static struct itimerval it;
   int st_pipe[2], ctl_pipe[2];
@@ -74,6 +79,7 @@ void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int u
   int rlen = -1, timed_out = 1;
   char fork_server_library_path[MAX_PATH];
   char stdin_filename[100];
+  char buffer[16];
   time_t start_time;
 
   if(dev_null_fd < 0) {
@@ -200,6 +206,11 @@ void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int u
 #else
       setenv("LD_PRELOAD", fork_server_library_path, 1);
 #endif
+    }
+
+    if(persistence_max_cnt) {
+      snprintf(buffer, sizeof(buffer),"%d",persistence_max_cnt);
+      setenv(PERSIST_MAX_VAR, buffer, 1);
     }
 
     // This should improve performance a bit, since it stops the linker from

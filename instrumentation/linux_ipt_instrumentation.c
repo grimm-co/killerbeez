@@ -15,7 +15,7 @@
 
 #include "instrumentation.h"
 #include "linux_ipt_instrumentation.h"
-#include "forkserver.h"
+#include "forkserver_internal.h"
 #include "uthash.h"
 #include "xxhash.h"
 
@@ -192,12 +192,26 @@ static int analyze_ipt(linux_ipt_state_t * state)
 {
   unsigned char * p, * start, * end, * psb_pos;
   struct ipt_hashtable_entry * hashes, * match = NULL;
-  uint64_t ip_address, last_ip = 0;
+  uint64_t ip_address;
+  size_t num_bytes_at_end;
+  int unknown_packet_hit = 0;
 
   const unsigned char psb[0x10] = {
     0x02, 0x82, 0x02, 0x82, 0x02, 0x82, 0x02, 0x82,
     0x02, 0x82, 0x02, 0x82, 0x02, 0x82, 0x02, 0x82
   };
+
+  //Disable IPT while we're analyzing it
+  ioctl(state->perf_fd, PERF_EVENT_IOC_DISABLE, 0);
+
+  //Perform a quick sanity check to ensure the IPT trace data is sane
+  if (state->pem->aux_head == state->pem->aux_tail) {
+    WARNING_MSG("No IPT trace data was recorded, something is likely wrong.");
+    return -1;
+  } else if (state->persistence_max_cnt == 0 && state->pem->aux_head < state->pem->aux_tail) {
+    WARNING_MSG("The IPT trace data has overflown. Use the ipt_mmap_size option to increase the size.");
+    return -1;
+  }
 
   //Reset the IPT hashes struct
   state->ipt_hashes.tnt_bits = 0;
@@ -211,9 +225,20 @@ static int analyze_ipt(linux_ipt_state_t * state)
   if(!hashes)
     return -1;
 
-  start = (char *)state->perf_aux_buf + state->pem->aux_tail;
-  p = (char *)state->perf_aux_buf + state->pem->aux_tail;
-  end = (char *)state->perf_aux_buf + state->pem->aux_head;
+  //Reorder the buffer if it wrapped around to make parsing easier
+  if(state->pem->aux_head < state->pem->aux_tail) {
+    state->reorder_buffer = malloc(state->ipt_mmap_size);
+    num_bytes_at_end = state->pem->aux_size - state->pem->aux_tail;
+    memcpy(state->reorder_buffer, state->perf_aux_buf + state->pem->aux_tail, num_bytes_at_end);
+    memcpy(state->reorder_buffer + num_bytes_at_end, state->perf_aux_buf, state->pem->aux_head);
+
+    start = state->reorder_buffer;
+    end = state->reorder_buffer + num_bytes_at_end + state->pem->aux_head;
+  } else {
+    start = (char *)state->perf_aux_buf + state->pem->aux_tail;
+    end = (char *)state->perf_aux_buf + state->pem->aux_head;
+  }
+  p = start;
 
 #ifdef IPT_DEBUG
   write_buffer_to_file("/tmp/ipt_dump", start, end-start);
@@ -225,15 +250,18 @@ static int analyze_ipt(linux_ipt_state_t * state)
   //IPT packets to match them to the basic blocks transitions is far too slow.
   while(p < end) {
 
-    psb_pos = memmem(p, end - p, psb, sizeof(psb));
-    if(!psb_pos) {
-      DEBUG_MSG("Couldn't find PSB packet");
-      break;
+    if(unknown_packet_hit) {
+      psb_pos = memmem(p, end - p, psb, sizeof(psb));
+      if(!psb_pos) {
+        DEBUG_MSG("Couldn't find PSB packet");
+        break;
+      }
+      if(psb_pos - p != 0)
+        IPT_DEBUG_MSG("Skipping %d bytes", psb_pos - p);
+      p = psb_pos + sizeof(psb);
+      state->last_ip = 0;
+      unknown_packet_hit = 0;
     }
-    if(psb_pos - p != 0)
-      IPT_DEBUG_MSG("Skipping %d bytes", psb_pos - p);
-    p = psb_pos + sizeof(psb);
-    last_ip = 0;
 
     while(p < end)
     {
@@ -271,7 +299,7 @@ static int analyze_ipt(linux_ipt_state_t * state)
         if (p[1] == 0x82 && BYTES_LEFT(16) && !memcmp(p, psb, 16)) { // PSB
           IPT_DEBUG_MSG_PACKET("PSB");
           p += 16;
-          last_ip = 0;
+          state->last_ip = 0;
           continue;
         }
         if (p[1] == 0x23) { // PSBEND
@@ -319,7 +347,7 @@ static int analyze_ipt(linux_ipt_state_t * state)
       char tip_type = p[0] & 0x1f;
       if(tip_type == TIP_TYPE_TIP || tip_type == TIP_TYPE_TIP_PGE
           || tip_type == TIP_TYPE_TIP_PGD || tip_type == TIP_TYPE_FUP) {
-        ip_address = handle_ip_packet(&p, end, &last_ip);
+        ip_address = handle_ip_packet(&p, end, &state->last_ip);
         IPT_DEBUG_MSG_PACKET("TIP/PGE/PGD/FUP");
         if(tip_type == TIP_TYPE_TIP)
           add_tip_to_hash(&state->ipt_hashes, ip_address);
@@ -355,6 +383,7 @@ static int analyze_ipt(linux_ipt_state_t * state)
       }
 
       WARNING_MSG("Hit unknown packet type at offset 0x%lx", p - start);
+      unknown_packet_hit = 1;
       break;
     }
   }
@@ -380,6 +409,14 @@ static int analyze_ipt(linux_ipt_state_t * state)
 ////////////////////////////////////////////////////////////////
 
 /**
+ * This function wraps the perf_event_open syscall, which does not have one in libc
+ */
+static long perf_event_open(struct perf_event_attr* hw_event, pid_t pid, int cpu, int group_fd, unsigned long flags)
+{
+  return syscall(__NR_perf_event_open, hw_event, (uintptr_t)pid, (uintptr_t)cpu, (uintptr_t)group_fd, (uintptr_t)flags);
+}
+
+/**
  * This function cleans up the IPT related file descriptor and memory mappings
  * @param state - The linux_ipt_state_t object containing this instrumentation's state
  */
@@ -388,7 +425,7 @@ static void cleanup_ipt(linux_ipt_state_t * state)
   if(state->perf_aux_buf && state->perf_aux_buf != MAP_FAILED && state->pem && state->pem != MAP_FAILED) {
     munmap(state->perf_aux_buf, state->pem->aux_size);
     state->perf_aux_buf = NULL;
-    munmap(state->pem, PERF_MMAP_SIZE + getpagesize());
+    munmap(state->pem, state->ipt_mmap_size + getpagesize());
     state->pem = NULL;
   }
   if(state->perf_fd >= 0)
@@ -397,14 +434,83 @@ static void cleanup_ipt(linux_ipt_state_t * state)
 }
 
 /**
+ * This function sets up IPT tracing for the specified process
+ * @param state - The linux_ipt_state_t object containing this instrumentation's state
+ * @param pid - The process ID of the process to trace
+ * @return - 0 on success, non-zero on failure
+ */
+static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
+{
+  struct perf_event_attr pe;
+  char filter[256];
+  struct stat statbuf;
+  size_t pagesize = getpagesize();
+
+  state->last_ip = 0;
+
+  memset(&pe, 0, sizeof(struct perf_event_attr));
+  pe.size = sizeof(struct perf_event_attr);
+  pe.config = (1U << 11); // Disable RET compression, makes parsing easier
+  pe.disabled = 0;
+  pe.enable_on_exec = 0;
+  pe.exclude_hv = 1;
+  pe.exclude_kernel = 1;
+  pe.type = state->intel_pt_type;
+
+  state->perf_fd = perf_event_open(&pe, pid, -1, -1, PERF_FLAG_FD_CLOEXEC);
+  if(state->perf_fd < 0) {
+    ERROR_MSG("Could not open the perf event file system (perf_event_open failed with errno %d (%s))", errno, strerror(errno));
+    ERROR_MSG("Try adjusting the perf system permissions with: echo 1 | sudo tee /proc/sys/kernel/perf_event_paranoid");
+    return 1;
+  }
+
+  if(!state->target_path_filter_size) {
+    if(stat(state->target_path, &statbuf)) {
+      ERROR_MSG("Couldn't get size of target executable (%s)", state->target_path);
+      return 1;
+    }
+    state->target_path_filter_size = statbuf.st_size;
+    if(state->target_path_filter_size % pagesize == 0)
+      state->target_path_filter_size = (((state->target_path_filter_size + pagesize) / pagesize) * pagesize);
+  }
+
+  //See https://elixir.bootlin.com/linux/v4.17.8/source/kernel/events/core.c#L8806 for the filter format
+  //start is autodetected by the kernel
+  snprintf(filter, sizeof(filter), "filter 0/%ld@%s", state->target_path_filter_size, state->target_path);
+  IPT_DEBUG_MSG("Using filter: %s", filter);
+  if(ioctl(state->perf_fd, PERF_EVENT_IOC_SET_FILTER, filter)) {
+    ERROR_MSG("perf filter failed! (errno %d: %s)", errno, strerror(errno));
+    return 1;
+  }
+
+  state->pem = mmap(NULL, state->ipt_mmap_size + getpagesize(), PROT_READ|PROT_WRITE, MAP_SHARED, state->perf_fd, 0);
+  if(state->pem == MAP_FAILED) {
+    ERROR_MSG("Perf mmap failed (ipt_mmap_size=%d)\n", state->ipt_mmap_size);
+    return 1;
+  }
+
+  state->pem->aux_offset = state->pem->data_offset + state->pem->data_size;
+  state->pem->aux_size = state->ipt_mmap_size;
+  state->perf_aux_buf = mmap(NULL, state->pem->aux_size, PROT_READ, MAP_SHARED, state->perf_fd, state->pem->aux_offset);
+  if(state->perf_aux_buf == MAP_FAILED) {
+    ERROR_MSG("Perf AUX mmap failed (ipt_mmap_size=%d)\n", state->ipt_mmap_size);
+    return 1;
+  }
+  return 0;
+}
+
+
+/**
  * This function terminates the fuzzed process.
  * @param state - The linux_ipt_state_t object containing this instrumentation's state
  */
 static void destroy_target_process(linux_ipt_state_t * state)
 {
   if(state->child_pid) {
-    kill(state->child_pid, SIGKILL);
-    state->child_pid = 0;
+    if(!state->persistence_max_cnt) {
+      kill(state->child_pid, SIGKILL);
+      state->child_pid = 0;
+    }
     state->last_status = fork_server_get_status(&state->fs, 1);
   }
 }
@@ -425,17 +531,29 @@ static int create_target_process(linux_ipt_state_t * state, char* cmd_line, char
   if(!state->fork_server_setup) {
     if(split_command_line(cmd_line, &state->target_path, &argv))
       return -1;
-    fork_server_init(&state->fs, state->target_path, argv, 1, stdin_length != 0);
+    fork_server_init(&state->fs, state->target_path, argv, 1, state->persistence_max_cnt, stdin_length != 0);
     state->fork_server_setup = 1;
     for(i = 0; argv[i]; i++)
       free(argv[i]);
     free(argv);
   }
 
-  cleanup_ipt(state);
   pid = fork_server_fork(&state->fs);
   if(pid < 0)
     return -1;
+
+  if(pid != state->child_pid) {
+    //New target process, cleanup the old IPT state and set it up for the new target
+    state->child_pid = pid;
+    cleanup_ipt(state);
+    if(setup_ipt(state, state->child_pid))
+      return -1;
+  } else {
+    //Persistence mode with the same target process being used, adjust the ring buffers and reenable IPT
+    __sync_synchronize(); //smp_mb()
+    __atomic_store_n(&state->pem->aux_tail, state->pem->aux_head, __ATOMIC_SEQ_CST);
+    ioctl(state->perf_fd, PERF_EVENT_IOC_ENABLE, 0);
+  }
 
   //Take care of the stdin input, write over the file, then truncate it accordingly
   lseek(state->fs.target_stdin, 0, SEEK_SET);
@@ -446,8 +564,6 @@ static int create_target_process(linux_ipt_state_t * state, char* cmd_line, char
   if(ftruncate(state->fs.target_stdin, stdin_length))
     FATAL_MSG("ftruncate() failed");
   lseek(state->fs.target_stdin, 0, SEEK_SET);
-
-  state->child_pid = pid;
   return 0;
 }
 
@@ -513,81 +629,53 @@ static int get_ipt_system_info(linux_ipt_state_t * state)
   return 0;
 }
 
-/**
- * This function wraps the perf_event_open syscall, which does not have one in libc
- */
-static long perf_event_open(struct perf_event_attr* hw_event, pid_t pid, int cpu, int group_fd, unsigned long flags)
-{
-  return syscall(__NR_perf_event_open, hw_event, (uintptr_t)pid, (uintptr_t)cpu, (uintptr_t)group_fd, (uintptr_t)flags);
-}
-
-/**
- * This function sets up IPT tracing for the specified process
- * @param state - The linux_ipt_state_t object containing this instrumentation's state
- * @param pid - The process ID of the process to trace
- * @return - 0 on success, non-zero on failure
- */
-static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
-{
-  struct perf_event_attr pe;
-  char filter[256];
-  struct stat statbuf;
-  size_t pagesize = getpagesize();
-
-  memset(&pe, 0, sizeof(struct perf_event_attr));
-  pe.size = sizeof(struct perf_event_attr);
-  pe.config = (1U << 11); // Disable RET compression, makes parsing easier
-  pe.disabled = 0;
-  pe.enable_on_exec = 0;
-  pe.exclude_hv = 1;
-  pe.exclude_kernel = 1;
-  pe.type = state->intel_pt_type;
-
-  state->perf_fd = perf_event_open(&pe, pid, -1, -1, PERF_FLAG_FD_CLOEXEC);
-  if(state->perf_fd < 0) {
-    ERROR_MSG("Could not open the perf event file system (perf_event_open failed with errno %d (%s))", errno, strerror(errno));
-    ERROR_MSG("Try adjusting the perf system permissions with: echo 1 | sudo tee /proc/sys/kernel/perf_event_paranoid");
-    return 1;
-  }
-
-  if(!state->target_path_filter_size) {
-    if(stat(state->target_path, &statbuf)) {
-      ERROR_MSG("Couldn't get size of target executable (%s)", state->target_path);
-      return 1;
-    }
-    state->target_path_filter_size = statbuf.st_size;
-    if(state->target_path_filter_size % pagesize != 0)
-      state->target_path_filter_size = (((state->target_path_filter_size + pagesize) / pagesize) * pagesize);
-  }
-
-  //See https://elixir.bootlin.com/linux/v4.17.8/source/kernel/events/core.c#L8806 for the filter format
-  //start is autodetected by the kernel
-  snprintf(filter, sizeof(filter), "filter 0/%ld@%s", state->target_path_filter_size, state->target_path);
-  IPT_DEBUG_MSG("Using filter: %s", filter);
-  if(ioctl(state->perf_fd, PERF_EVENT_IOC_SET_FILTER, filter)) {
-    ERROR_MSG("perf filter failed! (errno %d: %s)", errno, strerror(errno));
-    return 1;
-  }
-
-  state->pem = mmap(NULL, PERF_MMAP_SIZE + getpagesize(), PROT_READ|PROT_WRITE, MAP_SHARED, state->perf_fd, 0);
-  if(state->pem == MAP_FAILED) {
-    ERROR_MSG("Perf mmap failed\n");
-    return 1;
-  }
-
-  state->pem->aux_offset = state->pem->data_offset + state->pem->data_size;
-  state->pem->aux_size = PERF_MMAP_SIZE;
-  state->perf_aux_buf = mmap(NULL, state->pem->aux_size, PROT_READ, MAP_SHARED, state->perf_fd, state->pem->aux_offset);
-  if(state->perf_aux_buf == MAP_FAILED) {
-    ERROR_MSG("Perf mmap failed\n");
-    return 1;
-  }
-  return 0;
-}
-
 ////////////////////////////////////////////////////////////////
 // Instrumentation methods /////////////////////////////////////
 ////////////////////////////////////////////////////////////////
+
+/**
+ * This function creates a linux_ipt_state_t object based on the given options.
+ * @param options - A JSON string of the options to set in the new linux_ipt_state_t. See the
+ * help function for more information on the specific options available.
+ * @return the linux_ipt_state_t generated from the options in the JSON options string, or NULL on failure
+ */
+static linux_ipt_state_t * setup_options(char * options)
+{
+  linux_ipt_state_t * state;
+  size_t i, length;
+  char * temp;
+  char buffer[MAX_PATH];
+  size_t pagesize = getpagesize();
+
+  state = malloc(sizeof(linux_ipt_state_t));
+  if(!state)
+    return NULL;
+  memset(state, 0, sizeof(linux_ipt_state_t));
+
+  //Setup defaults
+  state->ipt_mmap_size = 1024*1024; //1MB
+
+  //Parse the options
+  if(options) {
+    PARSE_OPTION_INT(state, options, persistence_max_cnt, "persistence_max_cnt", linux_ipt_cleanup);
+    PARSE_OPTION_INT(state, options, ipt_mmap_size, "ipt_mmap_size", linux_ipt_cleanup);
+  }
+
+  //Fix up the IPT mmap size if it's not page aligned
+  if(state->ipt_mmap_size % pagesize != 0)
+    state->ipt_mmap_size = (((state->ipt_mmap_size + pagesize) / pagesize) * pagesize);
+
+  //If we're in persistence mode, allocate the reorder buffer
+  if(state->persistence_max_cnt) {
+    state->reorder_buffer = malloc(state->ipt_mmap_size);
+    if(!state->reorder_buffer) {
+      linux_ipt_cleanup(state);
+      return NULL;
+    }
+  }
+
+  return state;
+}
 
 /**
  * This function allocates and initializes a new instrumentation specific state object based on the given options.
@@ -597,12 +685,9 @@ static int setup_ipt(linux_ipt_state_t * state, pid_t pid)
  */
 void * linux_ipt_create(char * options, char * state)
 {
-  // Allocate and initialize linux_ipt state object.
-  linux_ipt_state_t * linux_ipt_state;
-  linux_ipt_state = malloc(sizeof(linux_ipt_state_t));
+  linux_ipt_state_t * linux_ipt_state = setup_options(options);
   if(!linux_ipt_state)
     return NULL;
-  memset(linux_ipt_state, 0, sizeof(linux_ipt_state_t));
 
   if(get_ipt_system_info(linux_ipt_state)) {
     linux_ipt_cleanup(linux_ipt_state);
@@ -616,8 +701,7 @@ void * linux_ipt_create(char * options, char * state)
     return NULL;
   }
 
-  if(state && linux_ipt_set_state(linux_ipt_state, state))
-  {
+  if(state && linux_ipt_set_state(linux_ipt_state, state)) {
     linux_ipt_cleanup(linux_ipt_state);
     return NULL;
   }
@@ -659,6 +743,7 @@ void linux_ipt_cleanup(void * instrumentation_state)
     free(hash);
   }
 
+  free(state->reorder_buffer);
   free(state->target_path);
   free(state);
 }
@@ -828,9 +913,6 @@ int linux_ipt_enable(void * instrumentation_state, pid_t * process, char * cmd_l
   state->process_finished = 0;
   state->fuzz_results_set = 0;
 
-  if(setup_ipt(state, state->child_pid))
-    return -1;
-
   if(fork_server_run(&state->fs))
     return -1;
 
@@ -856,7 +938,6 @@ static int finish_fuzz_round(linux_ipt_state_t * state)
   }
 
   return state->last_fuzz_result;
-
 }
 
 /**
@@ -873,10 +954,9 @@ int linux_ipt_is_new_path(void * instrumentation_state)
   finish_fuzz_round(state);
 
   //If we haven't cleaned up the IPT state, then it must not have been
-  if(state->perf_fd >= 0) { //analyzed.  Analyze it now and cleanup the IPT state
+  if(state->perf_fd >= 0) //analyzed.  Analyze it now and cleanup the IPT state
     state->last_is_new_path = analyze_ipt(state);
-    cleanup_ipt(state);
-  }
+
   return state->last_is_new_path;
 }
 
@@ -920,10 +1000,12 @@ int linux_ipt_is_process_done(void * instrumentation_state)
 char * linux_ipt_help(void)
 {
   return strdup(
-      "ipt - Linux IPT instrumentation\n"
-      "Options:\n"
-      "\tNone\n"
-      "\n"
-      );
+    "ipt - Linux IPT instrumentation\n"
+    "Options:\n"
+    "\tpersistence_max_cnt  The number of executions to run in one process while\n"
+    "\t                     fuzzing in persistence mode\n"
+    "\tipt_mmap_size        The amount of memory to use for the IPT trace data buffer\n"
+    "\n"
+  );
 }
 

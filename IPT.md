@@ -157,3 +157,117 @@ command will cause a crash in the test-linux binary on the seventh iteration.
 ./fuzzer stdin ipt bit_flip -d "{\"path\":\"$HOME/killerbeez/corpus/test/test-linux\"}" -n 10 -sf $HOME/killerbeez/corpus/test/inputs/close.txt
 ```
 
+# Persistence Mode
+
+The IPT instrumentation module provides the ability to use persistence mode to
+increase the speed of fuzzing. Persistence mode involves executing multiple
+inputs without restarting the target process. While this approach can be much
+quicker, it can cause instabilities in the target process if not setup
+properly. The IPT instrumentation module's persistence mode is based off the
+persistence mode available in the [LLVM instrumentation included in
+AFL](https://github.com/mirrorer/afl/tree/master/llvm_mode). As such, it has
+similar advantages and disadvantages.
+
+In the IPT instrumentation module, persistence mode is accomplished by modifying
+the source code of the target program to repeatedly call the Killerbeez fork
+server library's `killerbeez_loop` function. This function is used to mark the
+start and stop of the target process testing a single input. An ideal program
+for persistence mode is one that has very little global state, or the state can
+easily be reset. The structure of a persistence mode program, is shown below,
+where the `KILLERBEEZ_LOOP` macro is used to call the fork server. One thing
+to note is that the target process must reread any input data, to ensure it is
+running with the newly mutated input each iteration. In order to compile the
+instrumented source code, it must include the forkserver.h header file (so that
+the `KILLERBEEZ_LOOP` macro is defined) and the linker arguments must be
+modified to link against the fork server library. A more complete example
+program and Makefile that can be used with IPT persistence mode is available in
+the corpus/persist/ directory of this repository.
+
+```
+  while(KILLERBEEZ_LOOP()) {
+    // Read input data.
+    // Call library code to be fuzzed.
+    // Reset state.
+  }
+```
+
+Once a program has been instrumented, persistence mode can be enabled by setting
+the IPT instrumentation's `persistence_max_cnt` option. The
+`persistence_max_cnt` option defines how many inputs to test in a single process
+before restarting the target program. This value can be determined
+experimentally, but a good starting value is 1000.
+
+An example command illustrating the IPT module's usage with persistence mode is
+shown below. This example runs 5000 iterations of the persist binary, mutates
+the input with the afl mutator, and feeds the input over stdin to the target
+program. The IPT module will run 1000 iterations per persist process.
+```
+./fuzzer stdin ipt afl -i "{\"persistence_max_cnt\":1000}" -d "{\"path\":\"$HOME/killerbeez/corpus/persist/persist\"}" -n 5000 -sf $HOME/killerbeez/corpus/test/inputs/close.txt
+```
+
+# Deferred Startup Mode
+
+Killerbeez's fork server tries to optimize performance of the target process by
+executing the target binary until it reaches the `main` function, and then
+forking all new processes from the copy stopped at `main`. This ensures all of
+the startup code that is executed prior to the `main` function is only ever run
+once. However, if a target process has a large startup cost, fuzzing will still
+be slow. In these cases, it is beneficial to use the fork server's deferred
+startup mode, to wait until after the process has finished starting up to start
+the fork server. Killerbeez's deferred startup mode is based off the deferred
+instrumentation mode available in the [LLVM instrumentation included in
+AFL](https://github.com/mirrorer/afl/tree/master/llvm_mode). Killerbeez offers
+two different techniques for enabling the deferred startup mode. Both techniques
+are configured by modifying the configuration in the forkserver_config.h header
+file in the instrumentation/ directory of this repository and recompiling
+Killerbeez.
+
+## Function Hooking
+
+By default, the Killerbeez fork server uses library injection and function
+hooking in order to execute code in a target process. Thus, the Killerbeez
+deferred startup mode can be enabled by switching which function is hooked.
+This mode has the advantage that it can still hook functions in target programs
+when source code is unavailable.
+
+In forkserver_config.h, there are 4 preprocessor macros that control the fork
+server's function hooking behavior:
+* `DISABLE_HOOKING` - This macro disables function hooking. This macro should be
+set to 0 to enable function hooking.
+* `USE_LIBC_START_MAIN` - This macro controls whether the default function
+(`__libc_start_main`) is hooked or not.  To customize the hooked function, this
+must be set to 0.
+* `CUSTOM_FUNCTION_NAME` - This macro should contain the name of the function to
+hook.  The name should NOT be placed in quotes.
+* `RUN_BEFORE_CUSTOM_FUNCTION` - This macro determines whether the fork server
+should startup before or after the hooked function is called.  Set it to 0 to
+start the fork server after the hooked function returns, or 1 to start the fork
+server before the hooked function is called.
+
+The deferred executable in the corpus/persist/ directory is an example of a
+target where deferred startup mode is advantageous.  This target calls sleep at
+the beginning of the program, which will substantially slowdown fuzzing.
+Killerbeez can be instructed to wait to start the fork server until after the
+sleep call by modifying forkserver_config.h to set the macros as shown below:
+```
+#define DISABLE_HOOKING            0
+#define USE_LIBC_START_MAIN        0
+#define CUSTOM_FUNCTION_NAME       sleep
+#define RUN_BEFORE_CUSTOM_FUNCTION 0
+```
+
+## Source Code Instrumentation
+
+If source code is available, the target program can be modified to explicitly
+start the fork server by calling the `KILLERBEEZ_INIT()` macro at the desired
+point in the target program. In order to compile the instrumented source code,
+it must include the forkserver.h header file (so that the `KILLERBEEZ_INIT`
+macro is defined) and the linker arguments must be modified to link against the
+fork server library.
+
+Once the target program's source code is modified, the `DISABLE_HOOKING` macro
+in the forkserver_config.h file should be set to 1. This ensures the forkserver
+does not also try to hook a function to startup.  The deferred_nohook executable
+in the corpus/persist/ directory shows an example of using source code
+instrumentation to enable deferred startup mode.
+

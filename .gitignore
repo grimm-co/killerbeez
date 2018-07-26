@@ -22,6 +22,14 @@ bld/
 [Oo]bj/
 [Ll]og/
 
+# Test program builds
+corpus/persist/deferred
+corpus/persist/deferred_nohook
+corpus/persist/nopersist
+corpus/persist/persist
+corpus/persist/persist_hang
+
+
 # Visual Studio 2015 cache/options directory
 .vs/
 # Uncomment if you have tasks that create the project's static files in wwwroot

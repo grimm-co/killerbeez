@@ -19,7 +19,12 @@ elseif (UNIX)
 		${PROJECT_SOURCE_DIR}/linux_ipt_instrumentation.c
 	)
 
-	add_library(forkserver SHARED ${PROJECT_SOURCE_DIR}/forkserver.c)
+	set(FORKSERVER_SRC
+		${PROJECT_SOURCE_DIR}/forkserver.c
+		${PROJECT_SOURCE_DIR}/forkserver_hooking.c
+	)
+
+	add_library(forkserver SHARED ${FORKSERVER_SRC})
 	target_link_libraries(forkserver dl)
 else ()
 	set(INSTRUMENTATION_SRC
