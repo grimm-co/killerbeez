@@ -36,8 +36,6 @@ static putty_state_t * setup_options(char * options)
 	state->input_ratio = 2.0;
 	state->lport = 9999;
 	state->ip = strdup("127.0.0.1");
-	state->path = strdup("C:/Program Files/PuTTY/plink.exe");
-	state->arguments = strdup("-telnet -P 9999 localhost");
 
 	//Parse the options
 	PARSE_OPTION_STRING(state, options, path, "path", putty_cleanup);
@@ -405,17 +403,16 @@ char * putty_help(void)
 		"putty - putty driver (This driver acts as a server and forces the putty client\n"
 		"to connect to be fuzzed)\n"
 		"Required Options:\n"
-		"None - This assumes putty has been installed in it's default location\n"
-		"Optional Options:\n"
 		"\tpath					 The path to plink.exe"
 		"\targuments             Arguments to pass to the target process\n"
+		"Optional Options:\n"
 		"\ttimeout               The maximum number of seconds to wait\n"
 		"\t                      for the target process to finish\n"
-		"\tratio                 The ratio of mutation buffer size to\n" 
+		"\tratio                 The ratio of mutation buffer size to\n"
 		"\t                      input size when given a mutator\n"
 		"\tip                    The target IP to connect to\n"
 		"\tport                  The target port to connect to\n"
-		"\tratio                 The ratio of mutation buffer size to input\n" 
+		"\tratio                 The ratio of mutation buffer size to input\n"
 		"\t                      size when given a mutator\n"
 		"\tsleeps                An array of milliseconds to wait between each\n"
 		"\t       				 input being sent to the target program\n"
