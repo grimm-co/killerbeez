@@ -10,7 +10,7 @@ int return_code_enable(void * instrumentation_state, pid_t * process, char * cmd
 int return_code_is_new_path(void * instrumentation_state);
 int return_code_get_fuzz_result(void * instrumentation_state);
 int return_code_is_process_done(void * instrumentation_state);
-char * return_code_help(void);
+int return_code_help(char ** help_str);
 
 struct return_code_state
 {

@@ -17,7 +17,7 @@ int dynamorio_get_module_info(void * instrumentation_state, int index, int * is_
 instrumentation_edges_t * dynamorio_get_edges(void * instrumentation_state, int index);
 int dynamorio_is_process_done(void * instrumentation_state);
 int dynamorio_get_fuzz_result(void * instrumentation_state);
-char * dynamorio_help(void);
+int dynamorio_help(char ** help_str);
 
 void dynamorio_print_state(void * instrumentation_state);
 

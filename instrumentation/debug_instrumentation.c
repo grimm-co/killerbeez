@@ -364,16 +364,20 @@ int debug_is_process_done(void * instrumentation_state)
 }
 
 /**
-* This function returns help text for this instrumentation.  This help text will describe the instrumentation and any options
-* that can be passed to debug_create.
-* @return - a newly allocated string containing the help text.
-*/
-char * debug_help(void)
+ * This function returns help text for this instrumentation.  This help text will describe the instrumentation and any options
+ * that can be passed to debug_create.
+ * @param help_str - A pointer that will be updated to point to the new help string.
+ * @return 0 on success and -1 on failure
+ */
+int debug_help(char ** help_str)
 {
-	return strdup(
+	*help_str = strdup(
 		"debug - Windows debug thread \"instrumentation\", only detects crashes\n"
 		"Options:\n"
 		"\tNone\n"
 		"\n"
 	);
+	if (*help_str == NULL)
+		return -1;
+	return 0;
 }

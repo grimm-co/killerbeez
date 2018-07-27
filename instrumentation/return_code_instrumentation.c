@@ -248,16 +248,20 @@ int return_code_is_process_done(void * instrumentation_state)
 }
 
 /**
-* This function returns help text for this instrumentation.  This help text will describe the instrumentation and any options
-* that can be passed to return_code_create.
-* @return - a newly allocated string containing the help text.
-*/
-char * return_code_help(void)
+ * This function returns help text for this instrumentation.  This help text will describe the instrumentation and any options
+ * that can be passed to return_code_create.
+ * @param help_str - A pointer that will be updated to point to the new help string.
+ * @return 0 on success and -1 on failure
+ */
+int return_code_help(char ** help_str)
 {
-	return strdup(
+	*help_str = strdup(
 		"return_code - Linux return_code \"instrumentation\"\n"
 		"Options:\n"
 		"\tnone\n"
 		"\n"
 	);
+	if (*help_str == NULL)
+		return -1;
+	return 0;
 }

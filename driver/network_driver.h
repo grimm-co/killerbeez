@@ -9,7 +9,7 @@ void network_cleanup(void * driver_state);
 int network_test_input(void * driver_state, char * buffer, size_t length);
 int network_test_next_input(void * driver_state);
 char * network_get_last_input(void * driver_state, int * length);
-char * network_help(void);
+int network_help(char ** help_str);
 
 struct network_state
 {
