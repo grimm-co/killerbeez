@@ -135,8 +135,8 @@ function) took a new path, 0 if it did not, or -1 on failure
 This function will return the result of the fuzz job. It should be called
 after the process has finished processing the tested input, i.e. after a
 successful \texttt{is\_process\_done}. If \texttt{get\_fuzz\_result} is called
-prior to \texttt{enable}, it will return failure, as the fuzzing processes has
-not been started yet.
+prior to \texttt{enable}, it will return failure, as the fuzzing of processes
+has not been started yet.
 }{
 \item instrumentation\_state - an instrumentation specific structure previously
 created by the create() function
@@ -186,7 +186,7 @@ int index)
 This function is optional and not required for the fuzzer to work.  It is used
 by the tracer.  This function returns an array of basic block edges that
 occurred in the most recent run of the instrumentation. If \texttt{get\_edges}
-is called prior to \texttt{enable}, it will return failure, as the fuzzing
+is called prior to \texttt{enable}, it will return failure, as the fuzzing of
 processes has not been started yet.
 }{
 \item instrumentation\_state - an instrumentation specific structure previously
@@ -209,7 +209,7 @@ instrumentation run.  The returned pointer should be freed by the caller.
 This function is used by the driver to determine if an instrumented process has
 finished being fuzzed. If the process is done being fuzzed, then
 \texttt{get\_fuzz\_result} is ready to be called. If \texttt{is\_process\_done}
-is called prior to \texttt{enable}, it will return failure, as the fuzzing
+is called prior to \texttt{enable}, it will return failure, as the fuzzing of
 processes has not been started yet.
 }{
 \item instrumentation\_state - an instrumentation specific structure previously
