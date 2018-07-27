@@ -38,6 +38,7 @@ static putty_state_t * setup_options(char * options)
 	state->ip = strdup("127.0.0.1");
 	state->path = strdup("C:/Program Files/PuTTY/plink.exe");
 	state->arguments = strdup("-telnet -P 9999 localhost");
+
 	//Parse the options
 	PARSE_OPTION_STRING(state, options, path, "path", putty_cleanup);
 	PARSE_OPTION_STRING(state, options, arguments, "arguments", putty_cleanup);
@@ -77,15 +78,15 @@ void * putty_create(char * options, instrumentation_t * instrumentation, void * 
 	putty_state_t * state;
 	size_t i;
 
-	//This driver requires at least the path to the program to run. Make sure we either have both a mutator and state
+	//Make sure we either have both a mutator and state
 	if (!options || !strlen(options) || (mutator && !mutator_state) || (!mutator && mutator_state))
 	{ //or neither
-		puts("ERROR: Missing driver options");
+		FATAL_MSG("ERROR: Missing driver options");
 		return NULL;
 	}
 	//Startup because we gonna use the winsock DLL
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData)) {
-		ERROR_MSG("WSAStartup Failed\n");
+		ERROR_MSG("WSAStartup Failed");
 		return NULL;
 	}
 
@@ -95,6 +96,8 @@ void * putty_create(char * options, instrumentation_t * instrumentation, void * 
 	if (mutator)
 	{
 		mutator->get_input_info(mutator_state, &state->num_inputs, &state->mutate_buffer_lengths);
+		
+		//size of sleeps array and inputs must be equal
 		if (state->sleeps && state->num_inputs != state->sleeps_count)
 		{
 			putty_cleanup(state);
@@ -209,7 +212,7 @@ static int send_tcp_input(SOCKET * sock, char * buffer, size_t length)
 		else if (result < 0) //Error, then break
 			total_read = -1;
 		if (result == SOCKET_ERROR)
-			printf("send() failed with error: %d\n", WSAGetLastError());
+			ERROR_MSG("send() failed with error: %d", WSAGetLastError());
 	}
 
 	return total_read != length;
@@ -228,7 +231,7 @@ static int start_listener(putty_state_t * state, SOCKET * sock)
 	*sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (*sock == INVALID_SOCKET)
 	{
-		printf("socket function failed with error: %ld\n", WSAGetLastError());
+		ERROR_MSG("socket function failed with error: %ld", WSAGetLastError());
 		return 1;
 	}
 	//Create socket (TCP Only right now)
@@ -239,16 +242,16 @@ static int start_listener(putty_state_t * state, SOCKET * sock)
 	iResult = bind(*sock, (SOCKADDR *)& addr, sizeof(addr));
 	if (iResult == SOCKET_ERROR)
 	{
-		printf("Socket failed to bind, error: %d\n", WSAGetLastError());
+		ERROR_MSG("Socket failed to bind, error: %d", WSAGetLastError());
 		iResult = closesocket(*sock);
 		if (iResult == SOCKET_ERROR)
-			printf("closesocket function failed with error %d\n", WSAGetLastError());
+			ERROR_MSG("closesocket function failed with error %d", WSAGetLastError());
 		return 1;
 	}
 	//Now put the socket into LISTEN state
 	if (listen(*sock, SOMAXCONN) == SOCKET_ERROR)
 	{
-		printf("listen function failed with error: %d\n", WSAGetLastError());
+		ERROR_MSG("listen function failed with error: %d", WSAGetLastError());
 		return 1;
 	}
 
