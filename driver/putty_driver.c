@@ -52,7 +52,8 @@ static putty_state_t * setup_options(char * options)
 	state->cmd_line = (char *)malloc(cmd_length);
 	memset(state->cmd_line, 0, cmd_length);
 
-	if (!state->path || !state->cmd_line || !file_exists(state->path) || !state->ip || !state->lport || state->input_ratio <= 0)
+	if (!state->path || !state->cmd_line || !file_exists(state->path)
+		|| !state->ip || !state->lport || state->input_ratio <= 0)
 	{
 		putty_cleanup(state);
 		return NULL;
@@ -304,7 +305,8 @@ static int putty_run(putty_state_t * state, char ** inputs, size_t * lengths, si
 	closesocket(clientSock);
 	
 	//Wait for it to be done
-	return generic_wait_for_process_completion(state->process, state->timeout, state->instrumentation, state->instrumentation_state);
+	return generic_wait_for_process_completion(state->process, state->timeout, 
+		state->instrumentation, state->instrumentation_state);
 }
 
 /**
@@ -387,7 +389,8 @@ char * putty_get_last_input(void * driver_state, int * length)
 		if (state->mutate_last_sizes[i] <= 0)
 			return NULL;
 	}
-	return encode_mem_array(state->mutate_buffers, state->mutate_last_sizes, state->num_inputs, length);
+	return encode_mem_array(state->mutate_buffers, 
+		state->mutate_last_sizes, state->num_inputs, length);
 }
 
 /**
@@ -399,18 +402,23 @@ char * putty_help(void)
 {
 
 	return strdup(
-		"putty - putty driver (This driver acts as a server and forces the putty client to connect to be fuzzed)\m"
+		"putty - putty driver (This driver acts as a server and forces the putty client\n"
+		"to connect to be fuzzed)\n"
 		"Required Options:\n"
 		"None - This assumes putty has been installed in it's default location\n"
 		"Optional Options:\n"
 		"\tpath					 The path to plink.exe"
 		"\targuments             Arguments to pass to the target process\n"
-		"\ttimeout               The maximum number of seconds to wait for the target process to finish\n"
-		"\tratio                 The ratio of mutation buffer size to input size when given a mutator\n"
+		"\ttimeout               The maximum number of seconds to wait\n"
+		"\t                      for the target process to finish\n"
+		"\tratio                 The ratio of mutation buffer size to\n" 
+		"\t                      input size when given a mutator\n"
 		"\tip                    The target IP to connect to\n"
 		"\tport                  The target port to connect to\n"
-		"\tratio                 The ratio of mutation buffer size to input size when given a mutator\n"
-		"\tsleeps                An array of milliseconds to wait between each input being sent to the target program\n"
+		"\tratio                 The ratio of mutation buffer size to input\n" 
+		"\t                      size when given a mutator\n"
+		"\tsleeps                An array of milliseconds to wait between each\n"
+		"\t       				 input being sent to the target program\n"
 		"\n"
 	);
 }
