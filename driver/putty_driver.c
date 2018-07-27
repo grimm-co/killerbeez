@@ -272,7 +272,7 @@ static int putty_run(putty_state_t * state, char ** inputs, size_t * lengths, si
 	SOCKET serverSock;
 	SOCKET clientSock;
 	size_t i;
-	int listening = 0, ret = FUZZ_ERROR;
+	int listening = 0;
 
 	//Start the server socket so the client can connect below:
 	if (start_listener(state, &serverSock))
@@ -304,8 +304,7 @@ static int putty_run(putty_state_t * state, char ** inputs, size_t * lengths, si
 	closesocket(clientSock);
 	
 	//Wait for it to be done
-	ret = generic_wait_for_process_completion(state->process, state->timeout, state->instrumentation, state->instrumentation_state);
-	return ret;
+	return generic_wait_for_process_completion(state->process, state->timeout, state->instrumentation, state->instrumentation_state);
 }
 
 /**
@@ -349,7 +348,7 @@ int putty_test_input(void * driver_state, char * input, size_t length)
 int putty_test_next_input(void * driver_state)
 {
 	putty_state_t * state = (putty_state_t *)driver_state;
-	int i, ret;
+	int i;
 
 	if (!state->mutator)
 		return FUZZ_ERROR;
@@ -364,8 +363,7 @@ int putty_test_next_input(void * driver_state)
 		if (state->mutate_last_sizes[i] == 0)
 			return -2;
 	}
-	ret = putty_run(state, state->mutate_buffers, state->mutate_last_sizes, state->num_inputs);
-	return ret;
+	return putty_run(state, state->mutate_buffers, state->mutate_last_sizes, state->num_inputs);
 }
 
 /**
