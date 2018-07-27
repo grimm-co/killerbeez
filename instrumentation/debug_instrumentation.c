@@ -347,7 +347,7 @@ int debug_get_fuzz_result(void * instrumentation_state)
  * Checks if the target process is done fuzzing the inputs yet.  If it has finished, it will have
  * written last_status, the result of the fuzz job.
  *
- * @param state - The dynamorio_state_t object containing this instrumentation's state
+ * @param state - The debug_state_t object containing this instrumentation's state
  * @return - 0 if the process has not finished testing the fuzzed input, 1 if the process is done,
  * or -1 on error.
  */
