@@ -95,3 +95,13 @@ freed by the caller, and is only valid until the next call to
 \texttt{test\_next\_input}.
 }
 
+
+\api{int help(char ** help\_str)
+}{
+This function sets a help message for the driver. This is useful if the driver
+takes a JSON options string in the create() function.
+}{
+\item help\_str - A double pointer that will be updated to point to the new help
+string.
+\item return value - 0 on success and -1 on failure
+}

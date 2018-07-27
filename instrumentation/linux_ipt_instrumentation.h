@@ -14,7 +14,7 @@ int linux_ipt_enable(void * instrumentation_state, pid_t * process, char * cmd_l
 int linux_ipt_is_new_path(void * instrumentation_state);
 int linux_ipt_is_process_done(void * instrumentation_state);
 int linux_ipt_get_fuzz_result(void * instrumentation_state);
-char * linux_ipt_help(void);
+int linux_ipt_help(char ** help_str);
 
 struct ipt_hashtable_key {
   uint64_t tip;

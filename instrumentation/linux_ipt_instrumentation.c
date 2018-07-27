@@ -1155,11 +1155,12 @@ int linux_ipt_is_process_done(void * instrumentation_state)
 
 /**
  * This function returns help text for the Linux IPT instrumentation.
- * @return - a newly allocated string containing the help text.
+ * @param help_str - A pointer that will be updated to point to the new help string.
+ * @return 0 on success and -1 on failure
  */
-char * linux_ipt_help(void)
+int linux_ipt_help(char ** help_str)
 {
-  return strdup(
+  *help_str = strdup(
     "ipt - Linux IPT instrumentation\n"
     "Options:\n"
     "\tpersistence_max_cnt  The number of executions to run in one process while\n"
@@ -1169,5 +1170,8 @@ char * linux_ipt_help(void)
     "\t                     trace information.  By default, only the executable is traced.\n"
     "\n"
   );
+  if (*help_str == NULL)
+    return -1;
+  return 0;
 }
 

@@ -1607,11 +1607,12 @@ instrumentation_edges_t * dynamorio_get_edges(void * instrumentation_state, int 
 /**
  * This function returns help text for this instrumentation.  This help text will describe the instrumentation and any options
  * that can be passed to dynamorio_create.
- * @return - a newly allocated string containing the help text.
+ * @param help_str - A pointer that will be updated to point to the new help string.
+ * @return 0 on success and -1 on failure
  */
-char * dynamorio_help(void)
+int dynamorio_help(char ** help_str)
 {
-	return strdup(
+	*help_str = strdup(
 		"dynamorio - DynamoRIO instrumentation (based heavily on winafl)\n"
 		"Options:\n"
 		"\tdynamorio_dir         Set the directory with DynamoRIO binaries in it\n"
@@ -1627,6 +1628,9 @@ char * dynamorio_help(void)
 		"\tper_module_coverage   Whether coverage should be tracked in one bitmap (0), or in a separate bitmap for each module (1)\n"
 		"\n"
 	);
+	if (*help_str == NULL)
+		return -1;
+	return 0;
 }
 
 /**
