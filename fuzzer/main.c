@@ -80,7 +80,7 @@ static void cleanup_modules(void)
 
 static void sigint_handler(int sig)
 {
-	printf("CTRL-c detected, exiting\n");
+	CRITICAL_MSG("CTRL-c detected, exiting\n");
 	cleanup_modules();
 	exit(0);
 }
@@ -215,13 +215,13 @@ int main(int argc, char ** argv)
 		}
 	}
 
-	signal(SIGINT, sigint_handler);
-
 	if (setup_logging(logging_options))
 	{
 		printf("Failed setting up logging, exiting\n");
 		return 1;
 	}
+
+	signal(SIGINT, sigint_handler);
 
 	//Check number of iterations for valid number of rounds
 	if (num_iterations != NUM_ITERATIONS_INFINITE && num_iterations <= 0)
