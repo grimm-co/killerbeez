@@ -29,7 +29,8 @@ endif (WIN32)
 include_directories (${CMAKE_SOURCE_DIR}/../killerbeez-utils/jansson/)
 include_directories (${CMAKE_SOURCE_DIR}/../killerbeez-utils/utils/)
 
-if (UNIX)
+# IWYU. Pass -DNO_IWYU=1 to disable, -DNO_IWYU= to re-enable (or regenerate cache)
+if (UNIX AND NOT NO_IWYU)
 	find_program(iwyu_path NAMES include-what-you-use iwyu)
 	if(NOT iwyu_path)
 		# can be installed with sudo apt install iwyu -y
@@ -39,7 +40,9 @@ if (UNIX)
 		set(CMAKE_C_INCLUDE_WHAT_YOU_USE ${iwyu_path})
 		set(CMAKE_CXX_INCLUDE_WHAT_YOU_USE ${iwyu_path})
 	endif()
-endif(UNIX)
+else()
+	message(STATUS "include-what-you-use disabled")
+endif()
 
 # compile mutators, which will compile utils
 add_subdirectory(${CMAKE_SOURCE_DIR}/../killerbeez-mutators/ ${CMAKE_BINARY_DIR}/killerbeez-mutators/)
