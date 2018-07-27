@@ -58,6 +58,7 @@ struct debug_state
 	int finished_last_run;
 	int last_status;
 	int last_child_hung;
+	int enable_called;
 
 	//This struct is used to pass arguments to the debugging thread.  It
 	//should only be accessed while in the create_thread_process function,

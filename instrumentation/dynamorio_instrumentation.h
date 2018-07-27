@@ -80,6 +80,7 @@ struct dynamorio_state
 	int last_path_was_new;
 	int last_process_status;
 	int analyzed_last_round;
+	int enable_called;
 
 	instrumentation_edges_t * edges_memory; /* SHM with list of edges  */
 };
