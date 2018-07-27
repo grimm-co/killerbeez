@@ -134,7 +134,8 @@ int stdin_test_input(void * driver_state, char * input, size_t length)
 	stdin_state_t * state = (stdin_state_t *)driver_state;
 
 	//Start the process and give it our input
-	state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, input, length);
+	if(state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, input, length))
+		return FUZZ_ERROR;
 
 	//Wait for it to be done
 	return generic_wait_for_process_completion(state->process, state->timeout,
@@ -175,11 +176,12 @@ char * stdin_get_last_input(void * driver_state, int * length)
 /**
  * This function returns help text for this driver.  This help text will describe the driver and any options
  * that can be passed to stdin_create.
- * @return - a newly allocated string containing the help text.
+ * @param help_str - A pointer that will be updated to point to the new help string.
+ * @return 0 on success and -1 on failure
  */
-char * stdin_help(void)
+int stdin_help(char ** help_str)
 {
-	return strdup(
+	*help_str = strdup(
 		"stdin - STDIN driver (Sends mutated input to the STDIN of the target process)\n"
 		"Required Options:\n"
 		"\tpath                  The path to the target process\n"
@@ -189,4 +191,8 @@ char * stdin_help(void)
 		"\ttimeout               The maximum number of seconds to wait for the target process to finish\n"
 		"\n"
 	);
+	if (*help_str == NULL)
+		return -1;
+	return 0;
 }
+

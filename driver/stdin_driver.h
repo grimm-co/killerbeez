@@ -9,7 +9,7 @@ void stdin_cleanup(void * driver_state);
 int stdin_test_input(void * driver_state, char * buffer, size_t length);
 int stdin_test_next_input(void * driver_state);
 char * stdin_get_last_input(void * driver_state, int * length);
-char * stdin_help(void);
+int stdin_help(char ** help_str);
 
 struct stdin_state
 {

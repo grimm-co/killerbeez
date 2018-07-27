@@ -1,4 +1,3 @@
-#define _CRT_RAND_S
 #include <windows.h>
 #include <stdlib.h>
 #include <ntstatus.h>
@@ -310,6 +309,7 @@ int debug_enable(void * instrumentation_state, HANDLE * process, char * cmd_line
 	if (create_target_process(state, cmd_line, input, input_length))
 		return -1;
 	*process = state->child_handle;
+	state->enable_called = 1;
 	return 0;
 }
 
@@ -321,6 +321,9 @@ int debug_enable(void * instrumentation_state, HANDLE * process, char * cmd_line
  */
 int debug_is_new_path(void * instrumentation_state)
 {
+	debug_state_t * state = (debug_state_t *)instrumentation_state;
+	if (!state->enable_called)
+		return -1;
 	return 0; //We don't gather instrumentation data, so we can't ever tell if we hit a new path.
 }
 
@@ -333,6 +336,8 @@ int debug_is_new_path(void * instrumentation_state)
 int debug_get_fuzz_result(void * instrumentation_state)
 {
 	debug_state_t * state = (debug_state_t *)instrumentation_state;
+	if (!state->enable_called)
+		return -1;
 	finish_fuzz_round(state);
 	return state->last_status;
 }
@@ -341,14 +346,16 @@ int debug_get_fuzz_result(void * instrumentation_state)
  * Checks if the target process is done fuzzing the inputs yet.  If it has finished, it will have
  * written last_status, the result of the fuzz job.
  *
- * @param state - The dynamorio_state_t object containing this instrumentation's state
- * @return - 0 if the process has not finished testing the fuzzed input, 1 if the process is done.
- * NOTE: this particular implementation of is_process_done cannot error.
+ * @param state - The debug_state_t object containing this instrumentation's state
+ * @return - 0 if the process has not finished testing the fuzzed input, 1 if the process is done,
+ * or -1 on error.
  */
 int debug_is_process_done(void * instrumentation_state)
 {
 	debug_state_t * state = (debug_state_t *)instrumentation_state;
 
+	if (!state->enable_called)
+		return -1;
 	if (state->process_running)
 		return 0;
 	else
@@ -357,16 +364,20 @@ int debug_is_process_done(void * instrumentation_state)
 }
 
 /**
-* This function returns help text for this instrumentation.  This help text will describe the instrumentation and any options
-* that can be passed to debug_create.
-* @return - a newly allocated string containing the help text.
-*/
-char * debug_help(void)
+ * This function returns help text for this instrumentation.  This help text will describe the instrumentation and any options
+ * that can be passed to debug_create.
+ * @param help_str - A pointer that will be updated to point to the new help string.
+ * @return 0 on success and -1 on failure
+ */
+int debug_help(char ** help_str)
 {
-	return strdup(
+	*help_str = strdup(
 		"debug - Windows debug thread \"instrumentation\", only detects crashes\n"
 		"Options:\n"
 		"\tNone\n"
 		"\n"
 	);
+	if (*help_str == NULL)
+		return -1;
+	return 0;
 }

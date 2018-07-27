@@ -43,6 +43,7 @@ static file_state_t * setup_options(char * options)
 
 	//Parse the options
 	PARSE_OPTION_STRING(state, options, path, "path", file_cleanup);
+	PARSE_OPTION_STRING(state, options, test_filename, "filename", file_cleanup);
 	PARSE_OPTION_STRING(state, options, arguments, "arguments", file_cleanup);
 	PARSE_OPTION_STRING(state, options, extension, "extension", file_cleanup);
 	PARSE_OPTION_INT(state, options, timeout, "timeout", file_cleanup);
@@ -54,8 +55,17 @@ static file_state_t * setup_options(char * options)
 		return NULL;
 	}
 
-	//Create a test filename to write the fuzz file to
-	state->test_filename = get_temp_filename(state->extension);
+	//If the user didn't specify a test filename to
+	if(!state->test_filename) {//write the fuzz data to, generate a test filename now
+		if(!state->arguments || !strstr(state->arguments, "@@")) {
+			ERROR_MSG("Test filename not specified and the target program's arguments do not include the test filename "
+				"symbol (\"@@\"). The target program will not be able to receive the mutated input data.");
+			ERROR_MSG("Use the \"argument\" or \"filename\" options to pass the mutated input to the target program");
+			file_cleanup(state);
+			return NULL;
+		}
+		state->test_filename = get_temp_filename(state->extension);
+	}
 
 	if (state->arguments)
 	{
@@ -182,7 +192,8 @@ int file_test_input(void * driver_state, char * input, size_t length)
 	write_buffer_to_file(state->test_filename, input, length);
 
 	//Start the process and give it our input
-	state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0);
+	if(state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0))
+		return FUZZ_ERROR;
 
 	//Wait for it to be done, return the termination termination status
 	return generic_wait_for_process_completion(state->process, state->timeout,
@@ -223,19 +234,24 @@ char * file_get_last_input(void * driver_state, int * length)
 /**
  * This function returns help text for this driver.  This help text will describe the driver and any options
  * that can be passed to file_create.
- * @return - a newly allocated string containing the help text.
+ * @param help_str - A pointer that will be updated to point to the new help string.
+ * @return 0 on success and -1 on failure
  */
-char * file_help(void)
+int file_help(char ** help_str)
 {
-	return strdup(
+	*help_str = strdup(
 		"file - FILE driver (Writes mutated input to a file, that the target process uses)\n"
 		"Required Options:\n"
 		"\tpath                  The path to the target process\n"
 		"Optional Options:\n"
 		"\targuments             Arguments to pass to the target process, with the target filename specified as @@\n"
 		"\textension             The file extension to give the test file\n"
+		"\tfilename              The filename to give the test file\n"
 		"\tratio                 The ratio of mutation buffer size to input size when given a mutator\n"
 		"\ttimeout               The maximum number of seconds to wait for the target process to finish\n"
 		"\n"
 	);
+	if (*help_str == NULL)
+		return -1;
+	return 0;
 }

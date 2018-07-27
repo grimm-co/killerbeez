@@ -144,7 +144,8 @@ int wmp_test_input(void * driver_state, char * input, size_t length)
 	write_buffer_to_file(state->test_filename, input, length);
 
 	//Start the process and give it our input
-	state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0);
+	if(state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0))
+		return FUZZ_ERROR;
 
 	time_t start_time = time(NULL);
 	int tmp_result = FUZZ_ERROR;
@@ -263,19 +264,22 @@ done:
 /**
  * This function returns help text for this driver.  This help text will describe the driver and any options
  * that can be passed to wmp_create.
- * @return - a newly allocated string containing the help text.
+ * @param help_str - A pointer that will be updated to point to the new help string.
+ * @return 0 on success and -1 on failure
  */
-char * wmp_help(void)
+int wmp_help(char ** help_str)
 {
-	return strdup(
+	*help_str = strdup(
 		"wmp - Windows Media Player driver (Fuzzes wmplayer.exe)\n"
-		"Options:\n"
+		"Optional Arguments:\n"
 		"\textension             The file extension of the input files to wmplayer.exe\n"
 		"\tpath                  The path to the wmplayer.exe\n"
 		"\tratio                 The ratio of mutation buffer size to input size when given a mutator\n"
 		"\ttimeout               The maximum number of seconds to wait for the target process to finish\n"
 		"\n"
 	);
+	if (*help_str == NULL)
+		return -1;
+	return 0;
 }
-
 

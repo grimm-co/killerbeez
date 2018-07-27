@@ -122,11 +122,12 @@ DRIVER_API driver_t * driver_all_factory(char * driver_type, char * options, ins
 	return ret;
 }
 
-#define APPEND_HELP(text, new_text, func)                                \
-	new_text = func();                                                   \
-	text = (char *)realloc(text, strlen(text) + strlen(new_text) + 1);   \
-	strcat(text, new_text);                                              \
-	free(new_text);
+#define APPEND_HELP(text, new_text, func)                               \
+  if(!func(&new_text)) {                                                \
+    text = (char *)realloc(text, strlen(text) + strlen(new_text) + 1);  \
+    strcat(text, new_text);                                             \
+    free(new_text);                                                     \
+  }
 
 /**
  * This function returns help text for all available drivers.  This help text will describe the drivers and any options
@@ -145,3 +146,4 @@ DRIVER_API char * driver_help(void)
 	#endif
 	return text;
 }
+

@@ -295,7 +295,8 @@ static int network_run(network_state_t * state, char ** inputs, size_t * lengths
 	int listening = 0;
 
 	//Start the process and give it our input
-	state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0);
+	if(state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0))
+		return FUZZ_ERROR;
 
 	//Wait for the port to be listening
 	while (!state->skip_network_check && listening == 0) {
@@ -425,11 +426,12 @@ char * network_get_last_input(void * driver_state, int * length)
 /**
  * This function returns help text for this driver.  This help text will describe the driver and any options
  * that can be passed to network_create.
- * @return - a newly allocated string containing the help text.
+ * @param help_str - A pointer that will be updated to point to the new help string.
+ * @return 0 on success and -1 on failure
  */
-char * network_help(void)
+int network_help(char ** help_str)
 {
-	return strdup(
+	*help_str = strdup(
 		"network - network driver (Sends mutated input over the network to the target process)\n"
 		"Required Options:\n"
 		"\tip                    The target IP to connect to\n"
@@ -445,4 +447,7 @@ char * network_help(void)
 		"\tudp                   Whether the fuzzed input should be sent to the target program on UDP (1) or TCP (0)\n"
 		"\n"
 	);
+	if (*help_str == NULL)
+		return -1;
+	return 0;
 }

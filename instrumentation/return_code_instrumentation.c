@@ -173,6 +173,7 @@ int return_code_enable(void * instrumentation_state, pid_t * process, char * cmd
 		destroy_target_process(state);
 	if (create_target_process(state, cmd_line, input, input_length))
 		return -1;
+	state->enable_called = 1;
 	*process = state->child_handle;
 	return 0;
 }
@@ -185,6 +186,9 @@ int return_code_enable(void * instrumentation_state, pid_t * process, char * cmd
  */
 int return_code_is_new_path(void * instrumentation_state)
 {
+	return_code_state_t * state = (return_code_state_t *)instrumentation_state;
+	if(!state->enable_called)
+		return -1;
 	return 0; //We don't gather instrumentation data, so we can't ever tell if we hit a new path.
 }
 
@@ -198,6 +202,8 @@ int return_code_is_new_path(void * instrumentation_state)
 int return_code_get_fuzz_result(void * instrumentation_state)
 {
 	return_code_state_t * state = (return_code_state_t *)instrumentation_state;
+	if(!state->enable_called)
+		return -1;
 	return state->last_status;
 }
 
@@ -211,6 +217,9 @@ int return_code_get_fuzz_result(void * instrumentation_state)
 int return_code_is_process_done(void * instrumentation_state)
 {
 	return_code_state_t * state = (return_code_state_t *)instrumentation_state;
+
+	if(!state->enable_called)
+		return -1;
 
 	if (state->process_reaped == 1) 
 	{
@@ -239,16 +248,20 @@ int return_code_is_process_done(void * instrumentation_state)
 }
 
 /**
-* This function returns help text for this instrumentation.  This help text will describe the instrumentation and any options
-* that can be passed to return_code_create.
-* @return - a newly allocated string containing the help text.
-*/
-char * return_code_help(void)
+ * This function returns help text for this instrumentation.  This help text will describe the instrumentation and any options
+ * that can be passed to return_code_create.
+ * @param help_str - A pointer that will be updated to point to the new help string.
+ * @return 0 on success and -1 on failure
+ */
+int return_code_help(char ** help_str)
 {
-	return strdup(
+	*help_str = strdup(
 		"return_code - Linux return_code \"instrumentation\"\n"
 		"Options:\n"
 		"\tnone\n"
 		"\n"
 	);
+	if (*help_str == NULL)
+		return -1;
+	return 0;
 }

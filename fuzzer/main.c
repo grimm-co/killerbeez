@@ -20,11 +20,11 @@
 #include <errno.h>      // output directory creation
 #endif
 
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
-
 
 /**
  * This function prints out the usage information for the fuzzer and each of the individual components
@@ -42,7 +42,7 @@ void usage(char * program_name, char * mutator_directory)
 		"\t -isd instrumentation_state_file   Set the file containing that the instrumentation state should dump to\n"
 		"\t -isf instrumentation_state_file   Set the file containing that the instrumentation state should load from\n"
 		"\t -l logging_options                Set the options for logging\n"
-		"\t -n num_iterations                 The number of iterations to run [infinite]\n"
+		"\t -n num_iterations                 Limit the number of iterations to run [infinite]\n"
 		"\t -m mutator_options                Set the options for the mutator\n"
 		"\t -md mutator_directory             The directory to look for mutator DLLs in (must be specified to view help for specific mutators)\n"
 		"\t -ms mutator_state                 Set the state that the mutator should load\n"
@@ -58,11 +58,37 @@ void usage(char * program_name, char * mutator_directory)
 	exit(1);
 }
 
+//The global module state objects
+static driver_t * driver = NULL;
+static mutator_t * mutator = NULL;
+static void * mutator_state = NULL;
+static instrumentation_t * instrumentation = NULL;
+static void * instrumentation_state = NULL;
+
+static void cleanup_modules(void)
+{
+	if(driver)
+		driver->cleanup(driver->state);
+	if(instrumentation && instrumentation_state)
+		instrumentation->cleanup(instrumentation_state);
+	if(mutator && mutator_state)
+		mutator->cleanup(mutator_state);
+	free(driver);
+	free(instrumentation);
+	free(mutator);
+}
+
+static void sigint_handler(int sig)
+{
+	CRITICAL_MSG("CTRL-c detected, exiting\n");
+	cleanup_modules();
+	exit(0);
+}
+
+#define NUM_ITERATIONS_INFINITE -1
+
 int main(int argc, char ** argv)
 {
-	driver_t * driver;
-	mutator_t * mutator;
-	instrumentation_t * instrumentation;
 	char *driver_name, *driver_options = NULL,
 		*mutator_name, *mutator_options = NULL, *mutator_saved_state = NULL, *mutation_state_dump_file = NULL, *mutation_state_load_file = NULL,
 		*mutate_buffer = NULL, *mutator_directory = NULL, *mutator_directory_cli = NULL,
@@ -71,17 +97,15 @@ int main(int argc, char ** argv)
 		*instrumentation_name = NULL, *instrumentation_options = NULL, 
 		*instrumentation_state_string = NULL, *instrumentation_state_load_file = NULL,
 		*instrumentation_state_dump_file = NULL;
-	void * instrumentation_state;
 	int seed_length = 0, mutate_length = 0, instrumentation_length = 0, mutator_state_length;
 	time_t fuzz_begin_time;
 	int iteration = 0, fuzz_result = FUZZ_NONE, new_path = 0;
-	void * mutator_state = NULL;
 	char filename[MAX_PATH];
 	char filehash[256];
 	char * directory;
 
 	//Default options
-	int num_iterations = 1;
+	int num_iterations = NUM_ITERATIONS_INFINITE; //default to infinite
 	char * output_directory = "output";
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -197,8 +221,10 @@ int main(int argc, char ** argv)
 		return 1;
 	}
 
+	signal(SIGINT, sigint_handler);
+
 	//Check number of iterations for valid number of rounds
-	if (num_iterations <= 0)
+	if (num_iterations != NUM_ITERATIONS_INFINITE && num_iterations <= 0)
 		FATAL_MSG("Invalid number of iterations %d", num_iterations);
 
 	if (mutator_directory_cli) 
@@ -331,7 +357,7 @@ int main(int argc, char ** argv)
 	fuzz_begin_time = time(NULL);
 
 	//Copy the input, mutate it, and run the fuzzed program
-	for (iteration = 0; iteration < num_iterations; iteration++)
+	for (iteration = 0; num_iterations == NUM_ITERATIONS_INFINITE || iteration < num_iterations; iteration++)
 	{
 		DEBUG_MSG("Fuzzing the %d iteration", iteration);
 
@@ -342,14 +368,14 @@ int main(int argc, char ** argv)
 			if(fuzz_result == -2)
 				WARNING_MSG("The mutator has run out of mutations to test after %d iterations", iteration);
 			else
-				ERROR_MSG("ERROR: driver failed to test the target program, fuzz_result was %d",fuzz_result);
+				ERROR_MSG("The driver failed to test the target program, fuzz_result was %d",fuzz_result);
 			break;
 		}
 
 		new_path = instrumentation->is_new_path(instrumentation_state);
 		if (new_path < 0)
 		{
-			printf("ERROR: instrumentation failed to determine the fuzzed process's fuzz_result\n");
+			ERROR_MSG("The instrumentation failed to determine the fuzzed process's fuzz_result");
 			break;
 		}
 
@@ -411,13 +437,6 @@ int main(int argc, char ** argv)
 	}
 
 	//Cleanup everything and exit
-	driver->cleanup(driver->state);
-
-	instrumentation->cleanup(instrumentation_state);
-
-	mutator->cleanup(mutator_state);
-	free(driver);
-	free(instrumentation);
-	free(mutator);
+	cleanup_modules();
 	return 0;
 }
