@@ -40,9 +40,12 @@ struct network_state
 	mutator_t * mutator;
 	void * mutator_state;
 
-	int num_inputs;
+// it'd be nice if this could be size_t, but mutator function
+// get_input_info requires ints.
+	int num_inputs; 
+
 	char ** mutate_buffers;
 	size_t * mutate_buffer_lengths;
-	int * mutate_last_sizes;
+	size_t * mutate_last_sizes;
 };
 typedef struct network_state network_state_t;
