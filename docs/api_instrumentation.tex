@@ -152,8 +152,8 @@ can be used to obtain coverage information for each executable/library
 separately.  This function returns information about each of the separate
 modules (shared libraries such as .dll, .so, .dynlib). If
 \texttt{get\_module\_info} is called and requests the \texttt{is\_new} or
-\texttt{info} parameters prior to \texttt{enable}, it will return failure, as
-the fuzzing processes has not been started yet.
+\texttt{info} parameters prior to \texttt{enable} being called, it will return
+failure, as the fuzzing processes has not been started yet.
 }{
 \item instrumentation\_state - an instrumentation specific structure previously
 created by the create() function
