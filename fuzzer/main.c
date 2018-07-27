@@ -20,11 +20,11 @@
 #include <errno.h>      // output directory creation
 #endif
 
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
-
 
 /**
  * This function prints out the usage information for the fuzzer and each of the individual components
@@ -58,13 +58,37 @@ void usage(char * program_name, char * mutator_directory)
 	exit(1);
 }
 
+//The global module state objects
+static driver_t * driver = NULL;
+static mutator_t * mutator = NULL;
+static void * mutator_state = NULL;
+static instrumentation_t * instrumentation = NULL;
+static void * instrumentation_state = NULL;
+
+static void cleanup_modules(void)
+{
+	if(driver)
+		driver->cleanup(driver->state);
+	if(instrumentation && instrumentation_state)
+		instrumentation->cleanup(instrumentation_state);
+	if(mutator && mutator_state)
+		mutator->cleanup(mutator_state);
+	free(driver);
+	free(instrumentation);
+	free(mutator);
+}
+
+static void sigint_handler(int sig)
+{
+	CRITICAL_MSG("CTRL-c detected, exiting\n");
+	cleanup_modules();
+	exit(0);
+}
+
 #define NUM_ITERATIONS_INFINITE -1
 
 int main(int argc, char ** argv)
 {
-	driver_t * driver;
-	mutator_t * mutator;
-	instrumentation_t * instrumentation;
 	char *driver_name, *driver_options = NULL,
 		*mutator_name, *mutator_options = NULL, *mutator_saved_state = NULL, *mutation_state_dump_file = NULL, *mutation_state_load_file = NULL,
 		*mutate_buffer = NULL, *mutator_directory = NULL, *mutator_directory_cli = NULL,
@@ -73,11 +97,9 @@ int main(int argc, char ** argv)
 		*instrumentation_name = NULL, *instrumentation_options = NULL, 
 		*instrumentation_state_string = NULL, *instrumentation_state_load_file = NULL,
 		*instrumentation_state_dump_file = NULL;
-	void * instrumentation_state;
 	int seed_length = 0, mutate_length = 0, instrumentation_length = 0, mutator_state_length;
 	time_t fuzz_begin_time;
 	int iteration = 0, fuzz_result = FUZZ_NONE, new_path = 0;
-	void * mutator_state = NULL;
 	char filename[MAX_PATH];
 	char filehash[256];
 	char * directory;
@@ -198,6 +220,8 @@ int main(int argc, char ** argv)
 		printf("Failed setting up logging, exiting\n");
 		return 1;
 	}
+
+	signal(SIGINT, sigint_handler);
 
 	//Check number of iterations for valid number of rounds
 	if (num_iterations != NUM_ITERATIONS_INFINITE && num_iterations <= 0)
@@ -413,11 +437,6 @@ int main(int argc, char ** argv)
 	}
 
 	//Cleanup everything and exit
-	driver->cleanup(driver->state);
-	instrumentation->cleanup(instrumentation_state);
-	mutator->cleanup(mutator_state);
-	free(driver);
-	free(instrumentation);
-	free(mutator);
+	cleanup_modules();
 	return 0;
 }
