@@ -120,7 +120,8 @@ void * network_client_create(char * options, instrumentation_t * instrumentation
 			network_client_cleanup(state);
 			return NULL;
 		}
-		
+		memset(state->mutate_last_sizes, 0, sizeof(char *) * state->num_inputs);
+
 		//populate the array of mutate buffers
 		for (i = 0; i < state->num_inputs; i++)
 		{
@@ -130,7 +131,6 @@ void * network_client_create(char * options, instrumentation_t * instrumentation
 				network_client_cleanup(state);
 				return NULL;
 			}
-			state->mutate_last_sizes[i] = -1;
 		}
 
 		state->mutator = mutator;
@@ -359,7 +359,7 @@ int network_client_test_input(void * driver_state, char * input, size_t length)
 int network_client_test_next_input(void * driver_state)
 {
 	network_client_state_t * state = (network_client_state_t *)driver_state;
-	int i;
+	int i, ret;
 
 	if (!state->mutator)
 		return FUZZ_ERROR;
@@ -367,12 +367,13 @@ int network_client_test_next_input(void * driver_state)
 	memset(state->mutate_last_sizes, 0, sizeof(int) * state->num_inputs);
 	for (i = 0; i < state->num_inputs; i++)
 	{
-		state->mutate_last_sizes[i] = state->mutator->mutate_extended(state->mutator_state,
+		ret = state->mutator->mutate_extended(state->mutator_state,
 			state->mutate_buffers[i], state->mutate_buffer_lengths[i], MUTATE_MULTIPLE_INPUTS | i);
-		if (state->mutate_last_sizes[i] < 0)
+		if (ret < 0)
 			return FUZZ_ERROR;
-		if (state->mutate_last_sizes[i] == 0)
+		if (ret == 0)
 			return -2;
+		state->mutate_last_sizes[i] = (size_t)ret;
 	}
 	return network_client_run(state, state->mutate_buffers, state->mutate_last_sizes, state->num_inputs);
 }
@@ -395,7 +396,9 @@ char * network_client_get_last_input(void * driver_state, int * length)
 		return NULL;
 	for (i = 0; i < state->num_inputs; i++)
 	{
-		if (state->mutate_last_sizes[i] <= 0)
+		// If network_test_next_input has not been called or failed to mutate the
+		// input, there could be no input to return
+		if (state->mutate_last_sizes[i] == 0)
 			return NULL;
 	}
 	return encode_mem_array(state->mutate_buffers, 
