@@ -3,15 +3,15 @@
 #include "instrumentation.h"
 #include <global_types.h>
 
-void * putty_create(char * options, instrumentation_t * instrumentation, void * instrumentation_state,
+void * network_client_create(char * options, instrumentation_t * instrumentation, void * instrumentation_state,
 	mutator_t * mutator, void * mutator_state);
-void putty_cleanup(void * driver_state);
-int putty_test_input(void * driver_state, char * buffer, size_t length);
-int putty_test_next_input(void * driver_state);
-char * putty_get_last_input(void * driver_state, int * length);
-char * putty_help(void);
+void network_client_cleanup(void * driver_state);
+int network_client_test_input(void * driver_state, char * buffer, size_t length);
+int network_client_test_next_input(void * driver_state);
+char * network_client_get_last_input(void * driver_state, int * length);
+char * network_client_help(void);
 
-struct putty_state
+struct network_client_state
 {
 	//Options
 	char * path;            //The path to the fuzzed executable
@@ -43,4 +43,4 @@ struct putty_state
 	size_t * mutate_buffer_lengths;
 	size_t * mutate_last_sizes;
 };
-typedef struct putty_state putty_state_t;
+typedef struct network_client_state network_client_state_t;

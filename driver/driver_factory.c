@@ -5,7 +5,7 @@
 #ifdef _WIN32
 #include "wmp_driver.h"
 #include "network_driver.h"
-#include "putty_driver.h"
+#include "network_client_driver.h"
 #endif
 
 #include "instrumentation.h"
@@ -117,17 +117,17 @@ DRIVER_API driver_t * driver_all_factory(char * driver_type, char * options, ins
 		ret->test_next_input = network_test_next_input;
 		ret->get_last_input = network_get_last_input;
 	}
-	else if (!strcmp(driver_type, "putty"))
+	else if (!strcmp(driver_type, "network_client"))
 	{
-		ret->state = putty_create(options, instrumentation, instrumentation_state, mutator, mutator_state);
+		ret->state = network_client_create(options, instrumentation, instrumentation_state, mutator, mutator_state);
 		if (!ret->state) {
 			puts("Factory Error");
 			FACTORY_ERROR();
 			}
-		ret->cleanup = putty_cleanup;
-		ret->test_input = putty_test_input;
-		ret->test_next_input = putty_test_next_input;
-		ret->get_last_input = putty_get_last_input;
+		ret->cleanup = network_client_cleanup;
+		ret->test_input = network_client_test_input;
+		ret->test_next_input = network_client_test_next_input;
+		ret->get_last_input = network_client_get_last_input;
 	}
 	#endif
 	else
@@ -154,7 +154,7 @@ DRIVER_API char * driver_help(void)
 	APPEND_HELP(text, new_text, stdin_help);
 	#ifdef _WIN32
 	APPEND_HELP(text, new_text, network_help);
-	APPEND_HELP(text, new_text, putty_help);
+	APPEND_HELP(text, new_text, network_client_help);
 	APPEND_HELP(text, new_text, wmp_help);
 	#endif
 	return text;

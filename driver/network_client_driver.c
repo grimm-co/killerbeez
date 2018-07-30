@@ -1,4 +1,4 @@
-#include "putty_driver.h"
+#include "network_client_driver.h"
 
 #include <utils.h>
 #include <jansson_helper.h>
@@ -16,20 +16,20 @@
 #include <process.h>
 
 /**
- * This function creates a putty_state_t object based on the given options.
- * @param options - A JSON string of the options to set in the new putty_state_t. See the
+ * This function creates a network_client_state_t object based on the given options.
+ * @param options - A JSON string of the options to set in the new network_client_state_t. See the
  * help function for more information on the specific options available.
- * @return - the putty_state_t generated from the options in the JSON options string, or NULL on failure
+ * @return - the network_client_state_t generated from the options in the JSON options string, or NULL on failure
  */
-static putty_state_t * setup_options(char * options)
+static network_client_state_t * setup_options(char * options)
 {
-	putty_state_t * state;
+	network_client_state_t * state;
 	size_t cmd_length;
 
-	state = (putty_state_t *)malloc(sizeof(putty_state_t));
+	state = (network_client_state_t *)malloc(sizeof(network_client_state_t));
 	if (!state)
 		return NULL;
-	memset(state, 0, sizeof(putty_state_t));
+	memset(state, 0, sizeof(network_client_state_t));
 
 	//Setup defaults
 	state->timeout = 2;
@@ -38,13 +38,13 @@ static putty_state_t * setup_options(char * options)
 	state->ip = strdup("127.0.0.1");
 
 	//Parse the options
-	PARSE_OPTION_STRING(state, options, path, "path", putty_cleanup);
-	PARSE_OPTION_STRING(state, options, arguments, "arguments", putty_cleanup);
-	PARSE_OPTION_INT(state, options, timeout, "timeout", putty_cleanup);
-	PARSE_OPTION_INT(state, options, lport, "port", putty_cleanup);
-	PARSE_OPTION_STRING(state, options, ip, "ip", putty_cleanup);
-	PARSE_OPTION_DOUBLE(state, options, input_ratio, "ratio", putty_cleanup);
-	PARSE_OPTION_INT_ARRAY(state, options, sleeps, sleeps_count, "sleeps", putty_cleanup);
+	PARSE_OPTION_STRING(state, options, path, "path", network_client_cleanup);
+	PARSE_OPTION_STRING(state, options, arguments, "arguments", network_client_cleanup);
+	PARSE_OPTION_INT(state, options, timeout, "timeout", network_client_cleanup);
+	PARSE_OPTION_INT(state, options, lport, "port", network_client_cleanup);
+	PARSE_OPTION_STRING(state, options, ip, "ip", network_client_cleanup);
+	PARSE_OPTION_DOUBLE(state, options, input_ratio, "ratio", network_client_cleanup);
+	PARSE_OPTION_INT_ARRAY(state, options, sleeps, sleeps_count, "sleeps", network_client_cleanup);
 	
 	cmd_length = (state->path ? strlen(state->path) : 0) + (state->arguments ? strlen(state->arguments) : 0) + 4;
 	state->cmd_line = (char *)malloc(cmd_length);
@@ -53,7 +53,7 @@ static putty_state_t * setup_options(char * options)
 	if (!state->path || !state->cmd_line || !file_exists(state->path)
 		|| !state->ip || !state->lport || state->input_ratio <= 0)
 	{
-		putty_cleanup(state);
+		network_client_cleanup(state);
 		return NULL;
 	}
 	//Build the cmd line
@@ -70,11 +70,11 @@ static putty_state_t * setup_options(char * options)
  * @param instrumentation_state - a pointer to the instrumentation state for the passed in instrumentation
  * @return - a driver specific state object on success or NULL on failure
  */
-void * putty_create(char * options, instrumentation_t * instrumentation, void * instrumentation_state,
+void * network_client_create(char * options, instrumentation_t * instrumentation, void * instrumentation_state,
 	mutator_t * mutator, void * mutator_state)
 {
 	WSADATA wsaData;
-	putty_state_t * state;
+	network_client_state_t * state;
 	size_t i;
 
 	//Make sure we either have both a mutator and state
@@ -99,7 +99,7 @@ void * putty_create(char * options, instrumentation_t * instrumentation, void * 
 		//size of sleeps array and inputs must be equal
 		if (state->sleeps && state->num_inputs != state->sleeps_count)
 		{
-			putty_cleanup(state);
+			network_client_cleanup(state);
 			return NULL;
 		}
 
@@ -108,7 +108,7 @@ void * putty_create(char * options, instrumentation_t * instrumentation, void * 
 		state->mutate_buffers = malloc(sizeof(char *) * state->num_inputs);
 		if (!state->mutate_buffers)
 		{
-			putty_cleanup(state);
+			network_client_cleanup(state);
 			return NULL;
 		}
 		memset(state->mutate_buffers, 0, sizeof(char *) * state->num_inputs);
@@ -117,7 +117,7 @@ void * putty_create(char * options, instrumentation_t * instrumentation, void * 
 		state->mutate_last_sizes = malloc(sizeof(size_t) * state->num_inputs);
 		if (!state->mutate_last_sizes)
 		{
-			putty_cleanup(state);
+			network_client_cleanup(state);
 			return NULL;
 		}
 		
@@ -127,7 +127,7 @@ void * putty_create(char * options, instrumentation_t * instrumentation, void * 
 			if (setup_mutate_buffer(state->input_ratio, state->mutate_buffer_lengths[i], &state->mutate_buffers[i],
 				&state->mutate_buffer_lengths[i]))
 			{
-				putty_cleanup(state);
+				network_client_cleanup(state);
 				return NULL;
 			}
 			state->mutate_last_sizes[i] = -1;
@@ -145,9 +145,9 @@ void * putty_create(char * options, instrumentation_t * instrumentation, void * 
 /**
  * This function cleans up the fuzzed process, if it's not being managed
  * by the instrumentation module instead.
- * @param state - the putty_state_t object that represents the current state of the driver
+ * @param state - the network_client_state_t object that represents the current state of the driver
  */
-static void cleanup_process(putty_state_t * state)
+static void cleanup_process(network_client_state_t * state)
 {
 	//If we have a process running and no instrumentation, kill it.
 	//If we have an instrumentation, then the instrumentation will kill the process
@@ -161,12 +161,12 @@ static void cleanup_process(putty_state_t * state)
 
 /**
  * This function cleans up all resources with the passed in driver state.
- * @param driver_state - a driver specific state object previously created by the putty_create function
+ * @param driver_state - a driver specific state object previously created by the network_client_create function
  * This state object should not be referenced after this function returns.
  */
-void putty_cleanup(void * driver_state)
+void network_client_cleanup(void * driver_state)
 {
-	putty_state_t * state = (putty_state_t *)driver_state;
+	network_client_state_t * state = (network_client_state_t *)driver_state;
 	int i;
 
 	//stop the fuzzed process
@@ -223,11 +223,11 @@ static int send_tcp_input(SOCKET * sock, char * buffer, size_t length)
 
 /**
  * This function creates a socket and waits for a client to connect.
- * @param state - the putty_state_t object that represents the current state of the driver
+ * @param state - the network_client_state_t object that represents the current state of the driver
  * @param sock - a pointer to a SOCKET used to return the created socket
  * @return - non-zero on error, zero on success
  */
-static int start_listener(putty_state_t * state, SOCKET * sock)
+static int start_listener(network_client_state_t * state, SOCKET * sock)
 {
 	struct sockaddr_in addr;
 	int iResult = 0;
@@ -264,13 +264,13 @@ static int start_listener(putty_state_t * state, SOCKET * sock)
 /**
  * This function will run the fuzzed program and test it with the given inputs. This function
  * blocks until the program has finished processing the input.
- * @param state - the putty_state_t object that represents the current state of the driver
+ * @param state - the network_client_state_t object that represents the current state of the driver
  * @param inputs - an array of inputs to send to the program
  * @param lengths - an array of lengths for the buffers in the inputs parameter
  * @param inputs_count - the number of buffers in the inputs parameter
  * @return - 0 on success or -1 on failure
  */
-static int putty_run(putty_state_t * state, char ** inputs, size_t * lengths, size_t inputs_count)
+static int network_client_run(network_client_state_t * state, char ** inputs, size_t * lengths, size_t inputs_count)
 {
 	SOCKET serverSock;
 	SOCKET clientSock;
@@ -322,14 +322,14 @@ static int putty_run(putty_state_t * state, char ** inputs, size_t * lengths, si
  * This function will run the fuzzed program and test it with the given input.
  * This function blocks until the program has finished processing the input.
  * @param driver_state - a driver specific structure previously created by the
- * 		putty_create function
+ * 		network_client_create function
  * @param input - the input that should be tested
  * @param length - the length of the input parameter
  * @return - FUZZ_NONE, FUZZ_HANG, FUZZ_CRASH on success or FUZZ_ERROR on failure
  */
-int putty_test_input(void * driver_state, char * input, size_t length)
+int network_client_test_input(void * driver_state, char * input, size_t length)
 {
-	putty_state_t * state = (putty_state_t *)driver_state;
+	network_client_state_t * state = (network_client_state_t *)driver_state;
 	char ** inputs;
 	size_t * input_lengths;
 	size_t i, inputs_count;
@@ -338,7 +338,7 @@ int putty_test_input(void * driver_state, char * input, size_t length)
 	if (decode_mem_array(input, &inputs, &input_lengths, &inputs_count) == 0)
 	{
 		if (inputs_count)
-			ret = putty_run(state, inputs, input_lengths, inputs_count);
+			ret = network_client_run(state, inputs, input_lengths, inputs_count);
 		
 		//clean up time
 		for (i = 0; i < inputs_count; i++)
@@ -353,12 +353,12 @@ int putty_test_input(void * driver_state, char * input, size_t length)
 /**
  * This function will run the fuzzed program with the output of the mutator given during driver
  * creation.  This function blocks until the program has finished processing the input.
- * @param driver_state - a driver specific structure previously created by the putty_create function
+ * @param driver_state - a driver specific structure previously created by the network_client_create function
  * @return - 0 on success, -1 on error, or -2 if the mutator has finished generating inputs
  */
-int putty_test_next_input(void * driver_state)
+int network_client_test_next_input(void * driver_state)
 {
-	putty_state_t * state = (putty_state_t *)driver_state;
+	network_client_state_t * state = (network_client_state_t *)driver_state;
 	int i;
 
 	if (!state->mutator)
@@ -374,21 +374,21 @@ int putty_test_next_input(void * driver_state)
 		if (state->mutate_last_sizes[i] == 0)
 			return -2;
 	}
-	return putty_run(state, state->mutate_buffers, state->mutate_last_sizes, state->num_inputs);
+	return network_client_run(state, state->mutate_buffers, state->mutate_last_sizes, state->num_inputs);
 }
 
 /**
  * When this driver is using a mutator given to it during driver creation, this function retrieves
- * the last input that was tested with the putty_test_next_input function.
- * @param driver_state - a driver specific structure previously created by the putty_create function
+ * the last input that was tested with the network_client_test_next_input function.
+ * @param driver_state - a driver specific structure previously created by the network_client_create function
  * @param length - a pointer to an integer used to return the length of the input that was last tested.
  * @return - NULL on error or if the driver doesn't have a mutator, or a buffer containing the last input
- * that was tested by the driver with the putty_test_next_input function.  This buffer should be freed
+ * that was tested by the driver with the network_client_test_next_input function.  This buffer should be freed
  * by the caller.
  */
-char * putty_get_last_input(void * driver_state, int * length)
+char * network_client_get_last_input(void * driver_state, int * length)
 {
-	putty_state_t * state = (putty_state_t *)driver_state;
+	network_client_state_t * state = (network_client_state_t *)driver_state;
 	int i;
 
 	if (!state->mutate_buffers)
@@ -404,14 +404,14 @@ char * putty_get_last_input(void * driver_state, int * length)
 
 /**
  * This function returns help text for this driver.  This help text will describe the driver and any options
- * that can be passed to putty_create.
+ * that can be passed to network_client_create.
  * @return - a newly allocated string containing the help text.
  */
-char * putty_help(void)
+char * network_client_help(void)
 {
 
 	return strdup(
-		"putty - putty driver (This driver acts as a server and forces the putty client\n"
+		"network_client - network_client driver (This driver acts as a server and forces the network_client client\n"
 		"to connect to be fuzzed)\n"
 		"Required Options:\n"
 		"\tpath					 The path to plink.exe"
