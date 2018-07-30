@@ -32,6 +32,7 @@ include_directories (${CMAKE_SOURCE_DIR}/../killerbeez-utils/utils/)
 # compile mutators, which will compile utils
 add_subdirectory(${CMAKE_SOURCE_DIR}/../killerbeez-mutators/ ${CMAKE_BINARY_DIR}/killerbeez-mutators/)
 
+add_subdirectory(corpus) # test programs
 add_subdirectory(fuzzer) # instantiates & coordinates other parts
 add_subdirectory(driver) # starts program, feeds input, determines when program is done
 add_subdirectory(instrumentation) # inserts instructions to program to tell whether an input makes the binary take a new path
