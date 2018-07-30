@@ -210,8 +210,12 @@ static int send_tcp_input(SOCKET * sock, char * buffer, size_t length)
 			total_read += result;
 		else if (result < 0) //Error, then break
 			total_read = -1;
+		if (WSAGetLastError() == 10053)
+			//Client closed connection before we wanted...
+			return -2;
 		if (result == SOCKET_ERROR)
 			ERROR_MSG("send() failed with error: %d", WSAGetLastError());
+
 	}
 
 	return total_read != length;
@@ -241,7 +245,7 @@ static int start_listener(putty_state_t * state, SOCKET * sock)
 	iResult = bind(*sock, (SOCKADDR *)& addr, sizeof(addr));
 	if (iResult == SOCKET_ERROR)
 	{
-		ERROR_MSG("Socket failed to bind, error: %d", WSAGetLastError());
+		ERROR_MSG("Socket failed to bind to port. Error code: %d", WSAGetLastError());
 		iResult = closesocket(*sock);
 		if (iResult == SOCKET_ERROR)
 			ERROR_MSG("closesocket function failed with error %d", WSAGetLastError());
@@ -271,6 +275,7 @@ static int putty_run(putty_state_t * state, char ** inputs, size_t * lengths, si
 	SOCKET serverSock;
 	SOCKET clientSock;
 	size_t i;
+	int sock_ret;
 	int listening = 0;
 
 	//Start the server socket so the client can connect below:
@@ -295,8 +300,15 @@ static int putty_run(putty_state_t * state, char ** inputs, size_t * lengths, si
 	{
 		if (state->sleeps && state->sleeps[i] != 0)
 			Sleep(state->sleeps[i]);
-		if (send_tcp_input(&clientSock, inputs[i], lengths[i]))
+		sock_ret = send_tcp_input(&clientSock, inputs[i], lengths[i]);
+		if (sock_ret)
 		{
+			if (sock_ret == -2)
+			{
+				WARNING_MSG("Client terminated connection before all packets were sent, %d of %d packets sent",\
+					i, inputs_count);
+				break;
+			}
 			return FUZZ_ERROR;
 		}
 	}
@@ -306,7 +318,6 @@ static int putty_run(putty_state_t * state, char ** inputs, size_t * lengths, si
 	return generic_wait_for_process_completion(state->process, state->timeout, 
 		state->instrumentation, state->instrumentation_state);
 }
-
 /**
  * This function will run the fuzzed program and test it with the given input.
  * This function blocks until the program has finished processing the input.
