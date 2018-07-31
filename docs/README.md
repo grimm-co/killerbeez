@@ -85,7 +85,7 @@ See [PersistenceMode.md](docs/PersistenceMode.md) for instructions.
 
 ### Linux
 
-Once you've built Killerbeez following the [BUILD instructions](docs/BUILD.md),
+Once you've built Killerbeez following the [BUILD instructions](docs/BUILD.md#linux),
 you should be ready to change into the right directory and run the fuzzer.
 Here's an example of running it on a test program from our corpus.
 
