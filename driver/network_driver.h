@@ -1,6 +1,6 @@
 #pragma once
 #include "driver.h"
-#include "instrumentation.h"
+#include <instrumentation.h>
 #include <global_types.h>
 
 void * network_create(char * options, instrumentation_t * instrumentation, void * instrumentation_state,
