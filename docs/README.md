@@ -7,9 +7,9 @@ however, is kept in the mutator's repository.
 
 # Building
 
-The included Makefile can be used to build the documentation. The documentation
-is written in [LaTeX](https://www.latex-project.org/) and uses `pdflatex` to
-compile.
+The included Makefile can be used to build the api.pdf documentation by running
+the command `make` from this directory. The documentation is written in
+[LaTeX](https://www.latex-project.org/) and uses `pdflatex` to compile.
 
 On Ubuntu a working LaTeX environment can be setup with the following command:
 ```
