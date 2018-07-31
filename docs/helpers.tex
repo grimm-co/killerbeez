@@ -19,8 +19,8 @@ likely the ones that process the input file, and thus the most likely targets
 for fuzzing.
 
 \subsection{Tracer}
-The tracer runs a target program in an instrumentation and records the entire
+The tracer runs a target program in an instrumented state and records the entire
 set of basic block transitions that the process makes.  This process will
 typically be slower than the instrumentations used during fuzzing.  The full
 list of basic block transitions that a target process makes when parsing a given
-input is needed for advance corpus management techniques.
+input is needed for advanced corpus management techniques.
