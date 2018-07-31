@@ -184,8 +184,7 @@ running it on a test program from our corpus.
 ```
 # assuming that you're in the same directory as above ($WORKDIR/build)
 cd ../build/killerbeez/
-./fuzzer file return_code honggfuzz -n 20 \
-	-sf /bin/bash -d '{"path":"../../killerbeez/corpus/test/test-linux","arguments":"@@"}'
+./fuzzer file return_code honggfuzz -n 20 -sf /bin/bash -d '{"path":"corpus/test-linux","arguments":"@@"}'
 ```
 
 If it ran correctly, you should see something like this:
@@ -228,9 +227,7 @@ containing ./fuzzer.
 ```
 # assuming that you're in the same directory as the above commands (%WORKDIR%/build)
 echo "ABC@" > test1  # ABC@ is one bit different than ABCD, the crashing input
-./fuzzer file return_code honggfuzz -n 2000 \
-	-sf ./test1 \
-	-d '{"path":"../../killerbeez/corpus/test/test-linux","arguments":"@@"}'
+./fuzzer file return_code honggfuzz -n 2000 -sf ./test1 -d '{"path":"corpus/test-linux","arguments":"@@"}'
 ```
 
 Which should yield output similar to this:
@@ -250,9 +247,9 @@ crash this target and reproduce the crash manually.
 ```
 $ ls output/crashes/
 2B81D0C867F76051FD33D8690AA2AC68  5220E572A6F9DAAF522EF5C5698EAF4C  59F885D0289BE9A83E711C5E7CFCBE4D  ED5D34C74E59D16BD6D5B3683DB655C3
-$ cat output/crashes/2B81D0C867F76051FD33D8690AA2AC68 ; echo
+$ cat output/crashes/59F885D0289BE9A83E711C5E7CFCBE4D ; echo
 ABCDJ
-$ ../../killerbeez/corpus/test/test-linux output/crashes/59F885D0289BE9A83E711C5E7CFCBE4D
+$ corpus/test-linux output/crashes/59F885D0289BE9A83E711C5E7CFCBE4D
 Segmentation fault (core dumped)
 ```
 
