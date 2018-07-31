@@ -42,7 +42,7 @@ http://dynamorio.org/
 #ifndef CLIENTS_COMMON_UTILS_H_
 #define CLIENTS_COMMON_UTILS_H_
 
-#include "dr_api.h"
+#include <dr_api.h>
 
 #ifdef DEBUG
 # define ASSERT(x, msg) DR_ASSERT_MSG(x, msg)

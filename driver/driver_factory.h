@@ -1,7 +1,7 @@
 #pragma once
 #include "driver.h"
-#include "instrumentation.h"
-#include "global_types.h"
+#include <instrumentation.h>
+#include <global_types.h>
 
 DRIVER_API driver_t * driver_factory(char * driver_type, char * options);
 DRIVER_API driver_t * driver_instrumentation_factory(char * driver_type, char * options, instrumentation_t * instrumentation,

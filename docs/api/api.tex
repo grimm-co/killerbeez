@@ -5,7 +5,7 @@
 
 \title{\killerbeez{} API}
 \author{GRIMM}
-\date{2018.05.18}
+\date{\apiDate{}}
 
 \begin{document}
 % Nice cover page
@@ -18,8 +18,8 @@
 \newpage
 
 \section{Overview}
-This document will cover the specific API of each module, along with a quick
-high-level summary of what it does.
+This document will cover the version \apiVersion{} API for each module, along
+with a quick high-level summary of what it does.
 
 \par
 The APIs are all specified in C, as this provides a consistent language and is
@@ -34,7 +34,7 @@ which mutators to run and sends this information to the client, which kicks
 off one or more Main Fuzzers.  The client will then also handle getting the
 results back to the manager.
 
-\section{Main Fuzzer}
+\section{Fuzzer}
 This will run many iterations of a single seed and a single mutator against a
 target program.  For efficiency, this will be run on the same computer (which
 means same O/S) as the target binary.  This component will be an executable that

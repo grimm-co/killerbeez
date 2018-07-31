@@ -585,6 +585,7 @@ static BOOL connect_to_pipe(HANDLE pipe, char * pipe_name, DWORD timeout)
 
 	if (!success) {
 		ERROR_MSG("Did not receive connection from DynamoRIO child process on pipe %s, GLE=%d.", pipe_name, GetLastError());
+		ERROR_MSG("Try increasing the instrumentation timeout option (currently set to %lu).", timeout);
 	}
 
 	CloseHandle(overlap.hEvent);

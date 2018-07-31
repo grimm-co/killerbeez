@@ -2,7 +2,7 @@
 #include <jansson_helper.h>
 #include <global_types.h>
 #include <utils.h>
-#include "instrumentation.h"
+#include <instrumentation.h>
 #include "driver.h"
 
 #include <time.h>
