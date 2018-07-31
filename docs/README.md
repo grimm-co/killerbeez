@@ -1,9 +1,15 @@
+# API Documentation
+
 This directory contains all the documentation for the KILLERBEEZ API.  This 
 means it includes the documentation for the mutator API, even though the
 mutators are kept in a separate repository.  Mutator specific documentation,
-however, is kept in the mutator's repository.  The included Makefile can be used
-to build the documentation. The documentation is written in
-[LaTeX](https://www.latex-project.org/) and uses `pdflatex` to compile.
+however, is kept in the mutator's repository.
+
+# Building
+
+The included Makefile can be used to build the documentation. The documentation
+is written in [LaTeX](https://www.latex-project.org/) and uses `pdflatex` to
+compile.
 
 On Ubuntu a working LaTeX environment can be setup with the following command:
 ```
