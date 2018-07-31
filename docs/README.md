@@ -81,7 +81,7 @@ fuzzer.exe wmp dynamorio nop -n 3 -sf "C:\Users\<user>\Desktop\test.mp4" -d "{\"
 ```
 You may need to modify these parameters to match your environment.  In
 order to speed up fuzzing, it may be useful to enable persistence mode.
-See PersistenceMode.md for instructions.
+See [PersistenceMode.md](docs/PersistenceMode.md) for instructions.
 
 ### Linux
 
@@ -125,7 +125,9 @@ work.  However, we were using the return_code instrumentation, which does not
 actually track code coverage, so it can not determine the execution path, thus
 it can't determine if a new path was hit.  Instead, it just looks at the return
 code to determine if the process crashed or not.  It's very efficient, however
-this is effectively dumb fuzzing.
+this is effectively dumb fuzzing.  In order to track coverage on Linux,
+Killerbeez has support for Intel Processor Trace.  See [IPT.md](docs/IPT.md) for
+more details.
 
 To see a crash, we can just change our seed file to be close to the file which
 will cause a crash.  It's cheating, but it works well to demonstrate the
