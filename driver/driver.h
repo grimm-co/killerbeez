@@ -6,8 +6,8 @@
 #include <sys/types.h> // pid_t
 #endif
 
-#include "global_types.h"
-#include "instrumentation.h"
+#include <global_types.h>
+#include <instrumentation.h>
 
 #ifdef DRIVER_EXPORTS
 #define DRIVER_API __declspec(dllexport)
