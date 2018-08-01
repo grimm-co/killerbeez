@@ -155,7 +155,7 @@ command will cause a crash in the test-linux binary on the seventh iteration.
 The IPT instrumentation tracks the TNT and TIP packets that are generated from
 the main test-linux executable.
 ```
-./fuzzer stdin ipt bit_flip -d "{\"path\":\"$HOME/killerbeez/killerbeez/corpus/test/test-linux\"}" -n 10 -sf $HOME/killerbeez/killerbeez/corpus/test/inputs/close.txt
+./fuzzer stdin ipt bit_flip -d "{\"path\":\"$HOME/killerbeez/build/killerbeez/corpus/test-linux\"}" -n 10 -sf $HOME/killerbeez/killerbeez/corpus/test/inputs/close.txt
 ```
 
 If instead of tracking code coverage for the main executable, you wish to track
@@ -165,9 +165,8 @@ to track coverage information for. The below command illustrates how to use this
 option with the included example program. This command tracks the code coverage
 of libtest1.so and libtest2.so.
 ```
-env LD_LIBRARY_PATH=$HOME/killerbeez/killerbeez/corpus/libtest/ ./fuzzer stdin ipt bit_flip \
-  -d "{\"path\":\"$HOME/killerbeez/killerbeez/corpus/libtest/test\"}" -n 10 \
-  -i '{"coverage_libraries":["$HOME/killerbeez/killerbeez/corpus/libtest/libtest1.so","$HOME/killerbeez/killerbeez/corpus/libtest/libtest2.so"]}' \
+./fuzzer stdin ipt bit_flip -d "{\"path\":\"$HOME/killerbeez/build/killerbeez/corpus/libtest\"}" -n 10 \
+  -i "{\"coverage_libraries\":[\"$HOME/killerbeez/build/killerbeez/corpus/libtest1.so\",\"$HOME/killerbeez/build/killerbeez/corpus/libtest2.so\"]}" \
   -sf $HOME/killerbeez/killerbeez/corpus/test/inputs/close.txt
 ```
 
@@ -216,12 +215,12 @@ shown below. This example runs 5000 iterations of the persist binary, mutates
 the input with the afl mutator, and feeds the input over stdin to the target
 program. The IPT module will run 1000 iterations per persist process.
 ```
-./fuzzer stdin ipt afl -i "{\"persistence_max_cnt\":1000}" -d "{\"path\":\"$HOME/killerbeez/killerbeez/corpus/persist/persist\"}" -n 5000 -sf $HOME/killerbeez/killerbeez/corpus/test/inputs/close.txt
+./fuzzer stdin ipt afl -i "{\"persistence_max_cnt\":1000}" -d "{\"path\":\"$HOME/killerbeez/build/killerbeez/corpus/persist\"}" -n 5000 -sf $HOME/killerbeez/killerbeez/corpus/test/inputs/close.txt
 ```
 For comparison, a non-persistence mode run with a similar binary can be started
 with this command:
 ```
-./fuzzer stdin ipt afl -d "{\"path\":\"$HOME/killerbeez/killerbeez/corpus/persist/nopersist\"}" -n 5000 -sf $HOME/killerbeez/killerbeez/corpus/test/inputs/close.txt
+./fuzzer stdin ipt afl -d "{\"path\":\"$HOME/killerbeez/build/killerbeez/corpus/nopersist\"}" -n 5000 -sf $HOME/killerbeez/killerbeez/corpus/test/inputs/close.txt
 ```
 
 # Deferred Startup Mode
