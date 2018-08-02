@@ -138,7 +138,7 @@ xcopy dynamorio\ACKNOWLEDGEMENTS %distdir%\dynamorio
 
 if "%platform%" == "x64" (
   mkdir %distdir%\server\skel\windows_x86_64
-  xcopy %~dp0\wrapper_26014_windows_x86_64.exe %distdir%\server\skel\windows_x86_64
+  xcopy %~dp0wrapper_26014_windows_x86_64.exe %distdir%\server\skel\windows_x86_64
 )
 
 set releasezip=%CI_PROJECT_DIR%\release\%relname%.zip
