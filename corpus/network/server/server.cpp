@@ -100,10 +100,11 @@ int tcp_listen(int * sock)
 	}
 
 	if (listen(*sock, SOMAXCONN) == SOCKET_ERROR) {
-		printf("listen failed with error: %d\n", errno);
 #ifdef _WIN32
+		printf("listen failed with error: %d\n", WSAGetLastError());
 		closesocket(*sock);
 #else
+		printf("listen failed with error: %d\n", errno);
 		close(*sock);
 #endif
 		return 1;
@@ -190,9 +191,17 @@ int main(int argc, char ** argv)
 
 		if (udp) {
 			for (i = 0; i < num_skipped_inputs; i++)
+#ifdef _WIN32
+				recvfrom(server, buffer, sizeof(buffer), 0, (sockaddr *)&addr, &addrlen);
+#else
 				recvfrom(server, buffer, sizeof(buffer), 0, (sockaddr *)&addr, (socklen_t *)&addrlen);
+#endif
 
+#ifdef _WIN32
+			if (recvfrom(server, buffer, sizeof(buffer), 0, (sockaddr *)&addr, &addrlen) != SOCKET_ERROR)
+#else
 			if (recvfrom(server, buffer, sizeof(buffer), 0, (sockaddr *)&addr, (socklen_t *)&addrlen) != SOCKET_ERROR)
+#endif
 				process_data(buffer);
 
 		} else {
