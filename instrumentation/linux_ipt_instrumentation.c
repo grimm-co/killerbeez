@@ -1161,14 +1161,16 @@ int linux_ipt_is_process_done(void * instrumentation_state)
 int linux_ipt_help(char ** help_str)
 {
   *help_str = strdup(
-    "ipt - Linux IPT instrumentation\n"
-    "Options:\n"
-    "\tpersistence_max_cnt  The number of executions to run in one process while\n"
-    "\t                     fuzzing in persistence mode\n"
-    "\tipt_mmap_size        The amount of memory to use for the IPT trace data buffer\n"
-    "\tcoverage_libraries   An array of library or executable filenames that IPT should record\n"
-    "\t                     trace information.  By default, only the executable is traced.\n"
-    "\n"
+"ipt - Linux IPT instrumentation\n"
+"Options:\n"
+"  persistence_max_cnt  The number of executions to run in one process while\n"
+"                         fuzzing in persistence mode\n"
+"  ipt_mmap_size        The amount of memory to use for the IPT trace data\n"
+"                         buffer\n"
+"  coverage_libraries   An array of library or executable filenames that IPT\n"
+"                         should record trace information.  By default, only\n"
+"                         the executable is traced.\n"
+"\n"
   );
   if (*help_str == NULL)
     return -1;
