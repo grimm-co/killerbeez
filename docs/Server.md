@@ -121,7 +121,7 @@
     virtualenv -ppython3 venv
     source venv/bin/activate
     pip install -r requirements.txt
-    python server.py
+    python server.py -create  # Remove -create if restarting server
     ```
     This will start up the server on port 5000. In the instructions below, we
     will call the URL pointing to this port `$API_URL`.
@@ -204,7 +204,7 @@ Run the script, and it will print out the ID of the submitted job.
 The results of a job can be accessed via the killerbeez API. Let `$JOB_ID`
 be the ID of the job of interest:
 ```
-curl $API_URL/api/jobs/$JOB_ID/results
+curl $API_URL/api/job/$JOB_ID/results
 ```
 For example:
 ```
@@ -226,7 +226,7 @@ $ curl http://localhost:80/killerbeez/download/3fb/38D1F16F84B07DBF6B29861BD7464
 You may be interested to know what seed file these results were mutated from.
 The path of the seed file is available in the job information:
 ```
-curl $API_URL/api/jobs/$JOB_ID
+curl $API_URL/api/job/$JOB_ID
 ```
 For example:
 ```
