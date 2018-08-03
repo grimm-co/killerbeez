@@ -87,7 +87,8 @@
     7. Download the latest
        [killerbeez-x64.zip](https://github.com/grimm-co/killerbeez/releases) and
        place it in the `skel/windows_x86_64` directory
-    8. Extract the wrapper binary
+    8. Extract the wrapper binary (or see the [build instructions](#wrapper) to
+       build your own copy):
         ```
         unzip -j -d skel/windows_x86_64 skel/windows_x86_64/killerbeez-x64.zip \
           '*wrapper_26014_windows_x86_64.exe'
@@ -238,3 +239,25 @@ $ curl http://localhost:5000/api/results?repro_file=235/97A596BE0B77EF1B68995033
 ```
 This gives you the job ID of the job that produced the file, allowing you to
 trace its ancestry.
+
+## Optional build instructions
+
+### Wrapper
+The BOINC [wrapper](https://boinc.berkeley.edu/trac/wiki/WrapperApp) is an
+adapter that lets programs be run unmodified under the BOINC client. Our usage
+of the wrapper requires features and bugfixes that are more recent than the last
+released wrapper binary. Our binary release inlcudes a compiled copy of the
+wrapper, as described above, but you can build your own with the following
+steps:
+1. On a Windows machine, install [git](https://git-scm.com/downloads) and
+   [Visual Studio 2013](https://visualstudio.microsoft.com/vs/older-downloads/)
+2. Clone the [BOINC repository](https://github.com/BOINC/boinc)
+3. Open `win_build\boinc_vs2013.sln` from the cloned repo in Visual Studio 2013
+4. Click the `wrapper` project in the Solution Explorer
+5. Select `x64` from the Platforms drop-down in the toolbar, and `Release`
+   from the Configurations drop-down next to it.
+6. From the `BUILD` menu, select `Build wrapper`
+7. The compiled binary should be in
+   `win_build\Build\x64\Release\wraper_26014_windows_x86_64.exe`
+8. Drop this binary into the `/home/boincadm/projects/killerbeez/skel/windows_x86_64`
+   directory on your killerbeez server
