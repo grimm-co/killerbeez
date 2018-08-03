@@ -225,7 +225,7 @@ static int send_tcp_input(SOCKET * sock, char * buffer, size_t length)
  * This function creates a socket and waits for a client to connect.
  * @param state - the network_client_state_t object that represents the current state of the driver
  * @param sock - a pointer to a SOCKET used to return the created socket
- * @return - non-zero on error, zero on success
+ * @return - FUZZ_ERROR error, zero on success
  */
 static int start_listener(network_client_state_t * state, SOCKET * sock)
 {
@@ -235,7 +235,7 @@ static int start_listener(network_client_state_t * state, SOCKET * sock)
 	if (*sock == INVALID_SOCKET)
 	{
 		ERROR_MSG("socket function failed with error: %ld", WSAGetLastError());
-		return 1;
+		return FUZZ_ERROR;
 	}
 	//Create socket (TCP Only right now)
 	addr.sin_family = AF_INET;
@@ -249,16 +249,16 @@ static int start_listener(network_client_state_t * state, SOCKET * sock)
 		iResult = closesocket(*sock);
 		if (iResult == SOCKET_ERROR)
 			ERROR_MSG("closesocket function failed with error %d", WSAGetLastError());
-		return 1;
+		return FUZZ_ERROR;
 	}
 	//Now put the socket into LISTEN state
 	if (listen(*sock, SOMAXCONN) == SOCKET_ERROR)
 	{
 		ERROR_MSG("listen function failed with error: %d", WSAGetLastError());
-		return 1;
+		return FUZZ_ERROR;
 	}
 
-	return 0;
+	return FUZZ_NONE;
 }
 
 /**
@@ -268,7 +268,7 @@ static int start_listener(network_client_state_t * state, SOCKET * sock)
  * @param inputs - an array of inputs to send to the program
  * @param lengths - an array of lengths for the buffers in the inputs parameter
  * @param inputs_count - the number of buffers in the inputs parameter
- * @return - 0 on success or -1 on failure
+ * @return - FUZZ_NONE, FUZZ_HANG, FUZZ_CRASH on success or FUZZ_ERROR on failure
  */
 static int network_client_run(network_client_state_t * state, char ** inputs, size_t * lengths, size_t inputs_count)
 {
