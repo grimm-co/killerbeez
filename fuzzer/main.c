@@ -34,7 +34,9 @@
 void usage(char * program_name, char * mutator_directory)
 {
 	printf(
-"Usage: %s driver_name instrumentation_name mutator_name [options]\n"
+"\n"
+"Usage: %s\n"
+"         driver_name instrumentation_name mutator_name [options]\n"
 "\n"
 "Options:\n"
 "  -d driver_options                 Set the options for the driver\n"
@@ -59,7 +61,7 @@ void usage(char * program_name, char * mutator_directory)
 "                                      crash or hang\n"
 "  -sf seed_file                     The seed file to use\n"
 "\n\n"
-"\n -h <logging, driver, instrumentation, mutators> for more help.\n\n",
+"\n -h <l[ogging], d[river], i[nstrumentation], m[utators]> for more help.\n\n",
 		program_name
 	);
 
@@ -175,16 +177,16 @@ int main(int argc, char ** argv)
 	if ( argc > 2 && !strcmp("-h", argv[1]) ) 
 	{
 		puts("");
-		if (!strcmp("logging", argv[2])) {
+		if (!strcmp("logging", argv[2]) || !strcmp("l", argv[2])) {
 			PRINT_HELP(logging_help());
-		} else if (!strcmp("driver", argv[2])) {
+		} else if (!strcmp("driver", argv[2]) || !strcmp("d", argv[2])) {
 			PRINT_HELP(driver_help());
-		} else if (!strcmp("instrumentation", argv[2])) {
+		} else if (!strcmp("instrumentation", argv[2]) || !strcmp("i", argv[2])) {
 			PRINT_HELP(instrumentation_help());
-		} else if (!strcmp("mutators", argv[2])) {
+		} else if (!strcmp("mutators", argv[2]) || !strcmp("m", argv[2])) {
 			PRINT_HELP(mutator_help(mutator_directory));
 		} else {
-			printf("Unknown help option \"%s\". Expected <logging, driver, instrumentation, mutators>.\n\n",argv[2]);
+			printf("Unknown help option \"%s\". Expected <l[ogging], d[river], i[nstrumentation], m[utators]>.\n\n",argv[2]);
 		}
 		
 		exit(1);
