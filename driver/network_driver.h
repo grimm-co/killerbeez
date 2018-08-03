@@ -3,6 +3,11 @@
 #include <instrumentation.h>
 #include <global_types.h>
 
+
+#ifndef _WIN32 // Linux
+#include <sys/types.h> // pid_t
+#endif
+
 void * network_create(char * options, instrumentation_t * instrumentation, void * instrumentation_state,
 	mutator_t * mutator, void * mutator_state);
 void network_cleanup(void * driver_state);
@@ -26,7 +31,11 @@ struct network_state
 	int sleeps_count;       //The number of items in the sleeps array
 
 	//The handle to the fuzzed process instance
+	#ifdef _WIN32
 	HANDLE process;
+	#else
+	pid_t process;
+	#endif
 
 	//command line of the fuzzed process
 	char * cmd_line;
@@ -40,9 +49,12 @@ struct network_state
 	mutator_t * mutator;
 	void * mutator_state;
 
-	int num_inputs;
+// it'd be nice if this could be size_t, but mutator function
+// get_input_info requires ints.
+	int num_inputs; 
+
 	char ** mutate_buffers;
 	size_t * mutate_buffer_lengths;
-	int * mutate_last_sizes;
+	size_t * mutate_last_sizes;
 };
 typedef struct network_state network_state_t;

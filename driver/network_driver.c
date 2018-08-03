@@ -9,11 +9,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 
-//Windows API
+#ifdef _WIN32
 #include <Shlwapi.h>
 #include <iphlpapi.h>
 #include <process.h>
+#else
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#endif
 
 /**
  * This function creates a network_state_t object based on the given options.
@@ -71,7 +79,9 @@ static network_state_t * setup_options(char * options)
 void * network_create(char * options, instrumentation_t * instrumentation, void * instrumentation_state,
 	mutator_t * mutator, void * mutator_state)
 {
+#ifdef _WIN32
 	WSADATA wsaData;
+#endif
 	network_state_t * state;
 	int i;
 
@@ -79,10 +89,12 @@ void * network_create(char * options, instrumentation_t * instrumentation, void 
 	if (!options || !strlen(options) || (mutator && !mutator_state) || (!mutator && mutator_state)) //or neither
 		return NULL;
 
+#ifdef _WIN32
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData)) {
 		ERROR_MSG("WSAStartup Failed\n");
 		return NULL;
 	}
+#endif
 	
 	state = setup_options(options);
 	if (!state)
@@ -105,8 +117,9 @@ void * network_create(char * options, instrumentation_t * instrumentation, void 
 
 		//Setup the mutate buffers
 		state->mutate_buffers = malloc(sizeof(char *) * state->num_inputs);
-		state->mutate_last_sizes = malloc(sizeof(int) * state->num_inputs);
+		state->mutate_last_sizes = malloc(sizeof(size_t) * state->num_inputs);
 		memset(state->mutate_buffers, 0, sizeof(char *) * state->num_inputs);
+		memset(state->mutate_last_sizes, 0, sizeof(size_t) * state->num_inputs);
 		for (i = 0; i < state->num_inputs; i++)
 		{
 			if(setup_mutate_buffer(state->input_ratio, state->mutate_buffer_lengths[i], &state->mutate_buffers[i],
@@ -115,7 +128,6 @@ void * network_create(char * options, instrumentation_t * instrumentation, void 
 				network_cleanup(state);
 				return NULL;
 			}
-			state->mutate_last_sizes[i] = -1;
 		}
 
 		state->mutator = mutator;
@@ -157,7 +169,11 @@ void network_cleanup(void * driver_state)
  * @param sock - a pointer to a SOCKET used to return the created socket
  * @return - non-zero on error, zero on success
  */
+#ifdef _WIN32
 static int connect_to_target(network_state_t * state, SOCKET * sock)
+#else
+static int connect_to_target(network_state_t * state, int * sock)
+#endif
 {
 	struct sockaddr_in addr;
 
@@ -165,7 +181,11 @@ static int connect_to_target(network_state_t * state, SOCKET * sock)
 		*sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	else
 		*sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+#ifdef _WIN32
 	if (*sock == INVALID_SOCKET)
+#else
+	if (*sock == -1)
+#endif
 		return 1;
 
 	if (!state->target_udp)
@@ -173,8 +193,13 @@ static int connect_to_target(network_state_t * state, SOCKET * sock)
 		addr.sin_family = AF_INET;
 		addr.sin_addr.s_addr = inet_addr(state->target_ip);
 		addr.sin_port = htons(state->target_port);
+#ifdef _WIN32
 		if (connect(*sock, (const struct sockaddr *)&addr, sizeof(addr)) == SOCKET_ERROR) {
 			closesocket(*sock);
+#else
+		if (connect(*sock, (const struct sockaddr *)&addr, sizeof(addr)) == -1) {
+			close(*sock);
+#endif
 			return 1;
 		}
 	}
@@ -189,7 +214,11 @@ static int connect_to_target(network_state_t * state, SOCKET * sock)
  * @param length - the length of the buffer parameter
  * @return - non-zero on error, zero on success
  */
+#ifdef _WIN32
 static int send_tcp_input(SOCKET * sock, char * buffer, size_t length)
+#else
+static int send_tcp_input(int * sock, char * buffer, size_t length)
+#endif
 {
 	int result;
 	size_t total_read = 0;
@@ -215,13 +244,21 @@ static int send_tcp_input(SOCKET * sock, char * buffer, size_t length)
  * @param length - the length of the buffer parameter
  * @return - non-zero on error, zero on success
  */
+#ifdef _WIN32
 static int send_udp_input(network_state_t * state, SOCKET * sock, char * buffer, size_t length)
+#else
+static int send_udp_input(network_state_t * state, int * sock, char * buffer, size_t length)
+#endif
 {
 	struct sockaddr_in addr;
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = inet_addr(state->target_ip);
 	addr.sin_port = htons(state->target_port);
+#ifdef _WIN32
 	if (sendto(*sock, buffer, length, 0, (const struct sockaddr *)&addr, sizeof(addr)) == SOCKET_ERROR)
+#else
+	if (sendto(*sock, buffer, length, 0, (const struct sockaddr *)&addr, sizeof(addr)) == -1)
+#endif
 		return 1;
 	return 0;
 }
@@ -234,6 +271,7 @@ static int send_udp_input(network_state_t * state, SOCKET * sock, char * buffer,
  */
 static int is_port_listening(int port, int udp)
 {
+#ifdef _WIN32
 	MIB_TCPTABLE * tcp_table;
 	MIB_UDPTABLE * udp_table;
 	DWORD i, size = 0;
@@ -276,6 +314,32 @@ static int is_port_listening(int port, int udp)
 		}
 		free(tcp_table);
 	}
+#else
+	char line[250];
+	FILE * tcp_info = fopen("/proc/net/tcp","r");
+	int num, port_from_proc;
+
+	if (tcp_info == NULL)
+		FATAL_MSG("Failed to open /proc/net/tcp");
+
+	// Would it be faster to directly fscanf here, instead of reading output
+	// into a buffer and then scanf'ing that?
+	while(fgets(line, 250, tcp_info))
+	{
+		// skip header line
+        if(!strncmp(line, "  sl", 4) != 0)
+            continue;
+
+		// read in: #: (ip in hex):(port), ignore the rest
+		// throw away the (ip in hex) since we don't need it
+		sscanf(line, "%d: %*[A-Fa-f0-9]:%X", &num, &port_from_proc);
+
+		if (port == port_from_proc)
+			return 1;	
+	}
+
+	fclose(tcp_info);
+#endif
 	return 0;
 }
 
@@ -290,7 +354,12 @@ static int is_port_listening(int port, int udp)
  */
 static int network_run(network_state_t * state, char ** inputs, size_t * lengths, size_t inputs_count)
 {
+
+#ifdef _WIN32
 	SOCKET sock;
+#else
+	int sock;
+#endif
 	size_t i;
 	int listening = 0;
 
@@ -302,7 +371,11 @@ static int network_run(network_state_t * state, char ** inputs, size_t * lengths
 	while (!state->skip_network_check && listening == 0) {
 		listening = is_port_listening(state->target_port, state->target_udp);
 		if(listening == 0)
+#ifdef _WIN32
 			Sleep(5);
+#else
+			usleep(5*1000);
+#endif
 	}
 	if(listening < 0)
 		return FUZZ_ERROR;
@@ -312,15 +385,27 @@ static int network_run(network_state_t * state, char ** inputs, size_t * lengths
 	for (i = 0; i < inputs_count; i++)
 	{
 		if (state->sleeps && state->sleeps[i] != 0)
+#ifdef _WIN32
 			Sleep(state->sleeps[i]);
+#else
+			usleep(1000*state->sleeps[i]);
+#endif
 		if (state->target_udp && send_udp_input(state, &sock, inputs[i], lengths[i])
 			|| (!state->target_udp && send_tcp_input(&sock, inputs[i], lengths[i])))
 		{
+#ifdef _WIN32
 			closesocket(sock);
+#else
+			close(sock);
+#endif
 			return FUZZ_ERROR;
 		}
 	}
+#ifdef _WIN32
 	closesocket(sock);
+#else
+	close(sock);
+#endif
 
 	//Wait for it to be done and return FUZZ_ result
 	return generic_wait_for_process_completion(state->process, state->timeout,
@@ -377,7 +462,7 @@ int network_test_input(void * driver_state, char * input, size_t length)
 int network_test_next_input(void * driver_state)
 {
 	network_state_t * state = (network_state_t *)driver_state;
-	int i;
+	int i, ret;
 	int network_run_result = FUZZ_ERROR;
 
 	if (!state->mutator)
@@ -386,12 +471,13 @@ int network_test_next_input(void * driver_state)
 	memset(state->mutate_last_sizes, 0, sizeof(int) * state->num_inputs);
 	for (i = 0; i < state->num_inputs; i++)
 	{
-		state->mutate_last_sizes[i] = state->mutator->mutate_extended(state->mutator_state,
+		ret = state->mutator->mutate_extended(state->mutator_state,
 			state->mutate_buffers[i], state->mutate_buffer_lengths[i], MUTATE_MULTIPLE_INPUTS | i);
-		if (state->mutate_last_sizes[i] < 0)
+		if (ret < 0)
 			return FUZZ_ERROR;
-		else if (state->mutate_last_sizes[i] == 0)
+		else if (ret == 0)
 			return -2;
+		state->mutate_last_sizes[i] = (size_t)ret;
 	}
 
 	network_run_result = network_run(state, state->mutate_buffers, state->mutate_last_sizes, state->num_inputs);
@@ -417,7 +503,9 @@ char * network_get_last_input(void * driver_state, int * length)
 		return NULL;
 	for (i = 0; i < state->num_inputs; i++)
 	{
-		if (state->mutate_last_sizes[i] <= 0)
+		// If network_test_next_input has not been called or failed to mutate the
+		// input, there could be no input to return
+		if (state->mutate_last_sizes[i] == 0)
 			return NULL;
 	}
 	return encode_mem_array(state->mutate_buffers, state->mutate_last_sizes, state->num_inputs, length);
