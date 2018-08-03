@@ -1,4 +1,4 @@
-#include "network_driver.h"
+#include "network_server_driver.h"
 
 #include <utils.h>
 #include <jansson_helper.h>
@@ -24,42 +24,42 @@
 #endif
 
 /**
- * This function creates a network_state_t object based on the given options.
- * @param options - A JSON string of the options to set in the new network_state_t. See the
+ * This function creates a network_server_state_t object based on the given options.
+ * @param options - A JSON string of the options to set in the new network_server_state_t. See the
  * help function for more information on the specific options available.
- * @return - the network_state_t generated from the options in the JSON options string, or NULL on failure
+ * @return - the network_server_state_t generated from the options in the JSON options string, or NULL on failure
  */
-static network_state_t * setup_options(char * options)
+static network_server_state_t * setup_options(char * options)
 {
-	network_state_t * state;
+	network_server_state_t * state;
 	size_t cmd_length;
 
-	state = (network_state_t *)malloc(sizeof(network_state_t));
+	state = (network_server_state_t *)malloc(sizeof(network_server_state_t));
 	if (!state)
 		return NULL;
-	memset(state, 0, sizeof(network_state_t));
+	memset(state, 0, sizeof(network_server_state_t));
 
 	//Setup defaults
 	state->timeout = 2;
 	state->input_ratio = 2.0;
 
 	//Parse the options
-	PARSE_OPTION_STRING(state, options, path, "path", network_cleanup);
-	PARSE_OPTION_STRING(state, options, arguments, "arguments", network_cleanup);
-	PARSE_OPTION_INT(state, options, timeout, "timeout", network_cleanup);
-	PARSE_OPTION_INT(state, options, target_port, "port", network_cleanup);
-	PARSE_OPTION_STRING(state, options, target_ip, "ip", network_cleanup);
-	PARSE_OPTION_INT(state, options, target_udp, "udp", network_cleanup);
-	PARSE_OPTION_INT(state, options, skip_network_check, "skip_network_check", network_cleanup);
-	PARSE_OPTION_DOUBLE(state, options, input_ratio, "ratio", network_cleanup);
-	PARSE_OPTION_INT_ARRAY(state, options, sleeps, sleeps_count, "sleeps", network_cleanup);
+	PARSE_OPTION_STRING(state, options, path, "path", network_server_cleanup);
+	PARSE_OPTION_STRING(state, options, arguments, "arguments", network_server_cleanup);
+	PARSE_OPTION_INT(state, options, timeout, "timeout", network_server_cleanup);
+	PARSE_OPTION_INT(state, options, target_port, "port", network_server_cleanup);
+	PARSE_OPTION_STRING(state, options, target_ip, "ip", network_server_cleanup);
+	PARSE_OPTION_INT(state, options, target_udp, "udp", network_server_cleanup);
+	PARSE_OPTION_INT(state, options, skip_network_check, "skip_network_check", network_server_cleanup);
+	PARSE_OPTION_DOUBLE(state, options, input_ratio, "ratio", network_server_cleanup);
+	PARSE_OPTION_INT_ARRAY(state, options, sleeps, sleeps_count, "sleeps", network_server_cleanup);
 
 	cmd_length = (state->path ? strlen(state->path) : 0) + (state->arguments ? strlen(state->arguments) : 0) + 2;
 	state->cmd_line = (char *)malloc(cmd_length);
 
 	if (!state->path || !state->cmd_line || !file_exists(state->path) || !state->target_ip || !state->target_port || state->input_ratio <= 0)
 	{
-		network_cleanup(state);
+		network_server_cleanup(state);
 		return NULL;
 	}
 
@@ -76,13 +76,13 @@ static network_state_t * setup_options(char * options)
  * @param instrumentation_state - a pointer to the instrumentation state for the passed in instrumentation
  * @return - a driver specific state object on success or NULL on failure
  */
-void * network_create(char * options, instrumentation_t * instrumentation, void * instrumentation_state,
+void * network_server_create(char * options, instrumentation_t * instrumentation, void * instrumentation_state,
 	mutator_t * mutator, void * mutator_state)
 {
 #ifdef _WIN32
 	WSADATA wsaData;
 #endif
-	network_state_t * state;
+	network_server_state_t * state;
 	int i;
 
 	//This driver requires at least the path to the program to run. Make sure we either have both a mutator and state
@@ -105,13 +105,13 @@ void * network_create(char * options, instrumentation_t * instrumentation, void 
 		mutator->get_input_info(mutator_state, &state->num_inputs, &state->mutate_buffer_lengths);
 		if (state->sleeps && state->num_inputs != state->sleeps_count)
 		{
-			network_cleanup(state);
+			network_server_cleanup(state);
 			return NULL;
 		}
 
 		state->mutate_buffers = malloc(sizeof(char *) * state->num_inputs);
 		if (!state->mutate_buffers) {
-			network_cleanup(state);
+			network_server_cleanup(state);
 			return NULL;
 		}
 
@@ -125,7 +125,7 @@ void * network_create(char * options, instrumentation_t * instrumentation, void 
 			if(setup_mutate_buffer(state->input_ratio, state->mutate_buffer_lengths[i], &state->mutate_buffers[i],
 				&state->mutate_buffer_lengths[i]))
 			{
-				network_cleanup(state);
+				network_server_cleanup(state);
 				return NULL;
 			}
 		}
@@ -141,12 +141,12 @@ void * network_create(char * options, instrumentation_t * instrumentation, void 
 
 /**
  * This function cleans up all resources with the passed in driver state.
- * @param driver_state - a driver specific state object previously created by the network_create function
+ * @param driver_state - a driver specific state object previously created by the network_server_create function
  * This state object should not be referenced after this function returns.
  */
-void network_cleanup(void * driver_state)
+void network_server_cleanup(void * driver_state)
 {
-	network_state_t * state = (network_state_t *)driver_state;
+	network_server_state_t * state = (network_server_state_t *)driver_state;
 	int i;
 
 	for(i = 0; state->mutate_buffers && i < state->num_inputs; i++)
@@ -165,14 +165,14 @@ void network_cleanup(void * driver_state)
 
 /**
  * This function creates a socket and (when using TCP) connects it to the fuzzed program.
- * @param state - the network_state_t object that represents the current state of the driver
+ * @param state - the network_server_state_t object that represents the current state of the driver
  * @param sock - a pointer to a SOCKET used to return the created socket
  * @return - non-zero on error, zero on success
  */
 #ifdef _WIN32
-static int connect_to_target(network_state_t * state, SOCKET * sock)
+static int connect_to_target(network_server_state_t * state, SOCKET * sock)
 #else
-static int connect_to_target(network_state_t * state, int * sock)
+static int connect_to_target(network_server_state_t * state, int * sock)
 #endif
 {
 	struct sockaddr_in addr;
@@ -238,16 +238,16 @@ static int send_tcp_input(int * sock, char * buffer, size_t length)
 
 /**
  * This function sends the provided buffer on the UDP socket
- * @param state - the network_state_t object that represents the current state of the driver
+ * @param state - the network_server_state_t object that represents the current state of the driver
  * @param sock - a pointer to a UDP SOCKET to send the buffer on
  * @param buffer - the buffer to send
  * @param length - the length of the buffer parameter
  * @return - non-zero on error, zero on success
  */
 #ifdef _WIN32
-static int send_udp_input(network_state_t * state, SOCKET * sock, char * buffer, size_t length)
+static int send_udp_input(network_server_state_t * state, SOCKET * sock, char * buffer, size_t length)
 #else
-static int send_udp_input(network_state_t * state, int * sock, char * buffer, size_t length)
+static int send_udp_input(network_server_state_t * state, int * sock, char * buffer, size_t length)
 #endif
 {
 	struct sockaddr_in addr;
@@ -346,13 +346,13 @@ static int is_port_listening(int port, int udp)
 /**
  * This function will run the fuzzed program and test it with the given inputs. This function
  * blocks until the program has finished processing the input.
- * @param state - the network_state_t object that represents the current state of the driver
+ * @param state - the network_server_state_t object that represents the current state of the driver
  * @param inputs - an array of inputs to send to the program
  * @param lengths - an array of lengths for the buffers in the inputs parameter
  * @param inputs_count - the number of buffers in the inputs parameter
  * @return - FUZZ_ result on success or FUZZ_ERROR on failure
  */
-static int network_run(network_state_t * state, char ** inputs, size_t * lengths, size_t inputs_count)
+static int network_server_run(network_server_state_t * state, char ** inputs, size_t * lengths, size_t inputs_count)
 {
 
 #ifdef _WIN32
@@ -412,7 +412,7 @@ static int network_run(network_state_t * state, char ** inputs, size_t * lengths
 		state->instrumentation, state->instrumentation_state);
 }
 
-static void network_test_input_cleanup(char ** inputs, size_t inputs_count, size_t * input_lengths)
+static void network_server_test_input_cleanup(char ** inputs, size_t inputs_count, size_t * input_lengths)
 {
 	for (size_t i = 0; i < inputs_count; i++)
 		free(inputs[i]);
@@ -423,47 +423,47 @@ static void network_test_input_cleanup(char ** inputs, size_t inputs_count, size
 /**
  * This function will run the fuzzed program and test it with the given input. This function
  * blocks until the program has finished processing the input.
- * @param driver_state - a driver specific structure previously created by the network_create function
+ * @param driver_state - a driver specific structure previously created by the network_server_create function
  * @param input - the input that should be tested
  * @param length - the length of the input parameter
  * @return - FUZZ_ result on success or FUZZ_ERROR on failure
  */
-int network_test_input(void * driver_state, char * input, size_t length)
+int network_server_test_input(void * driver_state, char * input, size_t length)
 {
-	network_state_t * state = (network_state_t *)driver_state;
+	network_server_state_t * state = (network_server_state_t *)driver_state;
 	char ** inputs;
 	size_t * input_lengths;
 	size_t inputs_count;
-	int network_run_result = FUZZ_ERROR;
+	int network_server_run_result = FUZZ_ERROR;
 
 	if (decode_mem_array(input, &inputs, &input_lengths, &inputs_count))
 		return FUZZ_ERROR;
 	if (inputs_count)
 	{
-		network_run_result = network_run(state, inputs, input_lengths, inputs_count);
-		if (network_run_result == FUZZ_ERROR)
+		network_server_run_result = network_server_run(state, inputs, input_lengths, inputs_count);
+		if (network_server_run_result == FUZZ_ERROR)
 		{
-			network_test_input_cleanup(inputs, inputs_count, input_lengths);
+			network_server_test_input_cleanup(inputs, inputs_count, input_lengths);
 			return FUZZ_ERROR;
 		}
 	}
-	network_test_input_cleanup(inputs, inputs_count, input_lengths);
+	network_server_test_input_cleanup(inputs, inputs_count, input_lengths);
 
-	return network_run_result;
+	return network_server_run_result;
 }
 
 
 /**
  * This function will run the fuzzed program with the output of the mutator given during driver
  * creation.  This function blocks until the program has finished processing the input.
- * @param driver_state - a driver specific structure previously created by the network_create function
+ * @param driver_state - a driver specific structure previously created by the network_server_create function
  * @return - FUZZ_ result on success, FUZZ_ERROR on error, -2 if the mutator has finished generating inputs
  */
-int network_test_next_input(void * driver_state)
+int network_server_test_next_input(void * driver_state)
 {
-	network_state_t * state = (network_state_t *)driver_state;
+	network_server_state_t * state = (network_server_state_t *)driver_state;
 	int i, ret;
-	int network_run_result = FUZZ_ERROR;
+	int network_server_run_result = FUZZ_ERROR;
 
 	if (!state->mutator)
 		return FUZZ_ERROR;
@@ -480,30 +480,30 @@ int network_test_next_input(void * driver_state)
 		state->mutate_last_sizes[i] = (size_t)ret;
 	}
 
-	network_run_result = network_run(state, state->mutate_buffers, state->mutate_last_sizes, state->num_inputs);
+	network_server_run_result = network_server_run(state, state->mutate_buffers, state->mutate_last_sizes, state->num_inputs);
 
-	return network_run_result;
+	return network_server_run_result;
 }
 
 /**
  * When this driver is using a mutator given to it during driver creation, this function retrieves
- * the last input that was tested with the network_test_next_input function.
- * @param driver_state - a driver specific structure previously created by the network_create function
+ * the last input that was tested with the network_server_test_next_input function.
+ * @param driver_state - a driver specific structure previously created by the network_server_create function
  * @param length - a pointer to an integer used to return the length of the input that was last tested.
  * @return - NULL on error or if the driver doesn't have a mutator, or a buffer containing the last input
- * that was tested by the driver with the network_test_next_input function.  This buffer should be freed
+ * that was tested by the driver with the network_server_test_next_input function.  This buffer should be freed
  * by the caller.
  */
-char * network_get_last_input(void * driver_state, int * length)
+char * network_server_get_last_input(void * driver_state, int * length)
 {
-	network_state_t * state = (network_state_t *)driver_state;
+	network_server_state_t * state = (network_server_state_t *)driver_state;
 	int i;
 
 	if (!state->mutate_buffers)
 		return NULL;
 	for (i = 0; i < state->num_inputs; i++)
 	{
-		// If network_test_next_input has not been called or failed to mutate the
+		// If network_server_test_next_input has not been called or failed to mutate the
 		// input, there could be no input to return
 		if (state->mutate_last_sizes[i] == 0)
 			return NULL;
@@ -513,14 +513,14 @@ char * network_get_last_input(void * driver_state, int * length)
 
 /**
  * This function returns help text for this driver.  This help text will describe the driver and any options
- * that can be passed to network_create.
+ * that can be passed to network_server_create.
  * @param help_str - A pointer that will be updated to point to the new help string.
  * @return 0 on success and -1 on failure
  */
-int network_help(char ** help_str)
+int network_server_help(char ** help_str)
 {
 	*help_str = strdup(
-"network - Sends mutated input over the network to the target process\n"
+"network_server - Fuzzes server-like applications by sending input over the network\n"
 "Required Options:\n"
 "  ip                    The target IP to connect to\n"
 "  path                  The path to the target process\n"

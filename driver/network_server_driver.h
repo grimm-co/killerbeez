@@ -8,15 +8,15 @@
 #include <sys/types.h> // pid_t
 #endif
 
-void * network_create(char * options, instrumentation_t * instrumentation, void * instrumentation_state,
+void * network_server_create(char * options, instrumentation_t * instrumentation, void * instrumentation_state,
 	mutator_t * mutator, void * mutator_state);
-void network_cleanup(void * driver_state);
-int network_test_input(void * driver_state, char * buffer, size_t length);
-int network_test_next_input(void * driver_state);
-char * network_get_last_input(void * driver_state, int * length);
-int network_help(char ** help_str);
+void network_server_cleanup(void * driver_state);
+int network_server_test_input(void * driver_state, char * buffer, size_t length);
+int network_server_test_next_input(void * driver_state);
+char * network_server_get_last_input(void * driver_state, int * length);
+int network_server_help(char ** help_str);
 
-struct network_state
+struct network_server_state
 {
 	//Options
 	char * path;            //The path to the fuzzed executable
@@ -24,7 +24,7 @@ struct network_state
 	int timeout;            //Maximum number of seconds to allow the executable to run
 	char * target_ip;       //The IP address to send the fuzzed data to
 	int target_port;        //The port to send the fuzzed data to
-	int target_udp;         //Is the network driver hitting a udp port (1) or tcp port (0)
+	int target_udp;         //Is the driver hitting a udp port (1) or tcp port (0)
 	int skip_network_check; //Don't wait for the target_port to be listening
 	double input_ratio;     //the ratio of the maximum input size
 	int * sleeps;           //How many milliseconds to sleep between inputs
@@ -57,4 +57,4 @@ struct network_state
 	size_t * mutate_buffer_lengths;
 	size_t * mutate_last_sizes;
 };
-typedef struct network_state network_state_t;
+typedef struct network_server_state network_server_state_t;

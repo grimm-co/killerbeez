@@ -6,7 +6,7 @@ SET(DRIVER_SRC
 	${PROJECT_SOURCE_DIR}/driver_factory.c
 	${PROJECT_SOURCE_DIR}/file_driver.c
 	${PROJECT_SOURCE_DIR}/stdin_driver.c
-	${PROJECT_SOURCE_DIR}/network_driver.c
+	${PROJECT_SOURCE_DIR}/network_server_driver.c
 )
 
 if (WIN32)
