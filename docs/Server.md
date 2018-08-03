@@ -93,7 +93,6 @@
         unzip -j -d skel/windows_x86_64 skel/windows_x86_64/killerbeez-x64.zip \
           '*wrapper_26014_windows_x86_64.exe'
         ```
-        TODO: manually add the wrapper binary to the skel directory
     6. Enable the project
         ```
         bin/start
