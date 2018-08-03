@@ -354,7 +354,8 @@ int network_client_test_input(void * driver_state, char * input, size_t length)
  * This function will run the fuzzed program with the output of the mutator given during driver
  * creation.  This function blocks until the program has finished processing the input.
  * @param driver_state - a driver specific structure previously created by the network_client_create function
- * @return - 0 on success, -1 on error, or -2 if the mutator has finished generating inputs
+ * @return - FUZZ_NONE, FUZZ_HANG, FUZZ_CRASH on success, FUZZ_ERROR on error, or -2 if the mutator has 
+ * finished generating inputs
  */
 int network_client_test_next_input(void * driver_state)
 {
