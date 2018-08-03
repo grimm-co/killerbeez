@@ -67,24 +67,25 @@ def create_app_templates(name, platform):
 
 
 def add_daemons(config_file, name, platform):
-    cmd = 'killerbeez_assimilator.py --app {}_{}'.format(name, platform)
+    app_name = '{}_{}'.format(name, platform)
+    cmd = 'killerbeez_assimilator.py -app {}'.format(app_name)
 
     for node in config_file.daemons:
         if node.cmd == cmd:
-            print('Assimilator daemon for app {}_{} already exists, not adding it'.format(name, platform))
+            print('Assimilator daemon for app {} already exists, not adding it'.format(app_name))
             return
 
     daemon = config_file.daemons.make_node_and_append('daemon')
     daemon.cmd = cmd
-    daemon.pid_file = 'killerbeez_assimilator_{}.pid'.format(name)
-    daemon.lock_file = 'killerbeez_assimilator_{}.lock'.format(name)
-    daemon.output = 'killerbeez_assimilator_{}.log'.format(name)
+    daemon.pid_file = 'killerbeez_assimilator_{}.pid'.format(app_name)
+    daemon.lock_file = 'killerbeez_assimilator_{}.lock'.format(app_name)
+    daemon.output = 'killerbeez_assimilator_{}.log'.format(app_name)
 
     daemon = config_file.daemons.make_node_and_append('daemon')
-    daemon.cmd = 'sample_trivial_validator --app {}_{}'.format(name, platform)
-    daemon.pid_file = 'sample_trivial_validator_{}.pid'.format(name)
-    daemon.lock_file = 'sample_trivial_validator_{}.lock'.format(name)
-    daemon.output = 'sample_trivial_validator_{}.log'.format(name)
+    daemon.cmd = 'sample_trivial_validator --app {}'.format(app_name)
+    daemon.pid_file = 'sample_trivial_validator_{}.pid'.format(app_name)
+    daemon.lock_file = 'sample_trivial_validator_{}.lock'.format(app_name)
+    daemon.output = 'sample_trivial_validator_{}.log'.format(app_name)
 
 def lock_file(filename):
     os.umask(02)
