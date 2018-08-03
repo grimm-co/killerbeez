@@ -9,7 +9,7 @@
     sudo apt update && sudo apt install git m4 pkg-config autoconf libtool \
       libssl-dev libmysqlclient-dev libcurl4-openssl-dev python apache2 \
       mysql-server python-mysqldb haveged php libapache2-mod-php php-mysql \
-      php-xml-parser curl python-requests python-virtualenv
+      php-xml-parser curl python-requests python-virtualenv unzip
 	```
 	* You will be asked to set a password for mysql root user
 2. Get code
@@ -37,11 +37,13 @@
 	```
   * Note: the new user doesn't have sudo access, so continue using your normal
     account for the remaining instructions except when indicated.
-5. MySQL setup
+5. MySQL setup (make sure to select your own password)
   ```
   mysql -u root -p
-  CREATE USER 'killerbeez'@'localhost' IDENTIFIED BY '<password here>';
-  GRANT ALL ON killerbeez.* to 'killerbeez'@'localhost';
+  mysql> CREATE USER 'killerbeez'@'localhost' IDENTIFIED BY '<password here>';
+  mysql> GRANT ALL ON killerbeez.* to 'killerbeez'@'localhost';
+  ```
+  ```
   sudo sh -c 'echo sql_mode="ONLY_FULL_GROUP_BY,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION" >> /etc/mysql/mysql.conf.d/mysqld.cnf'
   sudo systemctl restart mysql
   ```
@@ -126,13 +128,16 @@
     
 ### Client - Windows 10 x64 only for now
 1. Create an account via BOINC webpage (`$BOINC_URL/killerbeez/create_account_form.php`)
-2. Add project (GUI)
+2. GUI instructions to add project:
   1. Go to Project > Join on website
   2. If client not installed, install it
   3. Select "Add project" in GUI
   4. Enter project URL from webpage
   5. Enter email address and password
-3. Add project (command line)
+  6. You will be taken to a webpage where you can enter a username. On the next
+     page, you will be asked about joining a team; you can say that you are not
+     interested.
+3. Command-line instructions to add project:
   1. Go to Project > Join on website
   2. If client not installed, install it (e.g., `apt install boinc-client`)
   3. `boinccmd --lookup_account <project url> <email address> <password>`
@@ -183,9 +188,12 @@ bin/update_versions
 Customize the [boinc_submit.py](../server/boinc_submit.py) script for your
 desired job by changing the constants at the top. The constants are:
 * `AUTHENTICATOR` - This is the account key for the user that will submit the
-  jobs. See the [Client](#client-windows-10-x64-only-for-now) instructions above
-  for how to find this value.
-* `PROJECT` - The URL for the BOINC project (`$BOINC_URL/killerbeez/`)
+  jobs. You can retrieve this value from the
+  `Project > Account > Account keys` page, or see the
+  [Client](#client-windows-10-x64-only-for-now) instructions above
+  for how to find this value via the command line.
+* `PROJECT` - The URL for the BOINC project (`$BOINC_URL/killerbeez/`). The URL
+  **must** end in a `/`.
 * `APP` - The name of the target/platform to fuzz (e.g. `wmp_windows_x86_64`)
 * `COMMAND_LINE` - The command-line arguments to be passed to `fuzzer.exe`
 * `SEED` - A string to be used as the contents of the seed file
