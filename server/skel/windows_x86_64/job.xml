@@ -14,5 +14,6 @@
     <zip_output>
       <zipfilename>results.zip</zipfilename>
       <filename>killerbeez_result_.*</filename>
+      <filename>README.txt</filename>
     </zip_output>
 </job_desc>
