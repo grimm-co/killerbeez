@@ -204,10 +204,7 @@ then
         -n 10 \
         -l '{"level":0}' \
         -sf $LINUX_BASE_PATH'/killerbeez/corpus/network/close.txt' \
-        -d '{"timeout":20,
-            "path":"'$LINUX_BUILD_PATH'corpus/client-linux",
-            "ip":"127.0.0.1",
-            "port":4444}'
+        -d '{"timeout":20,"path":"'$LINUX_BUILD_PATH'corpus/client-linux","ip":"127.0.0.1","port":4444}'
 
     fi
 fi
