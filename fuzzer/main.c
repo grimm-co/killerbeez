@@ -34,24 +34,34 @@
 void usage(char * program_name, char * mutator_directory)
 {
 	printf(
-		"Usage: %s driver_name instrumentation_name mutator_name [options]\n"
-		"\n"
-		"Options:\n"
-		"\t -d driver_options                 Set the options for the driver\n"
-		"\t -i instrumentation_options        Set the options for the instrumentation\n"
-		"\t -isd instrumentation_state_file   Set the file containing that the instrumentation state should dump to\n"
-		"\t -isf instrumentation_state_file   Set the file containing that the instrumentation state should load from\n"
-		"\t -l logging_options                Set the options for logging\n"
-		"\t -n num_iterations                 Limit the number of iterations to run [infinite]\n"
-		"\t -m mutator_options                Set the options for the mutator\n"
-		"\t -md mutator_directory             The directory to look for mutator DLLs in (must be specified to view help for specific mutators)\n"
-		"\t -ms mutator_state                 Set the state that the mutator should load\n"
-		"\t -msd mutator_state_file           Set the file containing that the mutator state should dump to\n"
-		"\t -msf mutator_state_file           Set the file containing that the mutator state should load from\n"
-		"\t -o output_directory               The directory to write files which cause a crash or hang\n"
-		"\t -sf seed_file                     The seed file to use\n"
-		"\n\n"
-		"\n -h <logging, driver, instrumentation, mutators> for more help.\n\n",
+"\n"
+"Usage: %s\n"
+"         driver_name instrumentation_name mutator_name [options]\n"
+"\n"
+"Options:\n"
+"  -d driver_options                 Set the options for the driver\n"
+"  -i instrumentation_options        Set the options for the instrumentation\n"
+"  -isd instrumentation_state_file   Set the file containing that the\n"
+"                                      instrumentation state should dump to\n"
+"  -isf instrumentation_state_file   Set the file containing that the\n"
+"                                      instrumentation state should load from\n"
+"  -l logging_options                Set the options for logging\n"
+"  -n num_iterations                 Limit the number of iterations to run\n"
+"                                      (optional, infinite by default)\n"
+"  -m mutator_options                Set the options for the mutator\n"
+"  -md mutator_directory             The directory to look for mutator DLLs in\n"
+"                                      (must be specified to view help for\n"
+"                                      specific mutators)\n"
+"  -ms mutator_state                 Set the state that the mutator should load\n"
+"  -msd mutator_state_file           Set the file containing that the mutator\n"
+"                                      state should dump to\n"
+"  -msf mutator_state_file           Set the file containing that the mutator\n"
+"                                      state should load from\n"
+"  -o output_directory               The directory to write files which cause a\n"
+"                                      crash or hang\n"
+"  -sf seed_file                     The seed file to use\n"
+"\n\n"
+"\n -h <l[ogging], d[river], i[nstrumentation], m[utators]> for more help.\n\n",
 		program_name
 	);
 
@@ -167,16 +177,16 @@ int main(int argc, char ** argv)
 	if ( argc > 2 && !strcmp("-h", argv[1]) ) 
 	{
 		puts("");
-		if (!strcmp("logging", argv[2])) {
+		if (!strcmp("logging", argv[2]) || !strcmp("l", argv[2])) {
 			PRINT_HELP(logging_help());
-		} else if (!strcmp("driver", argv[2])) {
+		} else if (!strcmp("driver", argv[2]) || !strcmp("d", argv[2])) {
 			PRINT_HELP(driver_help());
-		} else if (!strcmp("instrumentation", argv[2])) {
+		} else if (!strcmp("instrumentation", argv[2]) || !strcmp("i", argv[2])) {
 			PRINT_HELP(instrumentation_help());
-		} else if (!strcmp("mutators", argv[2])) {
+		} else if (!strcmp("mutators", argv[2]) || !strcmp("m", argv[2])) {
 			PRINT_HELP(mutator_help(mutator_directory));
 		} else {
-			printf("Unknown help option \"%s\". Expected <logging, driver, instrumentation, mutators>.\n\n",argv[2]);
+			printf("Unknown help option \"%s\". Expected <l[ogging], d[river], i[nstrumentation], m[utators]>.\n\n",argv[2]);
 		}
 		
 		exit(1);
