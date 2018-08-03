@@ -15,7 +15,7 @@ WINDOWS_CYGWIN_BASE_PATH="/cygdrive/c/killerbeez/"
 WINDOWS_BUILD_PATH=$WINDOWS_CYGWIN_BASE_PATH"build/X64/Debug/killerbeez"
 
 LINUX_BASE_PATH="$HOME/killerbeez/"
-LINUX_BUILD_PATH="$LINUX_BASE_PATH/build/killerbeez"
+LINUX_BUILD_PATH="$LINUX_BASE_PATH/build/killerbeez/"
 
 FUZZER_WITH_GDB="gdb -q -ex run -ex quit --args ./fuzzer"
 
@@ -139,7 +139,7 @@ then
 		-n 9 \
 		-sf $HOME'/killerbeez/killerbeez/corpus/test/inputs/close.txt' \
 		\
-		-d '{"timeout":20, "path":"'$LINUX_BASE_PATH'/killerbeez/corpus/test/test-linux", "arguments":"@@"}' \
+		-d '{"timeout":20, "path":"'$LINUX_BUILD_PATH'/corpus/test-linux", "arguments":"@@"}' \
 		\
 		-l '{"level":0}' \
 		-m '{"num_bits":1}'
@@ -154,7 +154,7 @@ then
 		-n 3 \
 		-l '{"level":0}' \
 		-sf $HOME'/killerbeez/killerbeez/corpus/test/inputs/input.txt' \
-		-d '{"timeout":2, "path":"'$LINUX_BASE_PATH'/killerbeez/corpus/hang/hang-linux", "arguments":"@@"}'
+		-d '{"timeout":2, "path":"'$LINUX_BUILD_PATH'corpus/hang-linux", "arguments":"@@"}'
 	fi
 
 	if [ $KILLERBEEZ_TEST = "radamsa" ]
@@ -166,7 +166,7 @@ then
 		-n 3 \
 		-l '{"level":0}' \
 		-sf $HOME'/killerbeez/killerbeez/corpus/test/inputs/input.txt' \
-		-d '{"timeout":20, "path":"'$LINUX_BASE_PATH'/killerbeez/killerbeez/corpus/test/test-linux", "arguments":"@@"}'
+		-d '{"timeout":20, "path":"'$LINUX_BUILD_PATH'corpus/test-linux", "arguments":"@@"}'
 	fi
 
 	if [ $KILLERBEEZ_TEST = "stdin" ]
@@ -177,8 +177,8 @@ then
 		stdin return_code bit_flip \
 		-n 9 \
 		-l '{"level":0}' \
-		-sf $LINUX_BASE_PATH'/killerbeez/killerbeez/corpus/test/inputs/close.txt' \
-		-d '{"timeout":20, "path":"'$LINUX_BASE_PATH'/killerbeez/killerbeez/corpus/test/test-linux"}'
+		-sf $LINUX_BASE_PATH'/killerbeez/corpus/test/inputs/close.txt' \
+		-d '{"timeout":20, "path":"'$LINUX_BUILD_PATH'corpus/test-linux"}'
 	fi
 
 	# Tests a single packet via the network driver. If you're sending multiple
@@ -192,7 +192,7 @@ then
 		-n 10 \
 		-l '{"level":0}' \
 		-sf $LINUX_BASE_PATH'/killerbeez/corpus/network/close.txt' \
-		-d '{"timeout":20,"path":"'$LINUX_BASE_PATH'/killerbeez/corpus/network/server/server-linux","ip":"127.0.0.1","port":4444}'
+		-d '{"timeout":20,"path":"'$LINUX_BUILD_PATH'/corpus/server-linux","ip":"127.0.0.1","port":4444}'
 	fi
 fi
 
