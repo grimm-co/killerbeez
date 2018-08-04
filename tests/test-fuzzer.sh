@@ -89,14 +89,14 @@ then
 			 "arguments":"@@"}'
 	fi
 
-	# Tests a single packet via the network driver. If you're sending multiple
+	# Tests a single packet via the server driver. If you're sending multiple
 	# packets, consider the manager mutator instead.
-	if [ $KILLERBEEZ_TEST = "network" ]
+	if [ $KILLERBEEZ_TEST = "network_server" ]
 	then
 		cd $WINDOWS_BUILD_PATH
 
 		./fuzzer \
-		network debug bit_flip \
+		network_server debug bit_flip \
 		-n 10 \
 		-l '{"level":0}' \
 		-sf $WINDOWS_BASE_PATH'\corpus\network\close.txt' \
@@ -181,14 +181,14 @@ then
 		-d '{"timeout":20, "path":"'$LINUX_BUILD_PATH'corpus/test-linux"}'
 	fi
 
-	# Tests a single packet via the network driver. If you're sending multiple
-	# packets, consider the manager mutator instead.
-	if [ $KILLERBEEZ_TEST = "network" ]
+	# Tests a single packet via the server driver. If you're sending
+	# multiple packets, consider the manager mutator instead.
+	if [ $KILLERBEEZ_TEST = "network_server" ]
 	then
 		cd $LINUX_BUILD_PATH
 
 		$FUZZER_WITH_GDB \
-		network return_code bit_flip \
+		network_server return_code bit_flip \
 		-n 10 \
 		-l '{"level":0}' \
 		-sf $LINUX_BASE_PATH'/killerbeez/corpus/network/close.txt' \
