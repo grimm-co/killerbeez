@@ -585,6 +585,7 @@ static BOOL connect_to_pipe(HANDLE pipe, char * pipe_name, DWORD timeout)
 
 	if (!success) {
 		ERROR_MSG("Did not receive connection from DynamoRIO child process on pipe %s, GLE=%d.", pipe_name, GetLastError());
+		ERROR_MSG("Try increasing the instrumentation timeout option (currently set to %lu).", timeout);
 	}
 
 	CloseHandle(overlap.hEvent);
@@ -1613,20 +1614,30 @@ instrumentation_edges_t * dynamorio_get_edges(void * instrumentation_state, int 
 int dynamorio_help(char ** help_str)
 {
 	*help_str = strdup(
-		"dynamorio - DynamoRIO instrumentation (based heavily on winafl)\n"
-		"Options:\n"
-		"\tdynamorio_dir         Set the directory with DynamoRIO binaries in it\n"
-		"\twinafl_dir            Set the directory with winafl.dll in it\n"
-		"\ttarget_path           The path to the target program to fuzz\n"
-		"\tdump_map_dir          Set the directory to dump the instrumentation bitmap to, for debugging purposes\n"
-		"\tignore_bytes_dir      Set the directory to load ignore bit files from when per_module_coverage is set (of the form $ignore_bits_dir\\$dll_name.dll.dat).\n"
-		"\tignore_bytes_file     Set the file to load ignore bit files from when per_module_coverage is not set.\n"
-		"\ttimeout               The number of milliseconds to wait when communicating with the instrumentation in the target process\n"
-		"\tclient_params         Parameters to pass to the winafl.dll DynamoRIO tool (Do not specify per_module_coverage, fuzz_iterations, or coverage_modules here)\n"
-		"\tfuzz_iterations       Maximum number of iterations for the target function to run before restarting the target process\n"
-		"\tcoverage_modules      An array of modules that should be instrumented to record coverage information\n"
-		"\tper_module_coverage   Whether coverage should be tracked in one bitmap (0), or in a separate bitmap for each module (1)\n"
-		"\n"
+"dynamorio - DynamoRIO instrumentation (based heavily on winafl)\n"
+"Options:\n"
+"  dynamorio_dir         Set the directory with DynamoRIO binaries in it\n"
+"  winafl_dir            Set the directory with winafl.dll in it\n"
+"  target_path           The path to the target program to fuzz\n"
+"  dump_map_dir          Set the directory to dump the instrumentation bitmap\n"
+"                          to, for debugging purposes\n"
+"  ignore_bytes_dir      Set the directory to load ignore bit files from when\n"
+"                          per_module_coverage is set (of the form\n"
+"                          $ignore_bits_dir\\$dll_name.dll.dat).\n"
+"  ignore_bytes_file     Set the file to load ignore bit files from when\n"
+"                          per_module_coverage is not set.\n"
+"  timeout               The number of milliseconds to wait when communicating\n"
+"                          with the instrumentation in the target process\n"
+"  client_params         Parameters to pass to the winafl.dll DynamoRIO tool\n"
+"                          (Do not specify per_module_coverage,\n"
+"                          fuzz_iterations, or coverage_modules here)\n"
+"  fuzz_iterations       Maximum number of iterations for the target function\n"
+"                          to run before restarting the target process\n"
+"  coverage_modules      An array of modules that should be instrumented to\n"
+"                          record coverage information\n"
+"  per_module_coverage   Whether coverage should be tracked in one bitmap (0),\n"
+"                          or in a separate bitmap for each module (1)\n"
+"\n"
 	);
 	if (*help_str == NULL)
 		return -1;

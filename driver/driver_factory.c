@@ -2,12 +2,13 @@
 
 #include "file_driver.h"
 #include "stdin_driver.h"
+#include "network_server_driver.h"
 #ifdef _WIN32
 #include "wmp_driver.h"
-#include "network_driver.h"
+#include "network_client_driver.h"
 #endif
 
-#include "instrumentation.h"
+#include <instrumentation.h>
 
 #include <string.h>
 #include <stdlib.h>
@@ -17,8 +18,7 @@
 
 /**
  * This function obtains a driver_t object by calling the driver specified by driver_type's create method.
- * @param driver_type - the name of the driver that should be created.  Currently known driver types are: wmp,
- * stdin, file, and network.
+ * @param driver_type - the name of the driver that should be created.
  * @param options - a JSON string that contains the driver specific string of options
  * @return - a driver_t object of the specified type on success or NULL on failure
  */
@@ -29,8 +29,7 @@ DRIVER_API driver_t * driver_factory(char * driver_type, char * options)
 
 /**
  * This function obtains a driver_t object by calling the driver specified by driver_type's create method.
- * @param driver_type - the name of the driver that should be created.  Currently known driver types are: wmp,
- * stdin, file, and network.
+ * @param driver_type - the name of the driver that should be created.
  * @param options - a JSON string that contains the driver specific string of options
  * @param instrumentation - optionally, a pointer to an instrumentation instance that the driver will use
  * to instrument the requested program.  This instrumentation instance should already be initialized.
@@ -45,8 +44,7 @@ DRIVER_API driver_t * driver_instrumentation_factory(char * driver_type, char * 
 
 /**
  * This function obtains a driver_t object by calling the driver specified by driver_type's create method.
- * @param driver_type - the name of the driver that should be created.  Currently known driver types are: wmp,
- * stdin, file, and network.
+ * @param driver_type - the name of the driver that should be created.
  * @param options - a JSON string that contains the driver specific string of options
  * @param mutator - optionally, a pointer to a mutator instance that the driver will use
  * to obtain input when fuzzing the requested program.  This mutator instance should already be initialized.
@@ -60,8 +58,7 @@ DRIVER_API driver_t * driver_mutator_factory(char * driver_type, char * options,
 
 /**
  * This function obtains a driver_t object by calling the driver specified by driver_type's create method.
- * @param driver_type - the name of the driver that should be created.  Currently known driver types are: wmp,
- * stdin, file, and network.
+ * @param driver_type - the name of the driver that should be created.
  * @param options - a JSON string that contains the driver specific string of options
  * @param instrumentation - optionally, a pointer to an instrumentation instance that the driver will use
  * to instrument the requested program.  This instrumentation instance should already be initialized.
@@ -95,6 +92,16 @@ DRIVER_API driver_t * driver_all_factory(char * driver_type, char * options, ins
 		ret->test_next_input = stdin_test_next_input;
 		ret->get_last_input = stdin_get_last_input;
 	}
+	else if (!strcmp(driver_type, "network_server"))
+	{
+		ret->state = network_server_create(options, instrumentation, instrumentation_state, mutator, mutator_state);
+		if (!ret->state)
+			FACTORY_ERROR();
+		ret->cleanup = network_server_cleanup;
+		ret->test_input = network_server_test_input;
+		ret->test_next_input = network_server_test_next_input;
+		ret->get_last_input = network_server_get_last_input;
+	}
 	#ifdef _WIN32
 	else if (!strcmp(driver_type, "wmp"))
 	{
@@ -106,15 +113,17 @@ DRIVER_API driver_t * driver_all_factory(char * driver_type, char * options, ins
 		ret->test_next_input = wmp_test_next_input;
 		ret->get_last_input = wmp_get_last_input;
 	}
-	else if (!strcmp(driver_type, "network"))
+	else if (!strcmp(driver_type, "network_client"))
 	{
-		ret->state = network_create(options, instrumentation, instrumentation_state, mutator, mutator_state);
-		if (!ret->state)
+		ret->state = network_client_create(options, instrumentation, instrumentation_state, mutator, mutator_state);
+		if (!ret->state) {
+			puts("Factory Error");
 			FACTORY_ERROR();
-		ret->cleanup = network_cleanup;
-		ret->test_input = network_test_input;
-		ret->test_next_input = network_test_next_input;
-		ret->get_last_input = network_get_last_input;
+			}
+		ret->cleanup = network_client_cleanup;
+		ret->test_input = network_client_test_input;
+		ret->test_next_input = network_client_test_next_input;
+		ret->get_last_input = network_client_get_last_input;
 	}
 	#endif
 	else
@@ -140,9 +149,10 @@ DRIVER_API char * driver_help(void)
 	text = strdup("Driver Options:\n\n");
 	APPEND_HELP(text, new_text, file_help);
 	APPEND_HELP(text, new_text, stdin_help);
+	APPEND_HELP(text, new_text, network_server_help);
 	#ifdef _WIN32
-	APPEND_HELP(text, new_text, network_help);
 	APPEND_HELP(text, new_text, wmp_help);
+	APPEND_HELP(text, new_text, network_client_help);
 	#endif
 	return text;
 }

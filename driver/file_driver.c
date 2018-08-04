@@ -240,16 +240,19 @@ char * file_get_last_input(void * driver_state, int * length)
 int file_help(char ** help_str)
 {
 	*help_str = strdup(
-		"file - FILE driver (Writes mutated input to a file, that the target process uses)\n"
-		"Required Options:\n"
-		"\tpath                  The path to the target process\n"
-		"Optional Options:\n"
-		"\targuments             Arguments to pass to the target process, with the target filename specified as @@\n"
-		"\textension             The file extension to give the test file\n"
-		"\tfilename              The filename to give the test file\n"
-		"\tratio                 The ratio of mutation buffer size to input size when given a mutator\n"
-		"\ttimeout               The maximum number of seconds to wait for the target process to finish\n"
-		"\n"
+"file - Writes mutated input to a file, that the target process uses\n"
+"Required Options:\n"
+"  path                  The path to the target process\n"
+"Optional Options:\n"
+"  arguments             Arguments to pass to the target process, with the\n"
+"                          target filename specified as @@\n"
+"  extension             The file extension to give the test file\n"
+"  filename              The filename to give the test file\n"
+"  ratio                 The ratio of mutation buffer size to input size when\n"
+"                          given a mutator\n"
+"  timeout               The maximum number of seconds to wait for the target\n"
+"                          process to finish\n"
+"\n"
 	);
 	if (*help_str == NULL)
 		return -1;

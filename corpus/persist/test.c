@@ -3,7 +3,7 @@
 #include <unistd.h>
 
 #if defined(PERSIST) || defined(DEFERRED_NOHOOK)
-#include "forkserver.h"
+#include <forkserver.h>
 #endif
 
 int test_func()

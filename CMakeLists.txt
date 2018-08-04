@@ -3,6 +3,10 @@ project (killerbeez)
 
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -D_DEBUG")	# for _DEBUG ifdefs in utils.h
 
+if (UNIX)
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wfatal-errors") # quit after first error
+endif (UNIX)
+
 if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE Debug) 	# for gcc -g
 	message("WARNING: Building with debug options; performance will be impacted. Try cmake -DCMAKE_BUILD_TYPE=Release ../killerbeez")
@@ -32,6 +36,7 @@ include_directories (${CMAKE_SOURCE_DIR}/../killerbeez-utils/utils/)
 # compile mutators, which will compile utils
 add_subdirectory(${CMAKE_SOURCE_DIR}/../killerbeez-mutators/ ${CMAKE_BINARY_DIR}/killerbeez-mutators/)
 
+add_subdirectory(corpus) # test programs
 add_subdirectory(fuzzer) # instantiates & coordinates other parts
 add_subdirectory(driver) # starts program, feeds input, determines when program is done
 add_subdirectory(instrumentation) # inserts instructions to program to tell whether an input makes the binary take a new path

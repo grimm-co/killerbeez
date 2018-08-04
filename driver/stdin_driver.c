@@ -182,14 +182,15 @@ char * stdin_get_last_input(void * driver_state, int * length)
 int stdin_help(char ** help_str)
 {
 	*help_str = strdup(
-		"stdin - STDIN driver (Sends mutated input to the STDIN of the target process)\n"
-		"Required Options:\n"
-		"\tpath                  The path to the target process\n"
-		"Optional Options:\n"
-		"\targuments             Arguments to pass to the target process\n"
-		"\tratio                 The ratio of mutation buffer size to input size when given a mutator\n"
-		"\ttimeout               The maximum number of seconds to wait for the target process to finish\n"
-		"\n"
+"stdin - Sends mutated input to the STDIN of the target process\n"
+"Required Options:\n"
+"  path                  The path to the target process\n"
+"Optional Options:\n"
+"  arguments             Arguments to pass to the target process\n"
+"  ratio                 The ratio of mutation buffer size to input size when\n""                          given a mutator\n"
+"  timeout               The maximum number of seconds to wait for the target\n"
+"                          process to finish\n"
+"\n"
 	);
 	if (*help_str == NULL)
 		return -1;

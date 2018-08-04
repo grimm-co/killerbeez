@@ -1,0 +1,26 @@
+In addition to the fuzzer, a few other utilities have been created that help
+with the fuzzing process.  This section describes these helper utilities and
+their role in the \killerbeez{} architecture.
+
+\subsection{Merger}
+The merger combines multiple sets of instrumentation data into one
+instrumentation state.  The resulting instrumentation state will include the
+tracked coverage from all of the input instrumentation states. This allows
+multiple instances of the fuzzer to share instrumentation data, and ignore paths
+that the other fuzzers found.
+
+\subsection{Picker}
+The picker helps the user decide which libraries should be instrumented while
+fuzzing.  This is accomplished by running the target program and recording
+coverage information on each of the loaded libraries. It then analyzes the
+coverage information for each library to determine which libraries the
+coverage information varies based on the input file.  These libraries are most
+likely the ones that process the input file, and thus the most likely targets
+for fuzzing.
+
+\subsection{Tracer}
+The tracer runs a target program in an instrumented state and records the entire
+set of basic block transitions that the process makes.  This process will
+typically be slower than the instrumentations used during fuzzing.  The full
+list of basic block transitions that a target process makes when parsing a given
+input is needed for advanced corpus management techniques.

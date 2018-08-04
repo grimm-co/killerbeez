@@ -1,0 +1,24 @@
+<input_template>
+    <file_info>
+        <number>0</number>
+        <no_delete/>
+    </file_info>
+    <file_info>
+        <number>1</number>
+        <no_delete/>
+    </file_info>
+    <workunit>
+        <file_ref>
+            <file_number>0</file_number>
+            <open_name>seed</open_name>
+            <copy_file/>
+        </file_ref>
+        <file_ref>
+            <file_number>1</file_number>
+            <open_name>cmdline.bat</open_name>
+            <copy_file/>
+        </file_ref>
+        <target_nresults>1</target_nresults>
+        <min_quorum>1</min_quorum>
+    </workunit>
+</input_template>

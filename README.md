@@ -1,4 +1,5 @@
 # Killerbeez
+
 Killerbeez is a fuzzing framework which aims to bring together as many of
 the awesome tools out there as possible into a standard format.  The goal
 is not just to get them to work with this project, but ideally each other
@@ -11,91 +12,15 @@ spaghetti code.
 
 These instructions will get you a copy of Killerbeez up and running on your
 local machine. We provide build instructions for Windows and Linux, and
-probably-outdated binaries for Windows. Currently only the standalone
-client is available, server coming soon!
+binaries for Windows.  For instructions building Killerbeez from source, see the
+[BUILD instructions](docs/BUILD.md). Currently only the standalone client is
+available, server coming soon!
 
-### Standalone Client - Windows
+### Windows
 
-#### Prerequisites
-
-To build Killerbeez on Windows you will need Microsoft Visual Studio 2017,
-Cygwin, Radamsa, and DynamoRIO. Unless otherwise noted, all of the snippets
-below use cmd.exe.
-
-#### Installation
-1. Install [Visual Studio 2017
-Community](https://www.visualstudio.com/downloads/). Version 15.5.7 has
-been tested to work with Killerbeez. Anything later should also work.
-Earlier versions which support cmake will likely work but have not been
-tested and may require slight changes to the build settings.
-  + The following workloads/components will be needed to build Killerbeez.
-They can be added with the Visual Studio Installer.
-      1. Desktop development with C++
-      2. Linux development with C++
-      3. Visual C++ tools for CMake
-
-2. Install [Cygwin](https://cygwin.com/install.html) (only required for
-the radamsa mutator).
-  + Use `C:\cygwin64` as the installation directory.
-  + Make sure the packages `gcc-core`, `make`, `git`, and `wget` are being
-installed.
-  + Add the Cygwin `bin/` (e.g. `C:\cygwin64\bin`) to your PATH environment
-variable.
-  
-3. Create a working directory to store all of the Killerbeez components,
-for example `C:\killerbeez`
-
-```
-mkdir C:\killerbeez
-set WORKDIR=C:/killerbeez
-:: We'll use forward slashes for minimal escaping, Windows doesn't care
-```
-
-4. Build [Radamsa](https://gitlab.com/akihe/radamsa) (optional).
-  + Clone the Radamsa repository into %WORKDIR% from a Cygwin terminal and
-build: 
- 
-        ```
-        cd /cydrive/c/killerbeez
-        git clone https://gitlab.com/akihe/radamsa.git
-        cd radamsa
-        make
-        ```
-
-5. Install [DynamoRIO](http://dynamorio.org/). Use the [latest build
-available](https://console.cloud.google.com/storage/browser/chromium-dynamorio/builds).
-A direct link to the latest build as of 3/14/18 can be found
-[here](https://storage.googleapis.com/chromium-dynamorio/builds/DynamoRIO-Windows-6.2.17295-0xa77808f.zip).
-  + Download the zip file and extract it so that the main directory (the
-one containing bin32/ and bin64/ directories) is `%WORKDIR%/dynamorio`
-  + *Note:* The reason we have to use the latest build is that [commit
-c575ad](https://github.com/DynamoRIO/dynamorio/commit/c575ad16f8943eb6946e8c875eb248d948390537)
-is needed to support binaries built with VS 2017 on Windows 10. This commit
-is not included in the 7.0.0-RC1 release.
-
-6. Download the Killerbeez source code  
-
-    ```
-    cd %WORKDIR%
-    git clone https://github.com/grimm-co/killerbeez.git
-    git clone https://github.com/grimm-co/killerbeez-mutators.git
-    git clone https://github.com/grimm-co/killerbeez-utils.git
-    ```
-
-7. Build Killerbeez
-  + Open the repository `killerbeez` within Visual Studio (File -> Open ->
-CMake..) and build it using (CMake -> Build All).  This should build the
-fuzzer and its dependencies from the other repos.  If successful, you'll
-see an aggregate `build/` directory in the root of your working directory.
-In it, the compiled executables and libraries from all three projects will
-be found in folders named after the architecture (e.g. x64) and build type
-(e.g. Debug). 
-  + The fuzzer.exe executable can be found at
-`%WORKDIR%/build/x64/Debug/killerbeez/fuzzer.exe`
-
-#### Binary Release
+#### Binary Releases
 If you don't want to build the project from source, give the binary release
-a try (though be warned it's likely to be out of date). The latest release
+a try (though be warned they may be out of date). The latest release
 can be found [here](https://github.com/grimm-co/killerbeez/releases) and
 has been tested with the following operating systems:
 
@@ -156,36 +81,18 @@ fuzzer.exe wmp dynamorio nop -n 3 -sf "C:\Users\<user>\Desktop\test.mp4" -d "{\"
 ```
 You may need to modify these parameters to match your environment.  In
 order to speed up fuzzing, it may be useful to enable persistence mode.
-See PersistenceMode.md for instructions.
+See [PersistenceMode.md](docs/PersistenceMode.md) for instructions.
 
-### Standalone Client - Linux
-Clone the killerbeez, killerbeez-mutators and killerbeez-utils repos next
-to each other.
+### Linux
 
-```
-WORKDIR=~/killerbeez
-mkdir $WORKDIR
-cd $WORKDIR
-git clone https://github.com/grimm-co/killerbeez.git
-git clone https://github.com/grimm-co/killerbeez-mutators.git
-git clone https://github.com/grimm-co/killerbeez-utils.git
-```
-
-Make a build directory and compile the code.
-
-```
-mkdir build; cd build; cmake ../killerbeez; make
-```
-
-At this point everything should be compiled and you should be ready to
-change into the right directory and run the fuzzer.  Here's an example of
-running it on a test program from our corpus.
+Once you've built Killerbeez following the [BUILD instructions](docs/BUILD.md#linux),
+you should be ready to change into the right directory and run the fuzzer.
+Here's an example of running it on a test program from our corpus.
 
 ```
 # assuming that you're in the same directory as above ($WORKDIR/build)
 cd ../build/killerbeez/
-./fuzzer file return_code honggfuzz -n 20 \
-	-sf /bin/bash -d '{"path":"../../killerbeez/corpus/test/test-linux","arguments":"@@"}'
+./fuzzer file return_code honggfuzz -n 20 -sf /bin/bash -d '{"path":"corpus/test-linux","arguments":"@@"}'
 ```
 
 If it ran correctly, you should see something like this:
@@ -217,7 +124,9 @@ work.  However, we were using the return_code instrumentation, which does not
 actually track code coverage, so it can not determine the execution path, thus
 it can't determine if a new path was hit.  Instead, it just looks at the return
 code to determine if the process crashed or not.  It's very efficient, however
-this is effectively dumb fuzzing.
+this is effectively dumb fuzzing.  In order to track coverage on Linux,
+Killerbeez has support for Intel Processor Trace.  See [IPT.md](docs/IPT.md) for
+more details.
 
 To see a crash, we can just change our seed file to be close to the file which
 will cause a crash.  It's cheating, but it works well to demonstrate the
@@ -228,9 +137,7 @@ containing ./fuzzer.
 ```
 # assuming that you're in the same directory as the above commands (%WORKDIR%/build)
 echo "ABC@" > test1  # ABC@ is one bit different than ABCD, the crashing input
-./fuzzer file return_code honggfuzz -n 2000 \
-	-sf ./test1 \
-	-d '{"path":"../../killerbeez/corpus/test/test-linux","arguments":"@@"}'
+./fuzzer file return_code honggfuzz -n 2000 -sf ./test1 -d '{"path":"corpus/test-linux","arguments":"@@"}'
 ```
 
 Which should yield output similar to this:
@@ -250,9 +157,9 @@ crash this target and reproduce the crash manually.
 ```
 $ ls output/crashes/
 2B81D0C867F76051FD33D8690AA2AC68  5220E572A6F9DAAF522EF5C5698EAF4C  59F885D0289BE9A83E711C5E7CFCBE4D  ED5D34C74E59D16BD6D5B3683DB655C3
-$ cat output/crashes/2B81D0C867F76051FD33D8690AA2AC68 ; echo
-ABCDJ
-$ ../../killerbeez/corpus/test/test-linux output/crashes/59F885D0289BE9A83E711C5E7CFCBE4D
+$ cat output/crashes/59F885D0289BE9A83E711C5E7CFCBE4D ; echo
+ABCD
+$ corpus/test-linux output/crashes/59F885D0289BE9A83E711C5E7CFCBE4D
 Segmentation fault (core dumped)
 ```
 

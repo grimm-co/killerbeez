@@ -270,13 +270,16 @@ done:
 int wmp_help(char ** help_str)
 {
 	*help_str = strdup(
-		"wmp - Windows Media Player driver (Fuzzes wmplayer.exe)\n"
-		"Optional Arguments:\n"
-		"\textension             The file extension of the input files to wmplayer.exe\n"
-		"\tpath                  The path to the wmplayer.exe\n"
-		"\tratio                 The ratio of mutation buffer size to input size when given a mutator\n"
-		"\ttimeout               The maximum number of seconds to wait for the target process to finish\n"
-		"\n"
+"wmp - Windows Media Player driver (Fuzzes wmplayer.exe)\n"
+"Optional Arguments:\n"
+"  extension             The file extension of the input files to\n"
+"                          wmplayer.exe\n"
+"  path                  The path to the wmplayer.exe\n"
+"  ratio                 The ratio of mutation buffer size to input size\n"
+"                          when given a mutator\n"
+"  timeout               The maximum number of seconds to wait for the\n"
+"                          target process to finish\n"
+"\n"
 	);
 	if (*help_str == NULL)
 		return -1;

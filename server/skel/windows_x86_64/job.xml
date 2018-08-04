@@ -1,0 +1,19 @@
+<job_desc>
+    <task>
+      <application>C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe</application>
+      <command_line>boinc_resolve(unpack_killerbeez.ps1) -from boinc_resolve(killerbeez-x64.zip) -into $PROJECT_DIR</command_line>
+    </task>
+    <task>
+      <application>cmdline.bat</application>
+      <command_line>$PROJECT_DIR\killerbeez-x64\killerbeez\fuzzer.exe</command_line>
+    </task>
+    <task>
+      <application>C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe</application>
+      <command_line>boinc_resolve(flatten_results.ps1)</command_line>
+    </task>
+    <zip_output>
+      <zipfilename>results.zip</zipfilename>
+      <filename>killerbeez_result_.*</filename>
+      <filename>README.txt</filename>
+    </zip_output>
+</job_desc>
