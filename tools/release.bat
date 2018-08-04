@@ -136,6 +136,14 @@ xcopy /s /i dynamorio\ext %distdir%\dynamorio\ext
 xcopy dynamorio\License.txt %distdir%\dynamorio
 xcopy dynamorio\ACKNOWLEDGEMENTS %distdir%\dynamorio
 
+if "%platform%" == "x64" (
+  mkdir %distdir%\server\skel\windows_x86_64
+  xcopy %~dp0wrapper_26014_windows_x86_64.exe %distdir%\server\skel\windows_x86_64
+  xcopy %~dp0COPYING %distdir%\server\skel\windows_x86_64
+  xcopy %~dp0COPYING.LESSER %distdir%\server\skel\windows_x86_64
+  xcopy %~dp0README.md %distdir%\server\skel\windows_x86_64
+)
+
 set releasezip=%CI_PROJECT_DIR%\release\%relname%.zip
 echo Creating %releasezip%
 mkdir "%CI_PROJECT_DIR%\release"

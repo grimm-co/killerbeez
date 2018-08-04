@@ -280,3 +280,6 @@ __pycache__/
 *.aux
 *.pdf
 *.out
+
+# sqlite database files
+*.db

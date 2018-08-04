@@ -1,0 +1,23 @@
+<version>
+    <file>
+        <physical_name>wrapper_26014_windows_x86_64.{app}.exe</physical_name>
+        <main_program/>
+        <is_wrapper/>
+    </file>
+    <file>
+        <physical_name>killerbeez-x64.{app}.zip</physical_name>
+        <logical_name>killerbeez-x64.zip</logical_name>
+    </file>
+    <file>
+        <physical_name>job.{app}.xml</physical_name>
+        <logical_name>job.xml</logical_name>
+    </file>
+    <file>
+        <physical_name>unpack_killerbeez.{app}.ps1</physical_name>
+        <logical_name>unpack_killerbeez.ps1</logical_name>
+    </file>
+    <file>
+        <physical_name>flatten_results.{app}.ps1</physical_name>
+        <logical_name>flatten_results.ps1</logical_name>
+    </file>
+</version>
