@@ -192,45 +192,6 @@ void network_client_cleanup(void * driver_state)
 }
 
 /**
-* This function sends the provided buffer on the already connected TCP socket
-* @param sock - a pointer to a connected TCP SOCKET to send the buffer on
-* @param buffer - the buffer to send
-* @param length - the length of the buffer parameter
-* @return - non-zero on error, zero on success
-*/
-#ifdef _WIN32
-static int send_tcp_input(SOCKET * sock, char * buffer, size_t length)
-#else
-static int send_tcp_input(int * sock, char * buffer, size_t length)
-#endif
-{
-	int result;
-	size_t total_read = 0;
-
-	result = 1;
-	while (total_read < length && result > 0)
-	{
-		result = send(*sock, buffer + total_read, length - total_read, 0);
-		if (result > 0)
-			total_read += result;
-		else if (result < 0) //Error, then break
-			total_read = -1;
-#ifdef _WIN32
-		if (WSAGetLastError() == 10053)
-			//Client closed connection before we wanted...
-			return -2;
-		if (result == SOCKET_ERROR)
-			ERROR_MSG("send() failed with error: %d", WSAGetLastError());
-#else
-		if (result == SOCKET_ERROR)
-			ERROR_MSG("send() failed with error: %d", errno);
-#endif
-	}
-
-	return total_read != length;
-}
-
-/**
  * This function creates a socket and waits for a client to connect.
  * @param state - the network_client_state_t object that represents the current state of the driver
  * @param sock - a pointer to a SOCKET used to return the created socket
@@ -365,8 +326,8 @@ static int network_client_run(network_client_state_t * state, char ** inputs, si
 		{
 			if (sock_ret == -2)
 			{
-				WARNING_MSG("Client terminated connection before all packets were sent, %d of %d packets sent",\
-					i, inputs_count);
+				WARNING_MSG("Client terminated connection before all packets "
+					"were sent, %d of %d packets sent", i, inputs_count);
 				break;
 			}
 			return FUZZ_ERROR;

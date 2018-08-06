@@ -208,35 +208,6 @@ static int connect_to_target(network_server_state_t * state, int * sock)
 }
 
 /**
- * This function sends the provided buffer on the arleady connected TCP socket
- * @param sock - a pointer to a connected TCP SOCKET to send the buffer on
- * @param buffer - the buffer to send
- * @param length - the length of the buffer parameter
- * @return - non-zero on error, zero on success
- */
-#ifdef _WIN32
-static int send_tcp_input(SOCKET * sock, char * buffer, size_t length)
-#else
-static int send_tcp_input(int * sock, char * buffer, size_t length)
-#endif
-{
-	int result;
-	size_t total_read = 0;
-
-	result = 1;
-	while (total_read < length && result > 0)
-	{
-		result = send(*sock, buffer + total_read, length - total_read, 0);
-		if (result > 0)
-			total_read += result;
-		else if (result < 0) //Error, then break
-			total_read = -1;
-	}
-
-	return total_read != length;
-}
-
-/**
  * This function sends the provided buffer on the UDP socket
  * @param state - the network_server_state_t object that represents the current state of the driver
  * @param sock - a pointer to a UDP SOCKET to send the buffer on
