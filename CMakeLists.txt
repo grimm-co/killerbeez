@@ -7,6 +7,10 @@ if (UNIX)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wfatal-errors") # quit after first error
 endif (UNIX)
 
+if (APPLE)
+	set(CMAKE_MACOSX_RPATH 1) # https://github.com/liballeg/allegro5/issues/532#issuecomment-170338164
+endif (APPLE)
+
 if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE Debug) 	# for gcc -g
 	message("WARNING: Building with debug options; performance will be impacted. Try cmake -DCMAKE_BUILD_TYPE=Release ../killerbeez")

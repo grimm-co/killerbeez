@@ -2,7 +2,9 @@
 #ifdef _WIN32
 #include "debug_instrumentation.h"
 #include "dynamorio_instrumentation.h"
-#else
+#elif APPLE
+#include "return_code_instrumentation.h"
+#else // LINUX
 #include "return_code_instrumentation.h"
 #include "linux_ipt_instrumentation.h"
 #endif
@@ -52,7 +54,21 @@ instrumentation_t * instrumentation_factory(char * instrumentation_type)
 		ret->is_process_done = dynamorio_is_process_done;
 		ret->get_fuzz_result = dynamorio_get_fuzz_result;
 	}
-	#else
+	#elif __APPLE__
+	if (!strcmp(instrumentation_type, "return_code"))
+	{
+		ret->create = return_code_create;
+		ret->cleanup = return_code_cleanup;
+		ret->merge = return_code_merge;
+		ret->get_state = return_code_get_state;
+		ret->free_state = return_code_free_state;
+		ret->set_state = return_code_set_state;
+		ret->enable = return_code_enable;
+		ret->is_new_path = return_code_is_new_path;
+		ret->get_fuzz_result = return_code_get_fuzz_result;
+		ret->is_process_done = return_code_is_process_done;
+	}
+	#else // LINUX
 	if (!strcmp(instrumentation_type, "return_code"))
 	{
 		ret->create = return_code_create;
@@ -104,7 +120,9 @@ char * instrumentation_help(void)
 	#ifdef _WIN32
 	APPEND_HELP(text, new_text, debug_help);
 	APPEND_HELP(text, new_text, dynamorio_help);
-	#else
+	#elif __APPLE__
+	APPEND_HELP(text, new_text, return_code_help);
+	#else // LINUX
 	APPEND_HELP(text, new_text, return_code_help);
 	APPEND_HELP(text, new_text, linux_ipt_help);
 	#endif

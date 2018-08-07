@@ -12,7 +12,7 @@ if (WIN32)
 		${PROJECT_SOURCE_DIR}/debug_instrumentation.c
 		${PROJECT_SOURCE_DIR}/dynamorio_instrumentation.c
 	)
-elseif (UNIX)
+elseif (UNIX AND NOT APPLE)
 	set(INSTRUMENTATION_SRC
 		${INSTRUMENTATION_SRC}
 		${PROJECT_SOURCE_DIR}/return_code_instrumentation.c
