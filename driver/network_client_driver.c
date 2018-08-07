@@ -422,8 +422,12 @@ char * network_client_get_last_input(void * driver_state, int * length)
 		return NULL;
 	for (i = 0; i < state->num_inputs; i++)
 	{
-		// If network_test_next_input has not been called or failed to mutate the
+		// If network_client_test_next_input has not been called or failed to mutate the
 		// input, there could be no input to return
+
+		// Assumption: mutate_last_size should never be set to 0 in correct
+		// operation, only if it wasn't proper loaded with the mutate array
+		// sizes.
 		if (state->mutate_last_sizes[i] == 0)
 			return NULL;
 	}
@@ -441,7 +445,7 @@ int network_client_help(char ** help_str)
 	*help_str = strdup(
 "network_client - fuzzes clients by acting as a server\n"
 "Required Options:\n"
-"  path					 The path to the exe"
+"  path                  The path to the exe\n"
 "  arguments             Arguments to pass to the target process\n"
 "Optional Options:\n"
 "  timeout               The maximum number of seconds to wait\n"
@@ -453,7 +457,7 @@ int network_client_help(char ** help_str)
 "  ratio                 The ratio of mutation buffer size to input\n"
 "                          size when given a mutator\n"
 "  sleeps                An array of milliseconds to wait between each\n"
-"         				   input being sent to the target program\n"
+"                          input being sent to the target program\n"
 "\n"
 	);
 

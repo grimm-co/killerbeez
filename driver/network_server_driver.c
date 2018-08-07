@@ -476,6 +476,10 @@ char * network_server_get_last_input(void * driver_state, int * length)
 	{
 		// If network_server_test_next_input has not been called or failed to mutate the
 		// input, there could be no input to return
+
+		// Assumption: mutate_last_size should never be set to 0 in correct
+		// operation, only if it wasn't proper loaded with the mutate array
+		// sizes.
 		if (state->mutate_last_sizes[i] == 0)
 			return NULL;
 	}
