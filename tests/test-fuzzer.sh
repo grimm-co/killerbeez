@@ -207,6 +207,19 @@ then
         -d '{"timeout":20,"path":"'$LINUX_BUILD_PATH'corpus/client-linux","ip":"127.0.0.1","port":4444}'
 
     fi
+
+	if [ $KILLERBEEZ_TEST = "multipart" ]
+	then
+		cd $LINUX_BUILD_PATH
+
+		$FUZZER_WITH_GDB \
+		network_server return_code manager \
+		-n 10 \
+		-l '{"level":0}' \
+		-m '{"mutators":["bit_flip","bit_flip"]}' \
+		-sf $LINUX_BASE_PATH'/killerbeez/corpus/network/multipart.txt' \
+		-d '{"timeout":20,"path":"'$LINUX_BUILD_PATH'/corpus/server-linux","ip":"127.0.0.1","port":4444}'
+	fi
 fi
 
 # successful output should look like:
