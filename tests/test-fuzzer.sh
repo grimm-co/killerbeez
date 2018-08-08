@@ -194,6 +194,19 @@ then
 		-sf $LINUX_BASE_PATH'/killerbeez/corpus/network/close.txt' \
 		-d '{"timeout":20,"path":"'$LINUX_BUILD_PATH'/corpus/server-linux","ip":"127.0.0.1","port":4444}'
 	fi
+
+    if [ $KILLERBEEZ_TEST = "network_client" ]
+    then
+        cd $LINUX_BUILD_PATH
+
+        $FUZZER_WITH_GDB \
+        network_client return_code bit_flip \
+        -n 10 \
+        -l '{"level":0}' \
+        -sf $LINUX_BASE_PATH'/killerbeez/corpus/network/close.txt' \
+        -d '{"timeout":20,"path":"'$LINUX_BUILD_PATH'corpus/client-linux","ip":"127.0.0.1","port":4444}'
+
+    fi
 fi
 
 # successful output should look like:

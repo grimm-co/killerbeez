@@ -3,13 +3,17 @@
 #include "instrumentation.h"
 #include <global_types.h>
 
+#ifndef _WIN32 // Linux
+#include <sys/types.h> // pid_t
+#endif
+
 void * network_client_create(char * options, instrumentation_t * instrumentation, void * instrumentation_state,
 	mutator_t * mutator, void * mutator_state);
 void network_client_cleanup(void * driver_state);
 int network_client_test_input(void * driver_state, char * buffer, size_t length);
 int network_client_test_next_input(void * driver_state);
 char * network_client_get_last_input(void * driver_state, int * length);
-char * network_client_help(void);
+int network_client_help(char ** help_str);
 
 struct network_client_state
 {
@@ -24,7 +28,11 @@ struct network_client_state
 	int sleeps_count;       //The number of items in the sleeps array
 
 	//The handle to the fuzzed process instance
+	#ifdef _WIN32
 	HANDLE process;
+	#else
+	pid_t process;
+	#endif
 
 	//command line of the fuzzed process
 	char * cmd_line;

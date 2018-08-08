@@ -7,13 +7,13 @@ SET(DRIVER_SRC
 	${PROJECT_SOURCE_DIR}/file_driver.c
 	${PROJECT_SOURCE_DIR}/stdin_driver.c
 	${PROJECT_SOURCE_DIR}/network_server_driver.c
+	${PROJECT_SOURCE_DIR}/network_client_driver.c
 )
 
 if (WIN32)
 	set(DRIVER_SRC
 		${DRIVER_SRC}
 		${PROJECT_SOURCE_DIR}/wmp_driver.cpp
-		${PROJECT_SOURCE_DIR}/network_client_driver.c
 	)
 endif(WIN32)
 

@@ -1,6 +1,21 @@
+#ifdef _WIN32
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #include <Winsock2.h>
 #include <Windows.h>
+#else
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <stdlib.h>
+
+#define INVALID_SOCKET -1
+#define SOCKET_ERROR -1
+#endif
 
 #include <stdio.h>
 
@@ -49,8 +64,12 @@ void process_data(char * buffer)
 
 int main(int argc, char ** argv)
 {
+#ifdef _WIN32
 	WSADATA wsaData;
 	SOCKET sock = INVALID_SOCKET;
+#else
+	int sock = INVALID_SOCKET;
+#endif
 	struct sockaddr_in addr;
 	int result, port;
 	char buffer[512];
@@ -67,11 +86,13 @@ int main(int argc, char ** argv)
 		port = atoi(argv[2]);
 	}
 
+#ifdef _WIN32
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData))
 	{
 		printf("WSAStartup Failed\n");
 		return 1;
 	}
+#endif
 
 	sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (sock == INVALID_SOCKET)
@@ -80,7 +101,7 @@ int main(int argc, char ** argv)
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = inet_addr(ip);
 	addr.sin_port = htons(port);
-	if (connect(sock, (SOCKADDR *)&addr, sizeof(addr)) == SOCKET_ERROR)
+	if (connect(sock, (sockaddr *)&addr, sizeof(addr)) == SOCKET_ERROR)
 		return -1;
 	printf("Connected.\n");
 
@@ -90,8 +111,13 @@ int main(int argc, char ** argv)
 
 	process_data(buffer);
 
-	shutdown(sock, SD_BOTH);
-	closesocket(sock);
+#ifdef _WIN32
+			shutdown(sock, SD_BOTH);
+			closesocket(sock);
+#else
+			shutdown(sock, SHUT_RDWR);
+			close(sock);
+#endif
     return 0;
 }
 

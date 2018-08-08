@@ -3,9 +3,9 @@
 #include "file_driver.h"
 #include "stdin_driver.h"
 #include "network_server_driver.h"
+#include "network_client_driver.h"
 #ifdef _WIN32
 #include "wmp_driver.h"
-#include "network_client_driver.h"
 #endif
 
 #include <instrumentation.h>
@@ -102,17 +102,6 @@ DRIVER_API driver_t * driver_all_factory(char * driver_type, char * options, ins
 		ret->test_next_input = network_server_test_next_input;
 		ret->get_last_input = network_server_get_last_input;
 	}
-	#ifdef _WIN32
-	else if (!strcmp(driver_type, "wmp"))
-	{
-		ret->state = wmp_create(options, instrumentation, instrumentation_state, mutator, mutator_state);
-		if (!ret->state)
-			FACTORY_ERROR();
-		ret->cleanup = wmp_cleanup;
-		ret->test_input = wmp_test_input;
-		ret->test_next_input = wmp_test_next_input;
-		ret->get_last_input = wmp_get_last_input;
-	}
 	else if (!strcmp(driver_type, "network_client"))
 	{
 		ret->state = network_client_create(options, instrumentation, instrumentation_state, mutator, mutator_state);
@@ -124,6 +113,17 @@ DRIVER_API driver_t * driver_all_factory(char * driver_type, char * options, ins
 		ret->test_input = network_client_test_input;
 		ret->test_next_input = network_client_test_next_input;
 		ret->get_last_input = network_client_get_last_input;
+	}
+	#ifdef _WIN32
+	else if (!strcmp(driver_type, "wmp"))
+	{
+		ret->state = wmp_create(options, instrumentation, instrumentation_state, mutator, mutator_state);
+		if (!ret->state)
+			FACTORY_ERROR();
+		ret->cleanup = wmp_cleanup;
+		ret->test_input = wmp_test_input;
+		ret->test_next_input = wmp_test_next_input;
+		ret->get_last_input = wmp_get_last_input;
 	}
 	#endif
 	else
@@ -150,9 +150,9 @@ DRIVER_API char * driver_help(void)
 	APPEND_HELP(text, new_text, file_help);
 	APPEND_HELP(text, new_text, stdin_help);
 	APPEND_HELP(text, new_text, network_server_help);
+	APPEND_HELP(text, new_text, network_client_help);
 	#ifdef _WIN32
 	APPEND_HELP(text, new_text, wmp_help);
-	APPEND_HELP(text, new_text, network_client_help);
 	#endif
 	return text;
 }
