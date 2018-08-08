@@ -93,7 +93,7 @@ void * network_client_create(char * options, instrumentation_t * instrumentation
 	WSADATA wsaData;
 #endif
 	network_client_state_t * state;
-	size_t i;
+	int i;
 
 	//Make sure we either have both a mutator and state
 	if (!options || !strlen(options) || (mutator && !mutator_state) || (!mutator && mutator_state))
