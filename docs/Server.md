@@ -257,14 +257,14 @@ released wrapper binary. Our binary release inlcudes a compiled copy of the
 wrapper, as described above, but you can build your own with the following
 steps:
 1. On a Windows machine, install [git](https://git-scm.com/downloads) and
-   [Visual Studio 2013](https://visualstudio.microsoft.com/vs/older-downloads/)
-2. Clone the [BOINC repository](https://github.com/BOINC/boinc)
+   [Visual Studio Community 2013](https://visualstudio.microsoft.com/vs/older-downloads/)
+2. Start Git Bash and clone the [BOINC repository](https://github.com/BOINC/boinc)
 3. Open `win_build\boinc_vs2013.sln` from the cloned repo in Visual Studio 2013
 4. Click the `wrapper` project in the Solution Explorer
 5. Select `x64` from the Platforms drop-down in the toolbar, and `Release`
    from the Configurations drop-down next to it.
 6. From the `BUILD` menu, select `Build wrapper`
 7. The compiled binary should be in
-   `win_build\Build\x64\Release\wraper_26014_windows_x86_64.exe`
+   `win_build\Build\x64\Release\wrapper_26014_windows_x86_64.exe`
 8. Drop this binary into the `/home/boincadm/projects/killerbeez/skel/windows_x86_64`
    directory on your killerbeez server
