@@ -82,17 +82,16 @@ be found in folders named after the architecture (e.g. x64) and build type
   + The fuzzer.exe executable can be found at
 `%WORKDIR%/build/x64/Debug/killerbeez/fuzzer.exe`
 
-## Linux
+## Linux and Mac
 
 ### Prerequisites
 
-To build Killerbeez on Linux you will need a compiler (gcc or clang), make, and
+To build Killerbeez on Linux/Mac you will need a compiler (gcc or clang), make, and
 cmake.
 
 ### Installation
 
-To build Killerbeez on Linux, clone the killerbeez, killerbeez-mutators and
-killerbeez-utils repos next to each other.
+Clone the killerbeez, killerbeez-mutators and killerbeez-utils repos.
 
 ```
 WORKDIR=~/killerbeez
@@ -101,15 +100,12 @@ cd $WORKDIR
 git clone https://github.com/grimm-co/killerbeez.git
 git clone https://github.com/grimm-co/killerbeez-mutators.git
 git clone https://github.com/grimm-co/killerbeez-utils.git
-```
 
-Make a build directory and compile the code.
-
-```
+# Make a build directory and compile the code.
 mkdir build; cd build; cmake ../killerbeez; make
 ```
 
-At this point everything should be compiled.  The fuzzer and other killerbeez
-files will be placed under build/killerbeez and the mutators will be placed
-under build/mutators.
+If everything compiled, the fuzzer and other Killerbeez
+files will be in `build/killerbeez`, and the mutators will be 
+under `build/mutators`.
 
