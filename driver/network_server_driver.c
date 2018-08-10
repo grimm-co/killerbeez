@@ -285,7 +285,58 @@ static int is_port_listening(int port, int udp)
 		}
 		free(tcp_table);
 	}
-#else
+#elif __APPLE__
+	FILE * fp;
+	char line[4096]; // no particular reason on this size
+	int port_from_proc;
+
+	// TODO: Don't open a shell and use sysctl net.inet.tcp.pcblist_n instead.
+	// That sysctl appears to need to happen in a program, because the shell
+	// wrapper doesn't return anything, but it's used it netstat source and
+	// returns plenty of information.
+
+	// Roughly:
+	// char str[] = "net.inet.tcp.pcblist_n";
+	// size_t len;
+	// sysctlbyname(str, 0, &len, 0, 0); // check to get length of data
+    // buf = malloc(len)  // malloc some space for it
+    // sysctlbyname(str, buf, &len, 0, 0);
+
+	// However, I can't figure out what the correct return type of sysctlbyname
+	// is. It appears mostly undocumented. sysctl(3) doesn't contain any
+	// information about what type it returns as. I expect a struct of some
+	// kind, with pointers to tables of addresses. The Github version of
+	// /usr/include/sysctl.h contains a a macro, SYSCTL_PROC[1], that appears
+	// to register new sysctls and contains one possible canditate:
+
+	// SYSCTL_PROC(_net_inet_tcp ... registers tcp_pcblist_n 
+	// it contains get_pcblist_n. maybe **pcblist_n** is the correct struct?
+
+	// In any case, I haven't been able to find documentation on this anywhere.
+
+	// - Ian K.
+
+
+	// [1]: https://github.com/apple/darwin-xnu/blob/master/bsd/sys/sysctl.h#L303
+
+	fp = popen("netstat -an | grep LISTEN | tr -s ' ' | cut -d' ' -f4 | awk -F'.' 'NF>1{print $NF}'", "r");
+	
+	if ( fp == NULL )
+		FATAL_MSG("Failed to run netstat");
+
+	while (fgets(line, sizeof(line), fp) != NULL)
+	{
+		sscanf(line, "%d", &port_from_proc);
+
+		if (port == port_from_proc)
+		{
+			pclose(fp);
+			return 1;
+		}
+	}
+	pclose(fp);
+
+#else // Linux
 	char line[250];
 	FILE * tcp_info = fopen("/proc/net/tcp","r");
 	int num, port_from_proc;
