@@ -207,7 +207,7 @@ then
     then
         cd $LINUX_BUILD_PATH
 
-        $FUZZER_WITH_GDB \
+        $FUZZER \
         network_client return_code bit_flip \
         -n 10 \
         -l '{"level":0}' \

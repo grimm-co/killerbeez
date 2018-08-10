@@ -102,7 +102,6 @@ DRIVER_API driver_t * driver_all_factory(char * driver_type, char * options, ins
 		ret->test_next_input = network_server_test_next_input;
 		ret->get_last_input = network_server_get_last_input;
 	}
-	#ifndef __APPLE__
 	else if (!strcmp(driver_type, "network_client"))
 	{
 		ret->state = network_client_create(options, instrumentation, instrumentation_state, mutator, mutator_state);
@@ -115,6 +114,7 @@ DRIVER_API driver_t * driver_all_factory(char * driver_type, char * options, ins
 		ret->test_next_input = network_client_test_next_input;
 		ret->get_last_input = network_client_get_last_input;
 	}
+	#ifndef __APPLE__
 	#endif // not APPLE
 	#ifdef _WIN32
 	else if (!strcmp(driver_type, "wmp"))
@@ -152,8 +152,8 @@ DRIVER_API char * driver_help(void)
 	APPEND_HELP(text, new_text, file_help);
 	APPEND_HELP(text, new_text, stdin_help);
 	APPEND_HELP(text, new_text, network_server_help);
-	#ifndef __APPLE__
 	APPEND_HELP(text, new_text, network_client_help);
+	#ifndef __APPLE__
 	#endif
 	#ifdef _WIN32
 	APPEND_HELP(text, new_text, wmp_help);

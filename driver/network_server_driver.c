@@ -69,6 +69,34 @@ static network_server_state_t * setup_options(char * options)
 }
 
 /**
+ * This function cleans up all resources with the passed in driver state.
+ * @param driver_state - a driver specific state object previously created by the network_server_create function
+ * This state object should not be referenced after this function returns.
+ */
+void network_server_cleanup(void * driver_state)
+{
+	network_server_state_t * state = (network_server_state_t *)driver_state;
+	int i;
+
+	//Cleanup mutator stuff
+	for(i = 0; state->mutate_buffers && i < state->num_inputs; i++)
+		free(state->mutate_buffers[i]);
+	free(state->mutate_buffers);
+	free(state->mutate_buffer_lengths);
+	free(state->mutate_last_sizes);
+	
+	//Clean up driver specific options
+	free(state->path);
+	free(state->arguments);
+	free(state->cmd_line);
+	free(state->target_ip);
+	free(state->sleeps);
+
+	//Clean up the struct holding it all
+	free(state);
+}
+
+/**
  * This function allocates and initializes a new driver specific state object based on the given options.
  * @param options - a JSON string that contains the driver specific string of options
  * @param instrumentation - a pointer to an instrumentation instance that the driver will use
@@ -83,7 +111,7 @@ void * network_server_create(char * options, instrumentation_t * instrumentation
 	WSADATA wsaData;
 #endif
 	network_server_state_t * state;
-	int i;
+	size_t i;
 
 	//This driver requires at least the path to the program to run. Make sure we either have both a mutator and state
 	if (!options || !strlen(options) || (mutator && !mutator_state) || (!mutator && mutator_state)) //or neither
@@ -137,30 +165,6 @@ void * network_server_create(char * options, instrumentation_t * instrumentation
 	state->instrumentation = instrumentation;
 	state->instrumentation_state = instrumentation_state;
 	return state;
-}
-
-/**
- * This function cleans up all resources with the passed in driver state.
- * @param driver_state - a driver specific state object previously created by the network_server_create function
- * This state object should not be referenced after this function returns.
- */
-void network_server_cleanup(void * driver_state)
-{
-	network_server_state_t * state = (network_server_state_t *)driver_state;
-	int i;
-
-	for(i = 0; state->mutate_buffers && i < state->num_inputs; i++)
-		free(state->mutate_buffers[i]);
-	free(state->mutate_buffers);
-	free(state->mutate_buffer_lengths);
-	free(state->mutate_last_sizes);
-	
-	free(state->path);
-	free(state->arguments);
-	free(state->cmd_line);
-	free(state->target_ip);
-	free(state->sleeps);
-	free(state);
 }
 
 /**
