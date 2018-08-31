@@ -12,7 +12,7 @@ the crash system to a bugzilla friendly format. Based on the decision on the des
 
 class results(db.Model):
     result_id = db.Column(db.Integer, primary_key=True)
-    job_id = db.Column(db.Integer, nullable=False)
+    job_id = db.Column(db.Integer, db.ForeignKey('fuzz_jobs.job_id'), nullable=False)
     repro_file = db.Column(db.String, nullable=False)
     result_type = db.Column(db.String) # 'hang' or 'crash'
 
