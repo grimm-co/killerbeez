@@ -26,7 +26,7 @@
   cd killerbeez/server/boinc
   ./_autosetup
   ./configure --disable-client --disable-manager
-  make -j4
+  make
 	```
 4. User permissions
 	```
@@ -34,6 +34,8 @@
   sudo usermod -a -G boincadm www-data
   sudo -u boincadm sh -c 'echo umask 0007 >> /home/boincadm/.bashrc'
   sudo sh -c 'echo umask 0007 >> /etc/apache2/envvars'
+  sudo chgrp boincadm /usr/local/killerbeez
+  sudo chmod g+w /usr/local/killerbeez
 	```
   * Note: the new user doesn't have sudo access, so continue using your normal
     account for the remaining instructions except when indicated.
@@ -117,9 +119,11 @@
 
 10. Start the Killerbeez API server
     ```
+    sudo -i -u boincadm
+    cd /usr/local/killerbeez
+    virtualenv -ppython3 killerbeez-venv
+    source killerbeez-venv/bin/activate
     cd /usr/local/killerbeez/killerbeez/python/manager
-    virtualenv -ppython3 venv
-    source venv/bin/activate
     pip install -r requirements.txt
     python server.py -create  # Remove -create if restarting server
     ```
@@ -133,10 +137,7 @@
   2. If client not installed, install it
   3. Select "Add project" in GUI
   4. Enter project URL from webpage
-  5. Enter email address and password
-  6. You will be taken to a webpage where you can enter a username. On the next
-     page, you will be asked about joining a team; you can say that you are not
-     interested.
+  5. Enter email address and password of the account you registered in step 1
 3. Command-line instructions to add project:
   1. Go to Project > Join on website
   2. If client not installed, install it (e.g., `apt install boinc-client`)
@@ -145,26 +146,6 @@
   4. `boinccmd --project_attach <project url> <account key>`
 
 ## Administration
-
-### Set up account with administrator access
-1. Administrator must register an account via BOINC webpage (`$BOINC_URL/killerbeez/create_account_form.php`)
-2. Log into site and go to Project > Account to find User ID
-3. On server:
-
-    ```
-    sudo -i -u boincadm
-    cd ~/projects/killerbeez
-    bin/manage_privileges grant <user id> all`
-    ```
-
-### Set up account with job submission privileges
-To perform these steps you must have administrator access (see previous
-section). However, as an administrator you can grant job submission privileges
-to any account, administrator or otherwise.
-1. Go to `$BOINC_URL/killerbeez/manage_project.php`
-2. Click name of the user to grant privileges to
-3. Select "All apps"
-4. Click "Ok".
 
 ### Add a target
 Killerbeez jobs have a "target", which represents a target program running on a
@@ -175,27 +156,25 @@ install a new application, but the default configuration will allow fuzzing
 anything that is installed on client machines already, such as Windows Media
 Player.
 
-```
-bin/add_target.py <target> <platform> [<platform> ...]
-```
-* Example: `bin/add_target.py wmp windows_x86_64`
+1. Create the target
 
-```
-bin/update_versions
-```
+    ```
+    bin/add_target.py <target> <platform> [<platform> ...]
+    ```
+    * Example: `bin/add_target.py wmp windows_x86_64`
+2. If you need any additional files in this app, put them in the app dir
+   (`apps/<target>_<platform>/1/<platform>`)
+3. Finalize the app creation
+
+    ```
+    bin/update_versions
+    ```
 
 ### Submit job
 Customize the [boinc_submit.py](../server/boinc_submit.py) script for your
-desired job by changing the constants at the top. The constants are:
-* `AUTHENTICATOR` - This is the account key for the user that will submit the
-  jobs. You can retrieve this value from the
-  `Project > Account > Account keys` page, or see the
-  [Client](#client-windows-10-x64-only-for-now) instructions above
-  for how to find this value via the command line.
-* `PROJECT` - The URL for the BOINC project (`$BOINC_URL/killerbeez/`). The URL
-  **must** end in a `/`.
-* `APP` - The name of the target/platform to fuzz (e.g. `wmp_windows_x86_64`)
-* `COMMAND_LINE` - The command-line arguments to be passed to `fuzzer.exe`
+desired job by changing the constants at the top, and the job parameters in the
+requests. The constants are:
+* `PROJECT` - The URL for the Killerbeez API (`$API_URL`)
 * `SEED` - A string to be used as the contents of the seed file
 
 Run the script, and it will print out the ID of the submitted job. 
@@ -246,6 +225,32 @@ $ curl http://localhost:5000/api/results?repro_file=235/97A596BE0B77EF1B68995033
 ```
 This gives you the job ID of the job that produced the file, allowing you to
 trace its ancestry.
+
+### Set up account with administrator access
+This step is only needed if you are going to create an account that will submit
+jobs directly to BOINC (see next section). You do not need administrator access
+to submit jobs via the Killerbeez API server.
+1. Administrator must register an account via BOINC webpage (`$BOINC_URL/killerbeez/create_account_form.php`)
+2. Log into site and go to Project > Account to find User ID
+3. On server:
+
+    ```
+    sudo -i -u boincadm
+    cd ~/projects/killerbeez
+    bin/manage_privileges grant <user id> all`
+    ```
+
+### Set up account with direct BOINC job submission privileges
+You only need to do this if you want to submit jobs directly to BOINC (most
+likely for testing). Submitting jobs via the Killerbeez API server does not
+require this.
+To perform these steps you must have administrator access (see previous
+section). However, as an administrator you can grant job submission privileges
+to any account, administrator or otherwise.
+1. Go to `$BOINC_URL/killerbeez/manage_project.php`
+2. Click name of the user to grant privileges to
+3. Select "All apps"
+4. Click "Ok".
 
 ## Optional build instructions
 

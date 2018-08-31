@@ -1,3 +1,5 @@
+import logging
+
 from flask_restful import Resource, reqparse, fields, marshal_with, abort
 from model.FuzzingTarget import targets
 #from model.FuzzingArch import FuzzingArch
@@ -6,12 +8,12 @@ from model.FuzzingTarget import targets
 from app import app
 
 
+logger = logging.getLogger(__name__)
 db = app.config['db']
 
 target_fields = {
     'id': fields.Integer(attribute='target_id'),
-    'architecture': fields.String,
-    'os': fields.String,
+    'platform': fields.String,
     'target_executable': fields.String,
 }
 
@@ -19,10 +21,11 @@ target_fields = {
 class TargetCtrl(Resource):
     def create(self, data):
         try:
-            target = targets(data['architecture'], data['os'], data['target_executable'])
+            target = targets(data['platform'], data['target_executable'])
             db.session.add(target)
             db.session.commit()
-        except Exception as e:
+        except Exception:
+            logger.exception('Error creating target')
             abort(400, err="invalid request")
 
         return target, 201
@@ -38,8 +41,7 @@ class TargetCtrl(Resource):
         if target is None:
             abort(404, err="not found")
 
-        target.architecture = data['architecture']
-        target.os = data['os']
+        target.platform = data['platform']
         target.target_executable = data['target_executable']
         try:
             db.session.commit()
@@ -70,16 +72,14 @@ class TargetCtrl(Resource):
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument('target_executable', required=True, location='json')
-        parser.add_argument('os', required=True, location='json')
-        parser.add_argument('architecture', required=True, location='json')
+        parser.add_argument('platform', required=True, location='json')
         return self.create(parser.parse_args())
 
     @marshal_with(target_fields)
     def put(self, id):
         parser = reqparse.RequestParser()
         parser.add_argument('target_executable', required=True, location='json')
-        parser.add_argument('os', required=True, location='json')
-        parser.add_argument('architecture', required=True, location='json')
+        parser.add_argument('platform', required=True, location='json')
         return self.update(id, parser.parse_args())
 
     def delete(self, id):

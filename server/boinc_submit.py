@@ -1,74 +1,55 @@
 #!/usr/bin/env python
 
+import base64
 import collections
-import xml.etree.ElementTree as ET
-from xml.sax.saxutils import escape
 
-import submit_api
-
+import requests
 
 # Set the following to configure your job
-AUTHENTICATOR = '6413c786cc8fcc012c9a08d40ac9bb51'
-PROJECT = 'http://killerbeez-example.grimm-co.com/killerbeez/'
-APP = 'wmp_windows_x86_64'
-COMMAND_LINE = r'wmp debug radamsa -n 2 -sf "seed" -d "{\"timeout\":20}" -i "{\"coverage_modules\":[\"wmp.exe\"],\"timeout\":10000,\"target_path\":\"C:\\Program Files (x86)\\Windows Media Player\\wmplayer.exe\"}"'
-SEED = "1234seed"
-
-
-def submit_batch(app):
-    seed_file = submit_api.FILE_DESC()
-    seed_file.source = SEED
-    seed_file.mode = 'inline'
-
-    cmd_file = submit_api.FILE_DESC()
-    cmd_file.source = '%1 {}'.format(COMMAND_LINE)
-    cmd_file.mode = 'inline'
-
-    job = submit_api.JOB_DESC()
-    job.files = [seed_file, cmd_file]
-    job.rsc_fpops_est = 100
-
-    batch = submit_api.BATCH_DESC()
-    batch.project = PROJECT
-    batch.authenticator = AUTHENTICATOR
-    batch.app_name = app
-    batch.jobs = [job]
-
-    return_xml = submit_api.submit_batch(batch)
-    try:
-        return int(return_xml.find('batch_id').text)
-    except ValueError, AttributeError:
-        ET.dump(return_xml)
-        raise
-
-
-def get_batch_jobs(batch_id):
-    QUERY_BATCH = collections.namedtuple(
-        'QUERY_BATCH', ['authenticator', 'project', 'batch_id', 'get_cpu_time',
-                        'get_job_details'])
-
-    req = QUERY_BATCH(
-        authenticator=AUTHENTICATOR,
-        project=PROJECT,
-        batch_id=batch_id,
-        get_cpu_time=False,
-        get_job_details=False,
-    )
-    batch_info = submit_api.query_batch(req)
-    job_ids = []
-    for job in batch_info.findall('job'):
-        try:
-            job_ids.append(int(job.find('id').text))
-        except ValueError, AttributeError:
-            ET.dump(batch_info)
-            raise
-    return job_ids
-
+PROJECT = 'http://localhost:5000/api'
+SEED = b"1234seed"
 
 def main():
-    batch_id = submit_batch(APP)
-    job_ids = get_batch_jobs(batch_id)
-    print 'Created batch {} with jobs: {}'.format(str(batch_id), ', '.join(str(id) for id in job_ids))
+    # Make sure we have a DB entry for the target
+    target_resp = requests.post(
+        '%s/target' % PROJECT,
+        json={"platform": "windows_x86_64", "target_executable": "wmp"})
+    target_resp.raise_for_status()
+    target_id = target_resp.json()['id']
+
+    # Create the driver and instrumentation configs
+    requests.post(
+        '%s/config' % PROJECT,
+        json={"target_id": target_id,
+              "name": "driver_opts_wmp",
+              "value": r'{"path": "C:\\Program Files\\Windows Media Player\\wmplayer.exe"}'}).raise_for_status()
+    requests.post(
+        '%s/config' % PROJECT,
+        json={"target_id": target_id,
+              "name": "instrumentation_opts_dynamorio",
+              "value": r'{"per_module_coverage": 1, "timeout": 10000, "coverage_modules": ["wmp.DLL"], "client_params": "-target_module wmplayer.exe -target_offset 0x1F20 -nargs 3", "fuzz_iterations": 1, "target_path": "C:\\Program Files\\Windows Media Player\\wmplayer.exe"}'}).raise_for_status()
+
+    # Create the seed file
+    seed_resp = requests.post(
+        '%s/file' % PROJECT,
+        json={"content": base64.b64encode(SEED).decode(), "encoding": "base64"})
+    seed_resp.raise_for_status()
+    seed_file = seed_resp.json()['filename']
+
+    # Create the job!
+    job_resp = requests.post(
+        '%s/job' % PROJECT,
+        json={"job_type": "fuzz",
+              "target_id": target_id,
+              "mutator": "radamsa",
+              "instrumentation_type": "dynamorio",
+              "driver": "wmp",
+              "seed_file": seed_file,
+              "iterations": 2})
+    job_resp.raise_for_status()
+    job_json = job_resp.json()
+
+    print('Created job %s with BOINC id %s' % (job_json['job_id'], job_json['boinc_id']))
 
 
 if __name__ == '__main__':
