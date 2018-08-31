@@ -1,11 +1,11 @@
 release:
   script:
-    - C:\killerbeez\release.bat
+    - call tools\update_repos.bat
+    - call tools\release.bat
   tags:
     - windows
   only:
     - web
-    - triggers
   artifacts:
     paths:
       - release\killerbeez-*.zip
