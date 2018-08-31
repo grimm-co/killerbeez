@@ -2,21 +2,22 @@ import datetime
 
 from flask_restful import Resource, reqparse, fields, marshal_with, abort
 
+from lib import boinc
+from lib import fuzzer
 from model.FuzzingJob import fuzz_jobs
 from model.FuzzingTarget import targets
-from model.FuzzingInputs import inputs
 from model.job_inputs import job_inputs
 
 from app import app
 import logging
 
 db = app.config['db']
-
 logger = logging.getLogger(__name__)
 
 
 job_fields = {
     'job_id': fields.Integer(),
+    'boinc_id': fields.Integer(),
     'job_type': fields.String(),
     'status': fields.String(),
     'mutator_state': fields.String(),
@@ -30,13 +31,19 @@ job_fields = {
 }
 
 class JobCtrl(Resource):
-    def read(self, id):
+    def read(self, id=None, boinc_id=None):
         """
-        Fetch the db entry for a given job id, or error if not found
+        Fetch the db entry for a given job id or boinc job id, or error if not found
         :param id: job_id of the job to be fetched
+        :param boinc_id: boinc_id of the job to be fetched
         :return: list containing the dictionary representing the job object, or a dictionary indicating error.
         """
-        job = fuzz_jobs.query.filter_by(job_id=id).first()
+        query = fuzz_jobs.query
+        if id is not None:
+            query = query.filter_by(job_id=id)
+        if boinc_id is not None:
+            query = query.filter_by(boinc_id=boinc_id)
+        job = query.first()
         if job is None:
             abort(404, err="not found")
         return job, 200
@@ -60,11 +67,10 @@ class JobCtrl(Resource):
         :param data: dictionary of attributes for the new job object
         :return: newly created job object on 200, error dictionary on 400
         """
-        if data.job_type is not None:
+        type = data.job_type
+        if type is None:
             # Default to "fuzz" type
             type = "fuzz"
-        else:
-            type = data.job_type
         if data.target_id is None or data.target_id == 0:
             abort(400, err="target_id must be supplied and non-zero")
         else:
@@ -72,24 +78,39 @@ class JobCtrl(Resource):
             target = targets.query.filter_by(target_id=data.target_id).first()
             if target is None:
                 abort(400, err="supplied target_id not found")
-        if data.input_ids:
-            for input_id in data.input_ids:
-                if inputs.query.get(input_id) is None:
-                    abort(400, err="supplied input_id not found")
+        if data.input_files:
+            for input_file in data.input_files:
+                if not os.path.exists(boinc.path_for_file(input_file)):
+                    abort(400, err="supplied input_file not found")
         try:
             job = fuzz_jobs(type, data.target_id,
                             mutator=data.mutator,
                             mutator_state=data.mutator_state,
                             instrumentation_type=data.instrumentation_type,
                             driver=data.driver, seed_file=data.seed_file,
+                            iterations=data.iterations
                             )
-            if data.input_ids:
-                job.inputs = [job_inputs(input_id=input_id) for input_id in data.input_ids]
+            if data.input_files:
+                job.inputs = [job_inputs(input_file=input_file) for input_file in data.input_files]
             db.session.add(job)
             db.session.commit()
         except Exception as e:
             logger.exception('failed to add job')
             abort(400, err="invalid request")
+
+        mutator_options = job.lookup_config('mutator', data.mutator)
+        instrumentation_options = job.lookup_config('instrumentation', data.instrumentation_type)
+        driver_options = job.lookup_config('driver', data.driver)
+
+        command_line = fuzzer.format_cmdline(
+            job.driver, job.instrumentation_type, job.mutator, job.iterations,
+            driver_options=driver_options,
+            instrumentation_options=instrumentation_options,
+            mutator_options=mutator_options)
+        logger.debug('Submitting job with command line: %s', command_line)
+        job_id = boinc.submit_job(str(target), command_line, seed_file=job.seed_file)
+        job.boinc_id = job_id
+        db.session.commit()
 
         return job, 200
 
@@ -109,9 +130,10 @@ class JobCtrl(Resource):
         return job, 200
 
     @marshal_with(job_fields)
-    def get(self, id=None):
+    def get(self, id=None, boinc_id=None):
         """
-        Request either a single job (by id) or all jobs for a target (by target_id)
+        Request either a single job (by id/boinc_id) or all jobs for a target
+        (by target_id)
         :return: List of jobs that match the query on 200; error dict on 400
         """
         parser = reqparse.RequestParser()
@@ -119,13 +141,13 @@ class JobCtrl(Resource):
 
         args = parser.parse_args()
         # The two options are mutually exclusive
-        if id is not None and args.target_id is not None:
-            abort(400, err='id and target_id are mutually exclusive')
+        if (id is not None or boinc_id is not None) and args.target_id is not None:
+            abort(400, err='id/boinc_id and target_id are mutually exclusive')
         # But at least one must be supplied
-        if id is None and args.target_id is None:
-            abort(400, err='either id or target_id must be supplied')
-        if id is not None:
-            return self.read(id)
+        if id is None and boinc_id is None and args.target_id is None:
+            abort(400, err='either id, boinc_id, or target_id must be supplied')
+        if id is not None or boinc_id is not None:
+            return self.read(id, boinc_id)
         else:
             return self.readAll(args.target_id)
 
@@ -137,13 +159,14 @@ class JobCtrl(Resource):
         """
         parser = reqparse.RequestParser()
         parser.add_argument("job_type", type=str)
-        parser.add_argument("target_id", type=int)
-        parser.add_argument("mutator", type=str)
+        parser.add_argument("target_id", type=int, required=True)
+        parser.add_argument("mutator", type=str, required=True)
         parser.add_argument("mutator_state", type=str)
-        parser.add_argument("instrumentation_type", type=str)
-        parser.add_argument("driver", type=str)
-        parser.add_argument("input_ids", type=int, action='append', location='json')
-        parser.add_argument("seed_file", type=str)
+        parser.add_argument("instrumentation_type", type=str, required=True)
+        parser.add_argument("driver", type=str, required=True)
+        parser.add_argument("input_files", type=str, action='append', location='json')
+        parser.add_argument("seed_file", type=str, required=True)
+        parser.add_argument("iterations", type=int, required=True)
         args = parser.parse_args()
         return self.create(args)
 

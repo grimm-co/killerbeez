@@ -9,6 +9,9 @@
 
 #ifndef _WIN32
 #include <unistd.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 #endif
 
 /**
@@ -108,3 +111,60 @@ int setup_mutate_buffer(double ratio, size_t input_length, char ** buffer, size_
 	*length = output_size;
 	return 0;
 }
+
+/**
+* This function sends the provided buffer on the already connected TCP socket
+* @param sock - a pointer to a connected TCP SOCKET to send the buffer on
+* @param buffer - the buffer to send
+* @param length - the length of the buffer parameter
+* @return - non-zero on error, zero on success
+*/
+#ifdef _WIN32
+int send_tcp_input(SOCKET * sock, char * buffer, size_t length)
+#else
+int send_tcp_input(int * sock, char * buffer, size_t length)
+#endif
+{
+	int result;
+	size_t total_read = 0;
+
+	result = 1;
+	while (total_read < length && result > 0)
+	{
+		result = send(*sock, buffer + total_read, length - total_read, 0);
+
+		if (result > 0)
+			total_read += result;
+		else if (result < 0) //Error, then break
+		{
+#ifdef _WIN32
+			// Here in the network drivers, we have a little bit more
+			// information than you'd get in a stdin/file driver.
+			// We want to pass up information that we terminated after n packets.
+
+			// We have a few possible send() results inside this loop.
+			// send tells us ERROR and
+			//  - we retry
+			//  - it counts as success, do not retry
+			//  - it is a proper error, stop
+
+			int error_code = WSAGetLastError();
+			ERROR_MSG("send() failed with error: %d", error_code);
+
+			// (10053) the client unexpectedly terminated
+			if (error_code == 10053)
+				return -2;
+			// TODO: this -2 should be #define FUZZ_UNUSED_PART or something similar
+			// Currently this is checked in network_client_run()
+#else
+			ERROR_MSG("send() failed with error: %d", errno);
+			// TODO: Write error-checks
+#endif
+		}
+	}
+
+	// This currently assumes that failing to write all our input is an
+	// error, which may not always be the case.
+	return total_read != length; 
+}
+

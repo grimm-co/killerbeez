@@ -79,7 +79,7 @@ class KillerbeezAssimilator(assimilator.Assimilator):
 
     def _record_result(self, file_path, result_type, job_id):
         # TODO: use client helper module, maybe
-        requests.post('{}/job/{}/results'.format(API_SERVER, job_id),
+        requests.post('{}/boinc_job/{}/results'.format(API_SERVER, job_id),
                     json={'repro_file': file_path, 'result_type': result_type})
 
     def _process_zipfile(self, job_id, output_file):
@@ -93,7 +93,7 @@ class KillerbeezAssimilator(assimilator.Assimilator):
                     result_type = match.group(1)
                     md5 = match.group(2)
 
-                    filename = os.path.join(tempdir, md5)
+                    filename = os.path.join(tempdir, 'input_{}'.format(md5.lower()))
                     with open(filename, 'wb') as dest, results_file.open(result_name) as src:
                         dest.write(src.read())
 

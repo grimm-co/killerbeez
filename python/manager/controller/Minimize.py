@@ -3,7 +3,6 @@ from app import app
 from flask_restful import Resource, reqparse
 from flask import request
 from model.tracer_info import tracer_info
-from model.FuzzingInputs import inputs
 from sqlalchemy.sql.expression import func
 
 db = app.config['db']
@@ -13,17 +12,16 @@ def minimize(target_id, num_files_per_edge = None):
         num_files_per_edge = 1
 
     # get the data
-    query = db.session.query(tracer_info.target_id, tracer_info.from_edge, tracer_info.to_edge, inputs.hash, func.length(inputs.contents)) \
-                .filter_by(target_id=target_id) \
-                .join(inputs, tracer_info.input_id == inputs.input_id)
+    query = db.session.query(tracer_info.target_id, tracer_info.from_edge, tracer_info.to_edge, tracer_id.input_file) \
+                .filter_by(target_id=target_id)
     data = query.all()
 
     # Group the data by edge
     edges = collections.defaultdict(list)
     edges_per_input = collections.defaultdict(list)
-    for target_id, from_edge, to_edge, input_hash, length in data:
-        edges[(int(from_edge), int(to_edge))].append((length, input_hash))
-        edges_per_input[input_hash].append((from_edge, to_edge))
+    for target_id, from_edge, to_edge, input_file in data:
+        edges[(int(from_edge), int(to_edge))].append(input_file)
+        edges_per_input[input_file].append((from_edge, to_edge))
 
     edges_by_popularity = sorted(edges, key=lambda k: len(edges[k]), reverse=True)
 
@@ -34,7 +32,7 @@ def minimize(target_id, num_files_per_edge = None):
             continue
 
         files = edges[edge][:(num_files_per_edge - already_have[edge])]
-        working_set.extend([input_hash for length, input_hash in files])
+        working_set.extend(files)
         for file in files:
             for edge in edges_per_input[file]:
                 already_have[edge] += 1
