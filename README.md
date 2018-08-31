@@ -1,28 +1,38 @@
 # Killerbeez
 
-Killerbeez is a fuzzing framework which aims to bring together as many of
-the awesome tools out there as possible into a standard format.  The goal
-is not just to get them to work with this project, but ideally each other
-as well, which can be accomplished by writing things to a common API.  As a
-side effect, it means writing cross-platform tools should be easier as well
-on account of encouraging clean interfaces which inherently discourages
-spaghetti code.
+Killerbeez is a modular fuzzing framework that aims to bring awesome tools
+together into a standard format. 
+
+## Table of Contents
+* [Motivation](#motivation)
+* [Getting Started](#getting-started)
+ * [Windows](#windows)
+ * [Linux and Mac](#linux-and-mac)
+* [Documentation](#documentation)
+* [Troubleshooting](#troubleshooting)
+
+## Motivation
+
+Many fuzzing tools are "research-quality" code, which means they're difficult to
+incorporate with each other or make changes to short of forking.  Killerbeez
+seeks to reduce the engineering effort required to bring these tools together.
+By writing things to a common API, we hope to encourage clean interfaces, which
+should discourage spaghetti code and make writing cross-platform tools easier.
 
 ## Getting Started
 
-These instructions will get you a copy of Killerbeez up and running on your
-local machine. We provide build instructions for Windows and Linux, and
-binaries for Windows.  For instructions building Killerbeez from source, see the
-[BUILD instructions](docs/BUILD.md). Currently only the standalone client is
-available, server coming soon!
+We provide build instructions for Windows and Linux, and binaries for Windows.
+For instructions building Killerbeez from source, see the [BUILD
+instructions](docs/BUILD.md). Currently only the standalone client is available,
+server coming soon!
 
 ### Windows
 
-#### Binary Releases
-If you don't want to build the project from source, give the binary release
-a try (though be warned they may be out of date). The latest release
-can be found [here](https://github.com/grimm-co/killerbeez/releases) and
-has been tested with the following operating systems:
+#### [Binary Releases](https://github.com/grimm-co/killerbeez/releases)
+If you don't want to build the project from source, you can try the [binary
+releases](https://github.com/grimm-co/killerbeez/releases) (though be
+warned they are likely out of date).  They have been tested on the
+following operating systems.
 
 | Windows Version|    64-Bit        |    32-Bit        | 
 | -------------- | ------------     | ---------------  |
@@ -46,10 +56,11 @@ expected, and a few are not.
 
 #### Quickstart and Examples
 
-Let's start by fuzzing a test program first, to keep things simple.
+##### Fuzzing a simple test program:
 ```
+REM Paste this into cmd.exe.
 REM Assuming you: set WORKDIR=C:/killerbeez
-REM Note if using backslashes they need to be escaped to be proper JSON.
+REM Note: if using backslashes, they need to be escaped to be proper JSON.
 
 cd %WORKDIR%/build/x64/Debug/killerbeez
 fuzzer.exe file debug bit_flip -n 9 ^
@@ -57,17 +68,26 @@ fuzzer.exe file debug bit_flip -n 9 ^
 	-d "{\"path\":\"%WORKDIR%/killerbeez/corpus/test/test.exe\",\"arguments\":\"@@\"}"
 ```
 
-For the next example, download a small video file you would like to use as
-a seed file and you can quickly fuzz Windows Media Player with the below
-example command.  Be sure to replace the seed file argument `-sf` with the
-path to the video file you just downloaded.  Note that because
-`wmplayer.exe` is a 32-bit executable you'll either need to use the 32-bit
-fuzzer.exe, or manually specify the path to the 32-bit `winafl.dll` with
-the instrumentation's `winafl_dir` option. Additionally, the
-`-target_offset` argument that is passed to the instrumentation will need
-to be updated depending on your Windows version. In this case we are just
-using the entry point of wmplayer.exe, below there is a table to use as
-reference but it is best to verify the entry point of your binary.
+Successful output should look like
+```
+Wed Aug  8 18:27:08 2018 - INFO     - Logging Started
+Wed Aug  8 18:27:09 2018 - CRITICAL - Found crashes
+Wed Aug  8 18:27:09 2018 - INFO     - Ran 9 iterations in 1 seconds
+```
+
+##### Fuzzing Windows Media Player
+Download a small video file you would like to use as a seed file (e.g.
+`youtube-dl --format mp4 --output test.mp4 your-favorite-video`).
+Be sure to replace the seed file argument `-sf` with the path to the video file
+you just downloaded. 
+
+Note that because `wmplayer.exe` is a 32-bit executable you'll either need
+to use the 32-bit `fuzzer.exe`, or manually specify the path to the 32-bit
+`winafl.dll` with the instrumentation's `winafl_dir` option. Additionally,
+the `-target_offset` argument that is passed to the instrumentation will
+need to be updated depending on your Windows version. In this case we are
+just using the entry point of `wmplayer.exe`, below there is a table to use
+as reference but it is best to verify the entry point of your binary.
 
 |   WMP Version   | Offset |
 | --------------- | ------ |
@@ -164,7 +184,7 @@ Segmentation fault (core dumped)
 ```
 
 ## Documentation
-Documentation of the API can be found in the docs folder.  It's written in
+Documentation of the API can be found in the [docs](docs) folder.  It's written in
 LaTeX which can be used to generate a PDF, HTML, or various other formats.
 PDFs are also included so the documentation is easy to read for those who
 do not have a LaTeX typesetting environment set up.
