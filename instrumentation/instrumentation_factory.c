@@ -54,7 +54,7 @@ instrumentation_t * instrumentation_factory(char * instrumentation_type)
 		ret->is_process_done = dynamorio_is_process_done;
 		ret->get_fuzz_result = dynamorio_get_fuzz_result;
 	}
-	#elif __APPLE__
+	#else
 	if (!strcmp(instrumentation_type, "return_code"))
 	{
 		ret->create = return_code_create;
@@ -68,20 +68,7 @@ instrumentation_t * instrumentation_factory(char * instrumentation_type)
 		ret->get_fuzz_result = return_code_get_fuzz_result;
 		ret->is_process_done = return_code_is_process_done;
 	}
-	#else // LINUX
-	if (!strcmp(instrumentation_type, "return_code"))
-	{
-		ret->create = return_code_create;
-		ret->cleanup = return_code_cleanup;
-		ret->merge = return_code_merge;
-		ret->get_state = return_code_get_state;
-		ret->free_state = return_code_free_state;
-		ret->set_state = return_code_set_state;
-		ret->enable = return_code_enable;
-		ret->is_new_path = return_code_is_new_path;
-		ret->get_fuzz_result = return_code_get_fuzz_result;
-		ret->is_process_done = return_code_is_process_done;
-	}
+	#if !__APPLE__ // Linux
 	else if (!strcmp(instrumentation_type, "ipt"))
 	{
 		ret->create = linux_ipt_create;
@@ -95,6 +82,7 @@ instrumentation_t * instrumentation_factory(char * instrumentation_type)
 		ret->get_fuzz_result = linux_ipt_get_fuzz_result;
 		ret->is_process_done = linux_ipt_is_process_done;
 	}
+	#endif
 	#endif
 	else
 		FACTORY_ERROR();
@@ -120,11 +108,11 @@ char * instrumentation_help(void)
 	#ifdef _WIN32
 	APPEND_HELP(text, new_text, debug_help);
 	APPEND_HELP(text, new_text, dynamorio_help);
-	#elif __APPLE__
+	#else
 	APPEND_HELP(text, new_text, return_code_help);
-	#else // LINUX
-	APPEND_HELP(text, new_text, return_code_help);
+	#if !__APPLE__ // Linux
 	APPEND_HELP(text, new_text, linux_ipt_help);
+	#endif
 	#endif
 	return text;
 }
