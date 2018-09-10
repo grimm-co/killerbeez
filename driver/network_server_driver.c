@@ -321,7 +321,7 @@ static int is_port_listening(int port, int udp)
 		return -1;
 	}
 
-#define ENTRY_LEN(entry) *(size_t *)(entry)
+#define ENTRY_LEN(entry) (((struct xtcpcb *)(entry))->xt_len)
 
 	// buf is an array of length-prepended table entries, potentially of different kinds
 	entry = buf;
