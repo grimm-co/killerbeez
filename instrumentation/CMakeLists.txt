@@ -12,26 +12,27 @@ if (WIN32)
 		${PROJECT_SOURCE_DIR}/debug_instrumentation.c
 		${PROJECT_SOURCE_DIR}/dynamorio_instrumentation.c
 	)
-elseif (UNIX AND NOT APPLE)
-	set(INSTRUMENTATION_SRC
-		${INSTRUMENTATION_SRC}
-		${PROJECT_SOURCE_DIR}/return_code_instrumentation.c
-		${PROJECT_SOURCE_DIR}/linux_ipt_instrumentation.c
-	)
-
-	set(FORKSERVER_SRC
-		${PROJECT_SOURCE_DIR}/forkserver.c
-		${PROJECT_SOURCE_DIR}/forkserver_hooking.c
-	)
-
-	add_library(forkserver SHARED ${FORKSERVER_SRC})
-	target_link_libraries(forkserver dl)
-else ()
+else (WIN32)
 	set(INSTRUMENTATION_SRC
 		${INSTRUMENTATION_SRC}
 		${PROJECT_SOURCE_DIR}/return_code_instrumentation.c
 	)
-endif ()
+
+	if (NOT APPLE)
+		set(INSTRUMENTATION_SRC
+			${INSTRUMENTATION_SRC}
+			${PROJECT_SOURCE_DIR}/linux_ipt_instrumentation.c
+		)
+
+		set(FORKSERVER_SRC
+			${PROJECT_SOURCE_DIR}/forkserver.c
+			${PROJECT_SOURCE_DIR}/forkserver_hooking.c
+		)
+
+		add_library(forkserver SHARED ${FORKSERVER_SRC})
+		target_link_libraries(forkserver dl)
+	endif (NOT APPLE)
+endif (WIN32)
 
 source_group("Library Sources" FILES ${INSTRUMENTATION_SRC})
 
