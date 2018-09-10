@@ -299,7 +299,6 @@ static int is_port_listening(int port, int udp)
 #elif __APPLE__
 	char ctl[] = "net.inet.tcp.pcblist";
 	char *buf, *entry;
-	struct xinpgen *gen_entry;
 	struct xtcpcb *tcp_entry;
 	size_t len;
 	uint32_t port_n = htons(port);
