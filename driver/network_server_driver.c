@@ -420,7 +420,7 @@ static int network_server_run(network_server_state_t * state, char ** inputs, si
 #else
 			usleep(1000*state->sleeps[i]);
 #endif
-		if (state->target_udp && send_udp_input(state, &sock, inputs[i], lengths[i])
+		if ((state->target_udp && send_udp_input(state, &sock, inputs[i], lengths[i]))
 			|| (!state->target_udp && send_tcp_input(&sock, inputs[i], lengths[i])))
 		{
 #ifdef _WIN32
