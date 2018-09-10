@@ -303,8 +303,8 @@ static int is_port_listening(int port, int udp)
 	// char str[] = "net.inet.tcp.pcblist_n";
 	// size_t len;
 	// sysctlbyname(str, 0, &len, 0, 0); // check to get length of data
-    // buf = malloc(len)  // malloc some space for it
-    // sysctlbyname(str, buf, &len, 0, 0);
+	// buf = malloc(len)  // malloc some space for it
+	// sysctlbyname(str, buf, &len, 0, 0);
 
 	// However, I can't figure out what the correct return type of sysctlbyname
 	// is. It appears mostly undocumented. sysctl(3) doesn't contain any
