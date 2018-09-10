@@ -10,12 +10,6 @@ SET(DRIVER_SRC
 	${PROJECT_SOURCE_DIR}/network_client_driver.c
 )
 
-if (NOT APPLE)
-set(DRIVER_SRC
-	${DRIVER_SRC}
-)
-endif (NOT APPLE)
-
 if (WIN32)
 	set(DRIVER_SRC
 		${DRIVER_SRC}

@@ -114,8 +114,6 @@ DRIVER_API driver_t * driver_all_factory(char * driver_type, char * options, ins
 		ret->test_next_input = network_client_test_next_input;
 		ret->get_last_input = network_client_get_last_input;
 	}
-	#ifndef __APPLE__
-	#endif // not APPLE
 	#ifdef _WIN32
 	else if (!strcmp(driver_type, "wmp"))
 	{
@@ -153,8 +151,6 @@ DRIVER_API char * driver_help(void)
 	APPEND_HELP(text, new_text, stdin_help);
 	APPEND_HELP(text, new_text, network_server_help);
 	APPEND_HELP(text, new_text, network_client_help);
-	#ifndef __APPLE__
-	#endif
 	#ifdef _WIN32
 	APPEND_HELP(text, new_text, wmp_help);
 	#endif
