@@ -2,11 +2,11 @@
 #ifdef _WIN32
 #include "debug_instrumentation.h"
 #include "dynamorio_instrumentation.h"
-#elif APPLE
+#else
 #include "return_code_instrumentation.h"
-#else // LINUX
-#include "return_code_instrumentation.h"
+#if !__APPLE__ // Linux
 #include "linux_ipt_instrumentation.h"
+#endif
 #endif
 
 #include <string.h>
