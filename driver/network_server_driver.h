@@ -3,7 +3,6 @@
 #include <instrumentation.h>
 #include <global_types.h>
 
-
 #ifndef _WIN32 // Linux
 #include <sys/types.h> // pid_t
 #endif
