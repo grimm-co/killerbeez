@@ -21,7 +21,7 @@ struct network_client_state
 	char * path;            //The path to the fuzzed executable
 	char * arguments;       //Arguments to give the binary
 	int timeout;            //Maximum number of seconds to allow the executable to run
-	char * ip;       //The IP address to send the fuzzed data to
+	char * target_ip;       //The IP address to send the fuzzed data to
 	int lport;        //The port to send the fuzzed data to
 	double input_ratio;     //the ratio of the maximum input size
 	int * sleeps;           //How many milliseconds to sleep between inputs

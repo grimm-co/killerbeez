@@ -10,9 +10,12 @@ if (UNIX)
 	SET( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${BUILD_DIRECTORY}/killerbeez/corpus/ )
 	SET( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${BUILD_DIRECTORY}/killerbeez/corpus/ )
 
+	if (NOT APPLE)
+		add_subdirectory(persist)
+	endif (NOT APPLE)
 	add_subdirectory(hang)
 	add_subdirectory(libtest)
-	add_subdirectory(persist)
 	add_subdirectory(test)
 	add_subdirectory(network)
+
 endif ()
