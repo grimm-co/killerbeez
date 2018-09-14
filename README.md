@@ -91,7 +91,7 @@ into the right directory and run the fuzzer.  Here's an example of running
 it on a test program from our corpus.
 
 ```
-# assuming that you're in the same directory as above ($WORKDIR/build)
+# assuming that you're in $WORKDIR/build/killerbeez
 cd ../build/killerbeez/
 ./fuzzer file return_code honggfuzz -n 20 -sf /bin/bash -d '{"path":"corpus/test-linux","arguments":"@@"}'
 ```
@@ -136,7 +136,7 @@ crash looks like.  The following commands assume you are still in the directory
 containing ./fuzzer.
 
 ```
-# assuming that you're in the same directory as the above commands (%WORKDIR%/build)
+# assuming that you're in $WORKDIR/build/killerbeez
 echo "ABC@" > test1  # ABC@ is one bit different than ABCD, the crashing input
 ./fuzzer file return_code honggfuzz -n 2000 -sf ./test1 -d '{"path":"corpus/test-linux","arguments":"@@"}'
 ```
