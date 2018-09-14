@@ -17,7 +17,9 @@ WINDOWS_BUILD_PATH=$WINDOWS_CYGWIN_BASE_PATH"build/X64/Debug/killerbeez"
 LINUX_BASE_PATH="$HOME/killerbeez/"
 LINUX_BUILD_PATH="$LINUX_BASE_PATH/build/killerbeez/"
 
-FUZZER_WITH_GDB="gdb -q -ex run -ex quit --args ./fuzzer"
+FUZZER="./fuzzer"
+FUZZER_WITH_GDB="gdb -q -ex run -ex quit --args ./fuzzer" # Remove -ex quit to stay in gdb after completion.
+FUZZER_WITH_LLDB='lldb -o run -- ./fuzzer'
 
 # https://stackoverflow.com/a/3466183
 unameOut="$(uname -s)"
@@ -124,23 +126,29 @@ then
 fi
 
 
-if [ $machine = "Linux" ]
+if [ $machine = "Linux" ] || [ $machine = "Mac" ]
 then
-	# cygwin permissions are strange, so make sure the executables are executable.
-	chmod +x $LINUX_BASE_PATH/killerbeez/corpus/test/test.exe
-	chmod +x $LINUX_BASE_PATH/killerbeez/corpus/hang/hang.exe
+
+	if [ $machine = "Linux" ]
+	then
+		FUZZER=$FUZZER_WITH_GDB
+	fi
+
+	# LLDB interprets commas as some kind of syntax, so they need to be
+	# escaped. You'll need to do so manually (in the -d option's json string,
+	# usually) if you'd like to use this script w/ LLDB.
+
+	# FUZZER=$FUZZER_WITH_LLDB # uncomment me to use
 
 	if [ $KILLERBEEZ_TEST = "simple" ]
 	then
 		cd $LINUX_BUILD_PATH
 
-		$FUZZER_WITH_GDB \
+		$FUZZER \
 		file return_code bit_flip \
 		-n 9 \
 		-sf $HOME'/killerbeez/killerbeez/corpus/test/inputs/close.txt' \
-		\
 		-d '{"timeout":20, "path":"'$LINUX_BUILD_PATH'/corpus/test-linux", "arguments":"@@"}' \
-		\
 		-l '{"level":0}' \
 		-m '{"num_bits":1}'
 	fi
@@ -149,7 +157,7 @@ then
 	then
 		cd $LINUX_BUILD_PATH
 
-		$FUZZER_WITH_GDB \
+		$FUZZER \
 		file return_code bit_flip \
 		-n 3 \
 		-l '{"level":0}' \
@@ -161,7 +169,7 @@ then
 	then
 		cd $LINUX_BUILD_PATH
 
-		$FUZZER_WITH_GDB \
+		$FUZZER \
 		file return_code radamsa \
 		-n 3 \
 		-l '{"level":0}' \
@@ -173,7 +181,7 @@ then
 	then
 		cd $LINUX_BUILD_PATH
 
-		$FUZZER_WITH_GDB \
+		$FUZZER \
 		stdin return_code bit_flip \
 		-n 9 \
 		-l '{"level":0}' \
@@ -187,7 +195,7 @@ then
 	then
 		cd $LINUX_BUILD_PATH
 
-		$FUZZER_WITH_GDB \
+		$FUZZER \
 		network_server return_code bit_flip \
 		-n 10 \
 		-l '{"level":0}' \
@@ -199,7 +207,7 @@ then
     then
         cd $LINUX_BUILD_PATH
 
-        $FUZZER_WITH_GDB \
+        $FUZZER \
         network_client return_code bit_flip \
         -n 10 \
         -l '{"level":0}' \

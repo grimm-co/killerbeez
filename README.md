@@ -103,14 +103,15 @@ You may need to modify these parameters to match your environment.  In
 order to speed up fuzzing, it may be useful to enable persistence mode.
 See [PersistenceMode.md](docs/PersistenceMode.md) for instructions.
 
-### Linux
+### Linux and Mac
 
-Once you've built Killerbeez following the [BUILD instructions](docs/BUILD.md#linux),
-you should be ready to change into the right directory and run the fuzzer.
-Here's an example of running it on a test program from our corpus.
+Once you've built Killerbeez following the [BUILD
+instructions](docs/BUILD.md#linux-and-mac), you should be ready to change
+into the right directory and run the fuzzer.  Here's an example of running
+it on a test program from our corpus.
 
 ```
-# assuming that you're in the same directory as above ($WORKDIR/build)
+# assuming that you're in $WORKDIR/build/killerbeez
 cd ../build/killerbeez/
 ./fuzzer file return_code honggfuzz -n 20 -sf /bin/bash -d '{"path":"corpus/test-linux","arguments":"@@"}'
 ```
@@ -121,17 +122,17 @@ Thu Jul 19 09:40:46 2018 - INFO     - Logging Started
 Thu Jul 19 09:40:46 2018 - INFO     - Ran 20 iterations in 0 seconds
 ```
 
-In the example above, we're using the file driver, the return_code
-instrumentation, and the honggfuzz mutator module.  We are only going to do 20
+In the example above, we're using the **file** driver, the **return\_code**
+instrumentation, and the **honggfuzz** mutator module.  We are only going to do 20
 executions and our seed file is /bin/bash, because why not?
 
 The -d option are for the driver.  We need to give it the path to our executable
 and the command line arguments, which in our case is just the filename,
 represented by "@@" here.
 
-We don't need to specify any options for the mutator nor the instrumentation, so
-we won't.  We are just relying on the default values.  To see the options
-available, you can use the help flag.  Below are some examples.
+We don't need to specify any options for the mutator or the instrumentation, so
+we'll rely on default values instead.  To see the options available, you can use
+the `-h` help flag. Some examples:
 
 ```
 ./fuzzer -h
@@ -140,7 +141,7 @@ available, you can use the help flag.  Below are some examples.
 
 Looking at the results in the "output" directory, we see that it didn't find
 any crashes, hangs or new paths.  At first glance, it might seem like it didn't
-work.  However, we were using the return_code instrumentation, which does not
+work.  However, we were using the return\_code instrumentation, which does not
 actually track code coverage, so it can not determine the execution path, thus
 it can't determine if a new path was hit.  Instead, it just looks at the return
 code to determine if the process crashed or not.  It's very efficient, however
@@ -155,7 +156,7 @@ crash looks like.  The following commands assume you are still in the directory
 containing ./fuzzer.
 
 ```
-# assuming that you're in the same directory as the above commands (%WORKDIR%/build)
+# assuming that you're in $WORKDIR/build/killerbeez
 echo "ABC@" > test1  # ABC@ is one bit different than ABCD, the crashing input
 ./fuzzer file return_code honggfuzz -n 2000 -sf ./test1 -d '{"path":"corpus/test-linux","arguments":"@@"}'
 ```

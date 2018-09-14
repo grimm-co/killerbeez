@@ -51,14 +51,14 @@ static network_client_state_t * setup_options(char * options)
 	state->timeout = 2;
 	state->input_ratio = 2.0;
 	state->lport = 9999;
-	state->ip = strdup("127.0.0.1");
+	state->target_ip = strdup("127.0.0.1");
 
 	//Parse the options
 	PARSE_OPTION_STRING(state, options, path, "path", network_client_cleanup);
 	PARSE_OPTION_STRING(state, options, arguments, "arguments", network_client_cleanup);
 	PARSE_OPTION_INT(state, options, timeout, "timeout", network_client_cleanup);
 	PARSE_OPTION_INT(state, options, lport, "port", network_client_cleanup);
-	PARSE_OPTION_STRING(state, options, ip, "ip", network_client_cleanup);
+	PARSE_OPTION_STRING(state, options, target_ip, "ip", network_client_cleanup);
 	PARSE_OPTION_DOUBLE(state, options, input_ratio, "ratio", network_client_cleanup);
 	PARSE_OPTION_INT_ARRAY(state, options, sleeps, sleeps_count, "sleeps", network_client_cleanup);
 	
@@ -67,7 +67,7 @@ static network_client_state_t * setup_options(char * options)
 	memset(state->cmd_line, 0, cmd_length);
 
 	if (!state->path || !state->cmd_line || !file_exists(state->path)
-		|| !state->ip || !state->lport || state->input_ratio <= 0)
+		|| !state->target_ip || !state->lport || state->input_ratio <= 0)
 	{
 		network_client_cleanup(state);
 		return NULL;
@@ -183,8 +183,8 @@ void network_client_cleanup(void * driver_state)
 	//Clean up driver specific options
 	free(state->path);
 	free(state->arguments);
-	free(state->ip);
 	free(state->cmd_line);
+	free(state->target_ip);
 	free(state->sleeps);
 
 	//Clean up the struct holding it all
@@ -226,7 +226,7 @@ static int start_listener(network_client_state_t * state, int * sock)
 
 	//Create socket (TCP Only right now)
 	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr(state->ip);
+	addr.sin_addr.s_addr = inet_addr(state->target_ip);
 	addr.sin_port = htons(state->lport);
 
 	//Now bind to the socket
@@ -283,7 +283,6 @@ static int network_client_run(network_client_state_t * state, char ** inputs, si
 #endif
 	size_t i;
 	int sock_ret;
-	int listening = 0;
 
 	//Start the server socket so the client can connect below:
 	if (start_listener(state, &serverSock))

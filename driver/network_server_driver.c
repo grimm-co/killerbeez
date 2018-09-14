@@ -16,11 +16,18 @@
 #include <iphlpapi.h>
 #include <process.h>
 #else
-#include <sys/socket.h>
 #include <netinet/in.h>
-#include <netinet/ip.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#if __APPLE__
+#include <sys/sysctl.h>
+#include <sys/socketvar.h>
+#include <netinet/tcp_var.h>
+#include <netinet/tcp_fsm.h>
+#else
+#include <sys/socket.h>
+#include <netinet/ip.h>
+#endif // __APPLE__
 #endif
 
 /**
@@ -69,6 +76,34 @@ static network_server_state_t * setup_options(char * options)
 }
 
 /**
+ * This function cleans up all resources with the passed in driver state.
+ * @param driver_state - a driver specific state object previously created by the network_server_create function
+ * This state object should not be referenced after this function returns.
+ */
+void network_server_cleanup(void * driver_state)
+{
+	network_server_state_t * state = (network_server_state_t *)driver_state;
+	int i;
+
+	//Cleanup mutator stuff
+	for(i = 0; state->mutate_buffers && i < state->num_inputs; i++)
+		free(state->mutate_buffers[i]);
+	free(state->mutate_buffers);
+	free(state->mutate_buffer_lengths);
+	free(state->mutate_last_sizes);
+	
+	//Clean up driver specific options
+	free(state->path);
+	free(state->arguments);
+	free(state->cmd_line);
+	free(state->target_ip);
+	free(state->sleeps);
+
+	//Clean up the struct holding it all
+	free(state);
+}
+
+/**
  * This function allocates and initializes a new driver specific state object based on the given options.
  * @param options - a JSON string that contains the driver specific string of options
  * @param instrumentation - a pointer to an instrumentation instance that the driver will use
@@ -83,7 +118,7 @@ void * network_server_create(char * options, instrumentation_t * instrumentation
 	WSADATA wsaData;
 #endif
 	network_server_state_t * state;
-	int i;
+	size_t i;
 
 	//This driver requires at least the path to the program to run. Make sure we either have both a mutator and state
 	if (!options || !strlen(options) || (mutator && !mutator_state) || (!mutator && mutator_state)) //or neither
@@ -137,30 +172,6 @@ void * network_server_create(char * options, instrumentation_t * instrumentation
 	state->instrumentation = instrumentation;
 	state->instrumentation_state = instrumentation_state;
 	return state;
-}
-
-/**
- * This function cleans up all resources with the passed in driver state.
- * @param driver_state - a driver specific state object previously created by the network_server_create function
- * This state object should not be referenced after this function returns.
- */
-void network_server_cleanup(void * driver_state)
-{
-	network_server_state_t * state = (network_server_state_t *)driver_state;
-	int i;
-
-	for(i = 0; state->mutate_buffers && i < state->num_inputs; i++)
-		free(state->mutate_buffers[i]);
-	free(state->mutate_buffers);
-	free(state->mutate_buffer_lengths);
-	free(state->mutate_last_sizes);
-	
-	free(state->path);
-	free(state->arguments);
-	free(state->cmd_line);
-	free(state->target_ip);
-	free(state->sleeps);
-	free(state);
 }
 
 /**
@@ -285,7 +296,54 @@ static int is_port_listening(int port, int udp)
 		}
 		free(tcp_table);
 	}
-#else
+#elif __APPLE__
+	char ctl[] = "net.inet.tcp.pcblist";
+	char *buf, *entry;
+	struct xtcpcb *tcp_entry;
+	size_t len;
+	uint32_t port_n = htons(port);
+
+	if (sysctlbyname(ctl, NULL, &len, NULL, 0) == -1) // check to get length of data
+	{
+		perror("sysctlbyname failed to get length");
+		return -1;
+	}
+	buf = malloc(len);  // malloc some space for it
+	if (buf == NULL) {
+		perror("malloc");
+		return -1;
+	}
+	if (sysctlbyname(ctl, buf, &len, NULL, 0) == -1)
+	{
+		perror("sysctlbyname");
+		free(buf);
+		return -1;
+	}
+
+#define ENTRY_LEN(entry) (((struct xtcpcb *)(entry))->xt_len)
+
+	// buf is an array of length-prepended table entries, potentially of different kinds
+	entry = buf;
+	// skip first entry, it defines generation rather than a connection
+	entry += ENTRY_LEN(entry);
+	while (ENTRY_LEN(entry) == sizeof(struct xtcpcb)) {
+		tcp_entry = (struct xtcpcb *)entry;
+
+		if (tcp_entry->xt_socket.xso_protocol == IPPROTO_TCP &&
+				tcp_entry->xt_tp.t_state == TCPS_LISTEN &&
+				tcp_entry->xt_inp.inp_lport == port_n)
+		{
+			free(buf);
+			return 1;
+		}
+
+		entry += ENTRY_LEN(entry);
+	}
+	free(buf);
+
+#undef ENTRY_LEN
+
+#else // Linux
 	char line[250];
 	FILE * tcp_info = fopen("/proc/net/tcp","r");
 	int num, port_from_proc;
@@ -361,7 +419,7 @@ static int network_server_run(network_server_state_t * state, char ** inputs, si
 #else
 			usleep(1000*state->sleeps[i]);
 #endif
-		if (state->target_udp && send_udp_input(state, &sock, inputs[i], lengths[i])
+		if ((state->target_udp && send_udp_input(state, &sock, inputs[i], lengths[i]))
 			|| (!state->target_udp && send_tcp_input(&sock, inputs[i], lengths[i])))
 		{
 #ifdef _WIN32

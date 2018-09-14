@@ -256,7 +256,7 @@ int return_code_is_process_done(void * instrumentation_state)
 int return_code_help(char ** help_str)
 {
 	*help_str = strdup(
-		"return_code - Linux return_code \"instrumentation\"\n"
+		"return_code - Linux/Mac return_code \"instrumentation\"\n"
 		"Options:\n"
 		"\tnone\n"
 		"\n"

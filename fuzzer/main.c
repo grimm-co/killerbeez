@@ -159,7 +159,7 @@ int main(int argc, char ** argv)
 		{
 #ifdef _WIN32
 			mutator_directory = filename_relative_to_binary_dir("..\\mutators\\");
-#else
+#else // LINUX and APPLE
 			mutator_directory = filename_relative_to_binary_dir("../mutators");
 #endif
 		}
