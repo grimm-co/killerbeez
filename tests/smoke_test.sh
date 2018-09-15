@@ -2,10 +2,16 @@
 if [[ "$1" == "kill" ]]; then
 	# Clean out the old
 	rm -fR killerbeez killerbeez-mutators killerbeez-utils build
+fi
 
-	# Check out the new
+# Check out the new (if needed)
+if [[ ! -d killerbeez-utils ]]; then
 	git clone https://github.com/grimm-co/killerbeez-utils
+fi
+if [[ ! -d killerbeez-mutators ]]; then
 	git clone https://github.com/grimm-co/killerbeez-mutators
+fi
+if [[ ! -d killerbeez ]]; then
 	git clone https://github.com/grimm-co/killerbeez
 fi
 
