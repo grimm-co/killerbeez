@@ -23,37 +23,37 @@
 	```
 3. Build code
 	```
-  cd killerbeez/server/boinc
-  ./_autosetup
-  ./configure --disable-client --disable-manager
-  make
+    cd killerbeez/server/boinc
+    ./_autosetup
+    ./configure --disable-client --disable-manager
+    make
 	```
 4. User permissions
 	```
-  sudo useradd -m -s /bin/bash boincadm
-  sudo usermod -a -G boincadm www-data
-  sudo -u boincadm sh -c 'echo umask 0007 >> /home/boincadm/.bashrc'
-  sudo sh -c 'echo umask 0007 >> /etc/apache2/envvars'
-  sudo chgrp boincadm /usr/local/killerbeez
-  sudo chmod g+w /usr/local/killerbeez
+    sudo useradd -m -s /bin/bash boincadm
+    sudo usermod -a -G boincadm www-data
+    sudo -u boincadm sh -c 'echo umask 0007 >> /home/boincadm/.bashrc'
+    sudo sh -c 'echo umask 0007 >> /etc/apache2/envvars'
+    sudo chgrp boincadm /usr/local/killerbeez
+    sudo chmod g+w /usr/local/killerbeez
 	```
   * Note: the new user doesn't have sudo access, so continue using your normal
     account for the remaining instructions except when indicated.
 5. MySQL setup (make sure to select your own password)
-  ```
-  mysql -u root -p
-  mysql> CREATE USER 'killerbeez'@'localhost' IDENTIFIED BY '<password here>';
-  mysql> GRANT ALL ON killerbeez.* to 'killerbeez'@'localhost';
-  ```
-  ```
-  sudo sh -c 'echo sql_mode="ONLY_FULL_GROUP_BY,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION" >> /etc/mysql/mysql.conf.d/mysqld.cnf'
-  sudo systemctl restart mysql
-  ```
+    ```
+    mysql -u root -p
+    mysql> CREATE USER 'killerbeez'@'localhost' IDENTIFIED BY '<password here>';
+    mysql> GRANT ALL ON killerbeez.* to 'killerbeez'@'localhost';
+    ```
+    ```
+    sudo sh -c 'echo sql_mode="ONLY_FULL_GROUP_BY,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION" >> /etc/mysql/mysql.conf.d/mysqld.cnf'
+    sudo systemctl restart mysql
+    ```
 6. Apache setup
-  ```
-  sudo a2enmod cgi
-  sudo systemctl restart apache2
-  ```
+    ```
+    sudo a2enmod cgi
+    sudo systemctl restart apache2
+    ```
 7. Project setup (run as the boincadm user)
     1. First, open a shell as the boincadm user for the rest of this step
 
@@ -65,7 +65,7 @@
        will  be a public instance, take a look at
        [these guidelines](https://boinc.berkeley.edu/trac/wiki/MasterUrl#ChoosingaprojectURL).
        * `export BOINC_URL=<this url>`
-    3. Create the BOINC project for Killerbeez
+    3. Create the BOINC project for Killerbeez (using the passord from step 5 above)
 
         ```
         cd /usr/local/killerbeez/killerbeez/server/boinc
@@ -74,7 +74,7 @@
         ```
         * Enter Y at the prompt.
     4. Set up cron, load platforms into the database, and set a password to
-       access the admin UI
+       access the admin UI (admin username does not need to be boincadm)
         ```
         cd ~/projects/killerbeez
         crontab killerbeez.cronjob
@@ -88,7 +88,11 @@
         cp /usr/local/killerbeez/killerbeez/server/*.py bin
         cp -r /usr/local/killerbeez/killerbeez/server/skel .
         ```
-    7. Download the latest
+    7. Killerbeez does not use the BOINC API, however BOINC has a wrapper which
+       wraps an executable and deals with all the BOINC-specific stuff.  This
+       allows any application to be leveraged by BOINC. We need this wrapper
+       program for all platforms which we intend to support.  For Windows,
+       download the latest
        [killerbeez-x64.zip](https://github.com/grimm-co/killerbeez/releases) and
        place it in the `skel/windows_x86_64` directory
     8. Extract the wrapper binary (or see the [build instructions](#wrapper) to
@@ -97,11 +101,14 @@
         unzip -j -d skel/windows_x86_64 skel/windows_x86_64/killerbeez-x64.zip \
           '*wrapper_26014_windows_x86_64.exe'
         ```
-    6. Enable the project
+    9. If you want to support Linux or Mac, get the approripriate wrappers
+       from the [BOINC wiki](https://boinc.berkeley.edu/trac/wiki/WrapperApp)
+       and put the executables in the appropriate place in the skel/ directory.
+    10. Enable the project
         ```
         bin/start
         ```
-    7. Done running as boincadm
+    11. Done running as boincadm
 
         ```
         exit
@@ -130,22 +137,34 @@
     This will start up the server on port 5000. In the instructions below, we
     will call the URL pointing to this port `$API_URL`.
     
-### Client - Windows 10 x64 only for now
+### Client
+Next we need to set up at least one client. Follow these instructions first,
+then the operating system specific instructions below.  If there aren't any
+instructions for your operating system, you're on your own (when if you figure
+it out, we accept pull requests for improved documentation :-)).
+
 1. Create an account via BOINC webpage (`$BOINC_URL/killerbeez/create_account_form.php`)
+
+#### Linux (Ubuntu)
+1. sudo apt install boinc-client
+2. Get an account key using: `boinccmd --lookup_account $BOINC_URL/killerbeez/ <email address> <password>`
+3. `boinccmd --project_attach $BOINC_URL/killerbeez/ <account key>`
+
+#### Windows
+Note: only Windows 10 x64 is currently supported
+
+1. Log into the BOINC webpage (`$BOINC_URL/killerbeez`)
 2. GUI instructions to add project:
-  1. Go to Project > Join on website
-  2. If client not installed, install it
-  3. Select "Add project" in GUI
-  4. Enter project URL from webpage
-  5. Enter email address and password of the account you registered in step 1
-3. Command-line instructions to add project:
-  1. Go to Project > Join on website
-  2. If client not installed, install it (e.g., `apt install boinc-client`)
-  3. `boinccmd --lookup_account <project url> <email address> <password>`
-    * Returns account key
-  4. `boinccmd --project_attach <project url> <account key>`
+    1. Go to Project > Join on website
+    2. If client not installed, install it
+    3. Select "Add project" in GUI
+    4. Enter project URL from webpage
+    5. Enter email address and password of the account you registered in step 1
 
 ## Administration
+All administration of the BOINC server which is done from the command line
+should be done as the "boincadm" user.  You can use `sudo -i -u boincadm` to
+drop to an interactive shell with this user.
 
 ### Add a target
 Killerbeez jobs have a "target", which represents a target program running on a
@@ -158,17 +177,30 @@ Player.
 
 1. Create the target
 
+A list of platforms (operating/cpu architecture) can be found on the [BOINC
+Wiki](https://boinc.berkeley.edu/trac/wiki/BoincPlatforms).
+
     ```
+    cd ~/projects/killerbeez/
     bin/add_target.py <target> <platform> [<platform> ...]
     ```
     * Example: `bin/add_target.py wmp windows_x86_64`
 2. If you need any additional files in this app, put them in the app dir
-   (`apps/<target>_<platform>/1/<platform>`)
+   (`apps/<target>_<platform>/1/<platform>`).  At a minimum, you will probably
+   want to put the executable there (unless the assumption is that it is already
+   on the clients' computers).
 3. Finalize the app creation
 
     ```
     bin/update_versions
     ```
+
+Supporting a new platform is kind of a big deal.  If you want to take a stab at
+it, take a look at the comments in add_target.py to get started.  You will
+probably want to have the [BOINC wiki](https://boinc.berkeley.edu/trac/wiki)
+loaded up, especially if you're not already familiar with how the implementation
+details of BOINC.
+
 
 ### Submit job
 Customize the [boinc_submit.py](../server/boinc_submit.py) script for your

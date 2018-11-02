@@ -16,6 +16,7 @@ else ()
 	set(INSTRUMENTATION_SRC
 		${INSTRUMENTATION_SRC}
 		${PROJECT_SOURCE_DIR}/return_code_instrumentation.c
+		${PROJECT_SOURCE_DIR}/afl_instrumentation.c
 	)
 
 	if (NOT APPLE)

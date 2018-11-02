@@ -1,4 +1,20 @@
 #!/usr/bin/env python2
+#
+# This script will add a target to the BOINC system, which would normally
+# require a bunch of manual work in terms of editing files, and creating
+# a whole directory structure.  The gist of it is this:
+# - Edit project.xml if the platform is new
+# - Edit config.xml to add daemons such as validators and assimulators
+# - Create the follow directory structure:
+#     apps/$TARGET_NAME/$VERSION/$PLATFORM
+#   (where $VERSION is currently hard-coded to "1")
+# - The contents of skel/$PLATFORM are then copied to the new app directory
+#   with the filenames getting the $TARGET_NAME injected into them and
+#   version.xml has all instances of {app} replaced with $TARGET_NAME
+# - Creates templates/$TARGET_NAME_$PLATFORM_{in,out} based on files in
+#   skel/templates. See: https://boinc.berkeley.edu/trac/wiki/JobTemplates
+# - Calls xadd, stop, and start to ensure BOINC knows about all these changes
+#
 
 import argparse
 import fcntl
