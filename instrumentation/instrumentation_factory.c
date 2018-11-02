@@ -4,6 +4,7 @@
 #include "dynamorio_instrumentation.h"
 #else
 #include "return_code_instrumentation.h"
+#include "afl_instrumentation.h"
 #if !__APPLE__ // Linux
 #include "linux_ipt_instrumentation.h"
 #endif
@@ -68,6 +69,19 @@ instrumentation_t * instrumentation_factory(char * instrumentation_type)
 		ret->get_fuzz_result = return_code_get_fuzz_result;
 		ret->is_process_done = return_code_is_process_done;
 	}
+	else if (!strcmp(instrumentation_type, "afl"))
+	{
+		ret->create = afl_create;
+		ret->cleanup = afl_cleanup;
+		ret->merge = afl_merge;
+		ret->get_state = afl_get_state;
+		ret->free_state = afl_free_state;
+		ret->set_state = afl_set_state;
+		ret->enable = afl_enable;
+		ret->is_new_path = afl_is_new_path;
+		ret->get_fuzz_result = afl_get_fuzz_result;
+		ret->is_process_done = afl_is_process_done;
+	}
 	#if !__APPLE__ // Linux
 	else if (!strcmp(instrumentation_type, "ipt"))
 	{
@@ -110,6 +124,7 @@ char * instrumentation_help(void)
 	APPEND_HELP(text, new_text, dynamorio_help);
 	#else
 	APPEND_HELP(text, new_text, return_code_help);
+	APPEND_HELP(text, new_text, afl_help);
 	#if !__APPLE__ // Linux
 	APPEND_HELP(text, new_text, linux_ipt_help);
 	#endif

@@ -1058,7 +1058,7 @@ int linux_ipt_set_state(void * instrumentation_state, char * state)
  * @param instrumentation_state - an instrumentation specific state object previously created by the linux_ipt_create function
  * @process - a pointer to return a handle to the process that the instrumentation was enabled on
  * @cmd_line - the command line of the fuzzed process to enable instrumentation on
- * @input - a buffer to the input that should be sent to the fuzzed process on stdin
+ * @input - a buffer to the input that should be sent to the fuzzed process
  * @input_length - the length of the input parameter
  * returns 0 on success, -1 on failure
  */

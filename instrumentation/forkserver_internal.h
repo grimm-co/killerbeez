@@ -29,6 +29,9 @@ struct forkserver {
 };
 typedef struct forkserver forkserver_t;
 
+pid_t run_target(int needs_stdin_fd, char *target_path, char **argv,
+                forkserver_t * fs, int use_forkserver_library, int *st_pipe,
+                int *ctl_pipe, int persistence_max_cnt);
 //These functions control all interactions with the forkserver, sending the
 //commands listed above
 void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int use_forkserver_library,

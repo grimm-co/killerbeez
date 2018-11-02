@@ -28,7 +28,7 @@
 #define MSAN_ERROR 86
 
 //The amount of time to wait before considering the fork server initialization failed
-#define FORK_SERVER_STARTUP_TIME 5000
+#define FORK_SERVER_STARTUP_TIME 5
 
 //Save a fd to the /dev/null, so we don't have to keep opening/closing it
 static int dev_null_fd =  -1;
@@ -61,6 +61,174 @@ static void find_fork_server_library(char * buffer, size_t buffer_len)
 //////////////////////////////////////////////////////////////
 // Fork Server Initialization ////////////////////////////////
 //////////////////////////////////////////////////////////////
+/**
+ *
+ * @param needs_stdin_fd - whether we should open a library for the stdin of
+ *                         the newly created process
+ * @param target_path - The path to the program to start
+ * @param argv - Arguments to pass to the program
+ * @param fs - A forkserver_t structure to hold the fork server state, or NULL
+ *             if not using a fork server
+ * @param use_forkserver_library - Whether or not to use
+ *                                 LD_PRELOAD/DYLD_INSERT_LIBRARIES to inject
+ *                                 the fork server
+ * @param st_pipe - pointer to an array of two status pipes for the fork server
+ * @param ctl_pipe - pointer to an array of two control pipes for the fork server
+ * @param persistence_max_cnt - if fork server is in use, and perssistent mode
+ *                              is in use, this is the number of inputs which
+ *                              will be handled by each execution of the target
+ * @return the process ID of spawned process
+ */
+pid_t run_target(int needs_stdin_fd, char *target_path, char **argv,
+                forkserver_t * fs, int use_forkserver_library, int *st_pipe,
+                int *ctl_pipe, int persistence_max_cnt) {
+/*
+  This function is based on the AFL run_target function present in afl-fuzz.c,
+  available at this URL:
+  https://github.com/mirrorer/afl/blob/master/afl-fuzz.c#L1968.
+  AFL's license is as shown below:
+
+  american fuzzy lop - fuzzer code
+  --------------------------------
+  Written and maintained by Michal Zalewski <lcamtuf@google.com>
+
+  Forkserver design by Jann Horn <jannhorn@googlemail.com>
+
+  Copyright 2013, 2014, 2015, 2016, 2017 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+ */
+  int child_pid;
+
+  DEBUG_MSG("Forking child process for target executable...");
+  child_pid = fork();
+  if(child_pid < 0) FATAL_MSG("fork() failed");
+
+  if(!child_pid) {
+    struct rlimit r;
+
+    // Umpf. On OpenBSD, the default fd limit for root users is set to
+    // soft 128. Let's try to fix that...
+    if (!getrlimit(RLIMIT_NOFILE, &r) && r.rlim_cur < MAX_FORKSRV_FD) {
+      r.rlim_cur = MAX_FORKSRV_FD;
+      setrlimit(RLIMIT_NOFILE, &r); // Ignore errors
+    }
+
+    if (mem_limit) {
+      r.rlim_max = r.rlim_cur = ((rlim_t)mem_limit) << 20;
+#ifdef RLIMIT_AS
+      setrlimit(RLIMIT_AS, &r); // Ignore errors
+#else
+      // This takes care of OpenBSD, which doesn't have RLIMIT_AS, but
+      // according to reliable sources, RLIMIT_DATA covers anonymous
+      // maps - so we should be getting good protection against OOM bugs.
+      setrlimit(RLIMIT_DATA, &r); // Ignore errors
+#endif // ^RLIMIT_AS
+    }
+
+    // Dumping cores is slow and can lead to anomalies if SIGKILL is delivered
+    // before the dump is complete.
+
+    r.rlim_max = r.rlim_cur = 0;
+
+    setrlimit(RLIMIT_CORE, &r); // Ignore errors
+
+    /* Isolate the process and configure standard descriptors. If out_file is
+         specified, stdin is /dev/null; otherwise, out_fd is cloned instead. */
+    setsid();
+
+    if(dev_null_fd < 0)
+      dev_null_fd = open("/dev/null", O_RDWR);
+    if(needs_stdin_fd) {
+      dup2(fs->target_stdin, 0);
+      close(fs->target_stdin);
+    } else {
+      dup2(dev_null_fd, 0);
+    }
+    if(dup2(dev_null_fd, 1) < 0)
+      WARNING_MSG("Sending stdout to /dev/null failed! errno=%d", errno);
+    if(dup2(dev_null_fd, 2) < 0)
+      WARNING_MSG("Sending stderr to /dev/null failed! errno=%d", errno);
+
+    // The forkserver requires setting up some control pipes for interaction
+    // between the fuzzer and forkserver (which lives in the target process)
+    if(fs) {
+      // Set up control and status pipes, close the unneeded original fds.
+      if(dup2(ctl_pipe[0], FUZZER_TO_FORKSRV) < 0)
+        FATAL_MSG("dup2() failed");
+      if(dup2(st_pipe[1], FORKSRV_TO_FUZZER) < 0)
+        FATAL_MSG("dup2() failed");
+
+      close(ctl_pipe[0]);
+      close(ctl_pipe[1]);
+      close(st_pipe[0]);
+      close(st_pipe[1]);
+    }
+
+    /* On Linux, would be faster to use O_CLOEXEC. Maybe TODO. */
+    close(dev_null_fd);
+
+    // If we are using a forksrv, we might need to inject it dynamically if it
+    // is not already in the executable.  We also want to make sure we set the
+    // environment variable which is used for persistence mode, and finally we
+    // add the optimization to load all the libraries once so this is only
+    // done on the execv, as opposed to each time the target process calls fork
+    if(fs) {
+      // Preload the forkserver library
+      if(use_forkserver_library) {
+        char fork_server_library_path[MAX_PATH];
+        find_fork_server_library(fork_server_library_path, sizeof(fork_server_library_path));
+  #ifdef __APPLE__
+        setenv("DYLD_INSERT_LIBRARIES", fork_server_library_path, 1);
+  #else
+        setenv("LD_PRELOAD", fork_server_library_path, 1);
+  #endif
+      }
+
+      if(persistence_max_cnt) {
+        char buffer[16];
+        snprintf(buffer, sizeof(buffer),"%d",persistence_max_cnt);
+        setenv(PERSIST_MAX_VAR, buffer, 1);
+      }
+
+      // This should improve performance a bit, since it stops the linker from
+      // doing extra work post-fork().
+      if (!getenv("LD_BIND_LAZY")) setenv("LD_BIND_NOW", "1", 0);
+    }
+
+    // Set sane defaults for ASAN if nothing else specified.
+    setenv("ASAN_OPTIONS", "abort_on_error=1:"
+                           "detect_leaks=0:"
+                           "symbolize=0:"
+                           "allocator_may_return_null=1", 0);
+
+    // MSAN uses slightly different arguments when using the forkserver
+    if(fs) {
+      // MSAN is tricky, because it doesn't support abort_on_error=1 at this
+      // point. So, we do this in a very hacky way.
+      setenv("MSAN_OPTIONS", "exit_code=" STRINGIFY(MSAN_ERROR) ":"
+                             "symbolize=0:"
+                             "abort_on_error=1:"
+                             "allocator_may_return_null=1:"
+                             "msan_track_origins=0", 0);
+    } else {
+      setenv("MSAN_OPTIONS", "exit_code=" STRINGIFY(MSAN_ERROR) ":"
+                             "symbolize=0:"
+                             "msan_track_origins=0", 0);
+    }
+
+    execv(target_path, argv);
+    // The only time execv() returns is if it failed
+    FATAL_MSG("Target executable failed to execute (execv())");
+    exit(1);
+  }
+
+  return child_pid;
+}
 
 /**
  * This function starts a program with the fork server embedded in it
@@ -69,7 +237,7 @@ static void find_fork_server_library(char * buffer, size_t buffer_len)
  * @param argv - Arguments to pass to the program
  * @param use_forkserver_library - Whether or not to use LD_PRELOAD/DYLD_INSERT_LIBRARIES to inject the fork server
  * library or not
- * @param need_stdin_fd - whether we should open a library for the stdin of the newly created process
+ * @param needs_stdin_fd - whether we should open a library for the stdin of the newly created process
  */
 void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int use_forkserver_library,
   int persistence_max_cnt, int needs_stdin_fd)
@@ -78,9 +246,7 @@ void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int u
   int st_pipe[2], ctl_pipe[2];
   int err, status, forksrv_pid;
   int rlen = -1, timed_out = 1;
-  char fork_server_library_path[MAX_PATH];
   char stdin_filename[100];
-  char buffer[16];
   time_t start_time;
 
   if(dev_null_fd < 0) {
@@ -123,118 +289,11 @@ void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int u
 
     http://www.apache.org/licenses/LICENSE-2.0
  */
-
-
-
   if(pipe(st_pipe) || pipe(ctl_pipe))
     FATAL_MSG("pipe() failed");
 
-  forksrv_pid = fork();
-  if(forksrv_pid < 0)
-    FATAL_MSG("fork() failed");
-
-  //In the child process
-  if (!forksrv_pid) {
-
-    struct rlimit r;
-
-    // Umpf. On OpenBSD, the default fd limit for root users is set to
-    // soft 128. Let's try to fix that...
-    if (!getrlimit(RLIMIT_NOFILE, &r) && r.rlim_cur < MAX_FORKSRV_FD) {
-
-      r.rlim_cur = MAX_FORKSRV_FD;
-      setrlimit(RLIMIT_NOFILE, &r); // Ignore errors
-
-    }
-
-    if (mem_limit) {
-
-      r.rlim_max = r.rlim_cur = ((rlim_t)mem_limit) << 20;
-
-#ifdef RLIMIT_AS
-
-      setrlimit(RLIMIT_AS, &r); // Ignore errors
-
-#else
-
-      // This takes care of OpenBSD, which doesn't have RLIMIT_AS, but
-      // according to reliable sources, RLIMIT_DATA covers anonymous
-      // maps - so we should be getting good protection against OOM bugs.
-      setrlimit(RLIMIT_DATA, &r); // Ignore errors
-
-#endif // ^RLIMIT_AS
-
-
-    }
-
-    // Dumping cores is slow and can lead to anomalies if SIGKILL is delivered
-    // before the dump is complete.
-
-    r.rlim_max = r.rlim_cur = 0;
-
-    setrlimit(RLIMIT_CORE, &r); // Ignore errors
-
-    // Isolate the process and configure standard descriptors.
-    setsid();
-
-    if(needs_stdin_fd) {
-      dup2(fs->target_stdin, 0);
-      close(fs->target_stdin);
-    }
-    else
-      dup2(dev_null_fd, 0);
-    dup2(dev_null_fd, 1);
-    dup2(dev_null_fd, 2);
-
-    // Set up control and status pipes, close the unneeded original fds.
-    if (dup2(ctl_pipe[0], FUZZER_TO_FORKSRV) < 0)
-      FATAL_MSG("dup2() failed");
-    if (dup2(st_pipe[1], FORKSRV_TO_FUZZER) < 0)
-      FATAL_MSG("dup2() failed");
-
-    close(ctl_pipe[0]);
-    close(ctl_pipe[1]);
-    close(st_pipe[0]);
-    close(st_pipe[1]);
-
-    close(dev_null_fd);
-
-    // Preload the forkserver library
-    if(use_forkserver_library) {
-      find_fork_server_library(fork_server_library_path, sizeof(fork_server_library_path));
-#ifdef __APPLE__
-      setenv("DYLD_INSERT_LIBRARIES", fork_server_library_path, 1);
-#else
-      setenv("LD_PRELOAD", fork_server_library_path, 1);
-#endif
-    }
-
-    if(persistence_max_cnt) {
-      snprintf(buffer, sizeof(buffer),"%d",persistence_max_cnt);
-      setenv(PERSIST_MAX_VAR, buffer, 1);
-    }
-
-    // This should improve performance a bit, since it stops the linker from
-    // doing extra work post-fork().
-    if (!getenv("LD_BIND_LAZY")) setenv("LD_BIND_NOW", "1", 0);
-
-    // Set sane defaults for ASAN if nothing else specified.
-    setenv("ASAN_OPTIONS", "abort_on_error=1:"
-                           "detect_leaks=0:"
-                           "symbolize=0:"
-                           "allocator_may_return_null=1", 0);
-
-    // MSAN is tricky, because it doesn't support abort_on_error=1 at this
-    // point. So, we do this in a very hacky way.
-    setenv("MSAN_OPTIONS", "exit_code=" STRINGIFY(MSAN_ERROR) ":"
-                           "symbolize=0:"
-                           "abort_on_error=1:"
-                           "allocator_may_return_null=1:"
-                           "msan_track_origins=0", 0);
-
-    execv(target_path, argv);
-    exit(1);
-  }
+  forksrv_pid = run_target(needs_stdin_fd, target_path, argv, fs, use_forkserver_library,
+             st_pipe, ctl_pipe, persistence_max_cnt);
 
   // Close the unneeded endpoints.
   close(ctl_pipe[0]);

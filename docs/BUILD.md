@@ -89,6 +89,11 @@ be found in folders named after the architecture (e.g. x64) and build type
 To build Killerbeez on Linux/Mac you will need a compiler (gcc or clang), make, and
 cmake.
 
+For Ubuntu, it's as simple as:
+```
+sudo apt install build-essential cmake
+```
+
 ### Installation
 
 Clone the killerbeez, killerbeez-mutators and killerbeez-utils repos.

@@ -75,8 +75,11 @@ int generic_wait_for_process_completion(pid_t process, int timeout, instrumentat
 int generic_test_next_input(void * state, mutator_t * mutator, void * mutator_state, char * buffer, size_t buffer_length,
 	int (*test_input_func)(void * driver_state, char * buffer, size_t length), int * mutate_last_size)
 {
-	if (!mutator)
+	if (!mutator) {
+		ERROR_MSG("Mutator module missing!");
 		return -1;
+	}
+	DEBUG_MSG("Mutating input...");
 	*mutate_last_size = mutator->mutate(mutator_state, buffer, buffer_length);
 	if (*mutate_last_size < 0)
 		return -1;
