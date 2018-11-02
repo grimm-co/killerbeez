@@ -11,7 +11,15 @@ JSON char array.
 \par
 Anything which is instrumentation specific will only be used within the
 instrumentation functions.  All other components will treat these items as
-opaque strings/blobs.
+opaque strings/blobs.  The typical order of calling instrumentation functions
+is create(), enable(), is_process_done(), get_fuzz_result().
+
+\par
+As an implementation note, all of the instrumentation modules can not have
+the same name for functions like ``create'' or there will be a naming
+collision. This is currently handled in instrumentation_factory.c by setting
+an instrumentation structure which maps the names listed here to the actual
+functions which back them for the selected instrumentation.
 
 \api{void * create(char * options, char * state)
 }{
@@ -39,7 +47,7 @@ created by the create function.  This structure will be freed and should not be
 referenced afterwards
 }
 
-\api{char * get\_state(void * instrumentation\_state, int *out\_length)
+\api{char * get\_state(void * instrumentation\_state)
 }{
 This function will return the state information holding the previous execution
 path info.  The returned value can later be passed to the instrumentation
@@ -49,8 +57,6 @@ here using the free\_state() function.
 }{
 \item instrumentation\_state - an instrumentation specific structure previously
 created by the create function
-\item out\_length - this pointer will be filled with the length of the returned
-state buffer
 \item return value - a buffer that holds information about the previous
 execution paths as a JSON char array.
 }
@@ -99,7 +105,7 @@ previously created by the create() function that should be merged with the first
 coverage information from both of the instrumentation states or NULL on failure
 }
 
-\api{int enable(void * instrumentation\_state, HANDLE * process, char * cmd\_line,
+\api{int enable(void * instrumentation\_state, void * process, char * cmd\_line,
 char * input, size\_t input\_length)
 }{
 This function will enable the instrumentation module for a specific process and
@@ -108,7 +114,8 @@ runs that process.  If the process needs to be restarted, it will be.
 \item instrumentation\_state - an instrumentation specific structure previously
 created by the create() function
 \item process - a pointer to a handle for the process on which the
-instrumentation was enabled
+instrumentation was enabled.  On Windows, this is a HANDLE*, on UNIX-based
+systems it is a pid_t*
 \item cmd\_line - the command line of the fuzzed process on which to enable
 instrumentation
 \item input - pointer to the buffer containing the input data that should be
@@ -136,7 +143,8 @@ This function will return the result of the fuzz job. It should be called
 after the process has finished processing the tested input, i.e. after a
 successful \texttt{is\_process\_done}. If \texttt{get\_fuzz\_result} is called
 prior to \texttt{enable}, it will return failure, as the fuzzing of processes
-has not been started yet.
+has not been started yet.  Because this is only called once the fuzzing is
+done, it will generally clean up resources such as reaping the target process.
 }{
 \item instrumentation\_state - an instrumentation specific structure previously
 created by the create() function

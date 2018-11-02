@@ -390,22 +390,22 @@ int main(int argc, char ** argv)
 		}
 
 		directory = NULL;
-		if (fuzz_result == FUZZ_CRASH)
+		if (fuzz_result == FUZZ_CRASH) {
 			directory = "crashes";
-		else if (fuzz_result == FUZZ_HANG)
-			directory = "hangs";
-		else if (new_path > 0)
-			directory = "new_paths";
-
-		if (directory != NULL)
-		{
 			CRITICAL_MSG("Found %s", directory);
+		} else if (fuzz_result == FUZZ_HANG) {
+			directory = "hangs";
+			ERROR_MSG("Found %s", directory);
+		} else if (new_path > 0) {
+			directory = "new_paths";
+			INFO_MSG("Found %s", directory);
+		}
 
+		if (directory != NULL) {
 			mutate_buffer = driver->get_last_input(driver->state, &mutate_length);
-			if (!mutate_buffer)
+			if (!mutate_buffer) {
 				ERROR_MSG("Unable to dump mutate buffer\n");
-			else
-			{
+			} else {
 				if (output_directory) {
 					md5((uint8_t *)mutate_buffer, mutate_length, filehash, sizeof(filehash));
 					snprintf(filename, MAX_PATH, "%s/%s/%s", output_directory, directory, filehash);

@@ -189,9 +189,11 @@ int file_test_input(void * driver_state, char * input, size_t length)
 	file_state_t * state = (file_state_t *)driver_state;
 
 	//Write the input to disk
+	DEBUG_MSG("Writing input to disk...");
 	write_buffer_to_file(state->test_filename, input, length);
 
 	//Start the process and give it our input
+	DEBUG_MSG("Enabling instrumentation module...");
 	if(state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0))
 		return FUZZ_ERROR;
 
