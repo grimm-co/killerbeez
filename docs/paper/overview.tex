@@ -15,6 +15,24 @@ and hangs are unique, which inputs can be dropped because the code they
 reach is already covered by other inputs.
 % TODO: Add diagram of the client/server architecture here
 
+Because the manager is not responsible for running the target application, it
+does not need to run on any specific platform.  It can happily run on Linux and
+serve out work to be executed by Windows machines and collect the results.
+
+The manager is also what will enable future enhancements to be made such as
+using a test case generator to produce seed data, which could be used with the
+``nop'' mutator, which does not modify the data. Another integration which is
+planned is to use Driller\cite{driller} to generate program inputs which reach
+code which have not yet been reached by mutation. This is done by providing a
+REST API to the manager component, which allows things such as manage seed
+data. The corpus minimization can also be dealt with via this interface, so
+it does not have to be coupled with the internals of the manager, but instead
+run as a standalone process.
+
+In the unlikely event that the manager is ever found to be a bottleneck,
+multiple managers servers could be set up and the REST interface used to share
+information between them.
+
 \subsection{Execution}
 Execution is handled by the fuzzer program, which is aptly named ``fuzzer.''
 This can be run manually from the command line, however it is typically run by
@@ -23,3 +41,11 @@ feeding the program data, tracking code coverage, detecting crashes, and can
 deal with user interaction such as dialog boxes.
 
 % TODO: Add diagram of the fuzzer here
+
+The fuzzer handles all the nuts and bolts of fuzzing. While the same code base
+is used on Windows, Linux and macOS, and most of the mutators are shared among
+all platforms, much of the instrumentation code is platform specific.
+Similarly, the driver code is often platform specific and sometimes even
+application specific. That said, all modules are written in a way to reuse as
+much code as possible, as code reuse is one of the code objectives of
+Killerbeez.
