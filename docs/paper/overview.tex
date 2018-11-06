@@ -13,7 +13,17 @@ orchestration tasks.  It decides what mutators will be used on each target
 application, handles minimizing interesting inputs, determines if crashes
 and hangs are unique, which inputs can be dropped because the code they
 reach is already covered by other inputs.
-% TODO: Add diagram of the client/server architecture here
+
+\end{multicols}
+\begin{figure}[hp]
+\centering
+%\fbox{
+\includegraphics[width=6in]{KILLERBEEZ_Server_Architecture.png}
+%}
+\caption{Killerbeez Server Architecture}
+\label{fig:Killerbeez-server}
+\end{figure}
+\begin{multicols}{2}
 
 Because the manager is not responsible for running the target application, it
 does not need to run on any specific platform.  It can happily run on Linux and
