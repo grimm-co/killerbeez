@@ -1,0 +1,129 @@
+In this research, we propose a novel interoperable fuzzing architecture that is
+environment- and platform-independent. Our Killerbeez solution disseminates
+into four major components of drivers, mutators, instrumentation, a seed
+selection algorithm and corpus minimization. A distributed computing model is
+achieved by using multiple worker nodes fuzzing in parallel which obtain work
+from, and return results to, a central server.
+
+\subsection{Driver}
+Killerbeez offers drivers, which are target-specific wrappers that abstract
+away the concept of loading data into a target program and enable finer
+definition of what failure modes of a particular program look like. While
+typical fuzzers look for crashes and hangs, specifically-written drivers can
+have more context about a given fuzz target.  Better understanding of the fuzz
+target's behavior means that Killerbeez can make better-informed decisions
+about the status of a program after a particular input, and it can terminate or
+classify the result of a particular input more quickly than a naive approach
+that only waits for a timeout. More knowledge of the target means shorter fuzz
+loops, which means more fuzz iterations, which means more bugs.
+
+For example, if a malformed PDF file is given to a PDF reader application, it
+typically will pop up a dialog box indicating that the file is corrupt. Fuzzers
+such as Honggfuzz or WinAFL would wait until the timeout period. In Killerbeez,
+a driver could be written for the specific PDG reader which monitors the
+application for dialog boxes, detects when dialog boxes appear, analyze the
+text of the dialog box and determine that the status is a clean exit rather
+than a hang.  This would allow the fuzzer to move on to the next input more
+quickly, as it would not need to wait the full timeout period.  It also helps
+discern between hangs, which may indicate a Denial of Service vulnerability
+such as an infinite loop, and an error which is handled in the expected manner.
+
+In addition to better analyze what the outcome of a particular test case, the
+driver module also is responsible for feeding inputs to a program.  This is a
+departure from most fuzzers, which only work for one type of input.  In the
+case of AFL, the input is a file or stdin (which is also a file under UNIX).
+Syzkaller\cite{syzkaller}, on the other hand, uses system calls.
+
+Rather than being able to only load files, or read from standard input, a
+driver enables users of the fuzzer to specify which method the fuzz target
+accepts input. This allows for more exotic use cases, such as GUI applications,
+IOCTLs, or fuzzing network clients and servers. AFL and its many forks
+interface with programs in a limited set of ways, but by leaving the
+implementation open and restricting only with an API, we are able to apply
+Killerbeez to a wider range of potential targets, and easily modify the fuzzer
+to the particular use case for efficiency. We created a Windows Media Player
+(WMP) driver as an example.  Typically, a fuzzer's execution loop involves
+mutating input, feeding it to a target, and then monitoring the target for
+interesting behavior such as a crash or a hang; the WMP driver can also end the
+fuzz loop when music starts playing, which would signify a lack of crashes.
+
+We implemented the following drivers:
+\begin{itemize}[noitemsep]
+\item \textbf{File} - for programs that read input from a file
+\item \textbf{Stdin} - for programs that read input from standard input
+\item \textbf{Network Server} - enables fuzzing of server-like programs
+\item \textbf{Network Client} - enables fuzzing of client-like programs
+\item \textbf{Windows Media Player} - for Windows Media Player
+\end{itemize}
+
+\subsection{Mutator}
+Killerbeez also implements ``mutators'', which are abstractions on modifying
+program's input. They decide where to modify bytes in the input file, and how
+to modify them.
+
+In the same manner as the driver, we leverage the mutators from Honggfuzz,
+Radamsa, AFL, and Ni by exposing them via command-line options. By defining an
+API for the mutators, researchers can modify components of other fuzzers to
+conform to the Killerbeez API and easily swap in the new mutators. 
+
+Killerbeez uses a selection of user-selectable mutators. Parameters are passed
+to the mutator module via the driver, which control the operation of the
+mutator. For example, the bit flip mutator flips a parametrized number of bits
+throughout the entire input, one at a time.
+
+Modular mutators also enable trivial combination of different approaches. Using
+the multipart mutator, we can apply different mutators to different parts of
+the input. This is required for efficiently fuzzing network protocols, as it is
+often desirable to not mutate the initial packets as they may be a handshake or
+authentication and any mutation would prevent interesting code from being
+executed, as the target program would go down an error path instead. It can
+also be used to ensure that the first few bytes in a file are not modified so
+the file will still be recognized as being the correct file type.
+
+\subsection{Instrumentation}
+Killerbeez also uses an instrumentation abstraction, to implement the
+feedback-based portion of the fuzzer. Instrumentation monitors code coverage of
+binaries. It is essential in feedback-based fuzzing because helps expade code
+coverage by keeping inputs which reach new code.
+
+We implemented the following instrumentation modules:
+\begin{itemize}[noitemsep]
+\item \textbf{Debug} - A naive Windows-only instrumentation that uses determine the
+	result of a fuzz target via the Windows Debug API.
+\item \textbf{Return code} - A Linux-only equivalent to the debug instrumentation that
+	uses the waitpid system call to determine the result of a fuzz round.
+\item \textbf{DynamoRIO} - An instrumentation that uses the DynamoRIO project to
+	determine new paths discovered in a binary.
+\item \textbf{Intel PT} - Hardware-level ``Process Tracing'' instrumentation
+\item \textbf{AFL} - Instrumentation injected by AFL's compilers (afl-gcc or
+	afl-clang-fast)
+\end{itemize}
+
+The instrumentation modules monitor, at minimum, whether a process crashed,
+exited cleanly, or timed out. More advanced instrumentation modules, such as
+DynamoRIO, monitor basic block coverage and can inform the fuzzer of new paths
+taken in a binary.
+
+\subsection{Tracer}
+The tracer runs the fuzz target and takes detailed information on exactly which
+edges were executed.  Unlike the instrumentation module, which just gives a
+hash or bitmap of what was executed, the tracer shows every basic block that
+was hit and in what order.  This information will be fed into the manager,
+which will periodically run through all seed files and minimize them to only
+include the minimum number of files, and the minimum file size which hits the
+maximum amount of code. The concept of minimizing test corpora while
+maintaining the maximum code coverage dates back to at least October of
+2008,\cite{peach22} when Peach Fuzzer version 2.2 was released, which included
+the minset tool.
+
+The tracer uses the driver to run the fuzzed program (feed the program the
+input data, and tell when the program has finished processing it). While the
+instrumentation module is built for speed, the tracer is built for high
+resolution.  The instrumentation module is used during the main fuzzing
+process, and as such only records what is absolutely necessary to do its job.
+Meanwhile, the tracer is slow, but gives more granular data about the path
+information, which informs smarter mutation of input data.
+
+For example, the instrumentation module may use Intel PT to trace a binary, and
+only record a hash of the Trace information.  Instead, the tracer will generate
+a list of branch edges that the program takes throughout its execution.

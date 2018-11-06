@@ -1,0 +1,53 @@
+\documentclass{article}
+\input{packages}
+
+\title{Killerbeez: Fuzzing Framework to Bring Together the State of the Art}
+\author{Adam Nichols}
+\date{04 DEC 2018}
+
+\begin{document}
+% Heading for the first page has the title, author(s) and date
+\makeatletter
+\centerline{\Large{\textbf{\@title}}}
+
+\centerline{\@author}
+
+\centerline{GRIMM}
+
+\centerline{\{adam\}@grimm-co.com}
+
+\centerline{Published: \@date}
+\makeatother
+
+% Abstract can either go here, or after we start the multi-column view
+
+\begin{multicols}{2}
+
+\section{Introduction} \label{Introduction}
+\input{introduction}
+
+\section{Background} \label{Background}
+\input{background}
+
+\section{Killerbeez Overview} \label{Killerbeez Overview}
+\input{overview}
+
+\section{Implementation} \label{Implementation}
+\input{implementation}
+
+\section{Evaluation} \label{Evaluation}
+
+\section{Conclusions} \label{Conclusions}
+
+\section{Related Work} \label{Related Work}
+
+\section{Future Work} \label{Future Work}
+\input{future_work}
+
+\section{References} \label{References}
+\renewcommand{\section}[2]{}  % Removes the title thebibliography wants to add
+\input{references}
+
+\end{multicols}
+\end{document}
+

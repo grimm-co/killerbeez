@@ -1,0 +1,25 @@
+The core components of Killerbeez can be split into two logical categories:
+those which are related to orchestration, and those related to feeding data
+to the target program and collecting results.  The former refers to decisions
+such as what inputs to use as seed data to be mutated, which mutation
+algorithms to use, and other decisions which are best left to a central
+controller such as how to minimize the input corpus.  The latter category
+contains actions such as launching the application, tracking code coverage,
+and determining when the target application is done processing the input.
+
+\subsection{Orchestration}
+There is a manager that runs on a central server which handles all of the
+orchestration tasks.  It decides what mutators will be used on each target
+application, handles minimizing interesting inputs, determines if crashes
+and hangs are unique, which inputs can be dropped because the code they
+reach is already covered by other inputs.
+% TODO: Add diagram of the client/server architecture here
+
+\subsection{Execution}
+Execution is handled by the fuzzer program, which is aptly named ``fuzzer.''
+This can be run manually from the command line, however it is typically run by
+the manager, via BOINC.  This is responsible for running the target program,
+feeding the program data, tracking code coverage, detecting crashes, and can
+deal with user interaction such as dialog boxes.
+
+% TODO: Add diagram of the fuzzer here
