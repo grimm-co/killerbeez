@@ -16,9 +16,9 @@ if(NOT CMAKE_BUILD_TYPE)
 	message("WARNING: Building with debug options; performance will be impacted. Try cmake -DCMAKE_BUILD_TYPE=Release ../killerbeez")
 endif()
 
-SET ( BUILD_DIRECTORY ${CMAKE_SOURCE_DIR}/../build )
 
 if (WIN32)
+	SET ( BUILD_DIRECTORY ${CMAKE_SOURCE_DIR}/../build )
 	# windows/visual studio build convention eg build/X86/Debug
 	SET( WINDOWS_BUILD_PATH ${BUILD_DIRECTORY}/${CMAKE_C_COMPILER_ARCHITECTURE_ID}/${CMAKE_BUILD_TYPE} )
 	SET( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${WINDOWS_BUILD_PATH}/killerbeez/ )
@@ -27,6 +27,7 @@ if (WIN32)
 	LINK_DIRECTORIES(${WINDOWS_BUILD_PATH}/killerbeez/) # give linker path to utils
 	add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_DEPRECATION_DISABLE -D_CRT_NONSTDC_NO_DEPRECATE)
 else (WIN32)
+	SET ( BUILD_DIRECTORY ${CMAKE_BINARY_DIR} )
 	SET( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${BUILD_DIRECTORY}/killerbeez/ )
 	SET( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${BUILD_DIRECTORY}/killerbeez/ )
 	SET( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${BUILD_DIRECTORY}/killerbeez/ )
