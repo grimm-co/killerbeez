@@ -12,19 +12,19 @@ There is a manager that runs on a central server which handles all of the
 orchestration tasks.  It decides what mutators will be used on each target
 application, handles minimizing interesting inputs, determines if crashes
 and hangs are unique, which inputs can be dropped because the code they
-reach is already covered by other inputs.
+reach is already covered by other inputs. A \BOINC{} is used to transmit
+the work to worker nodes and receive results.
 
 \end{multicols}
 \begin{figure}[hp]
 \centering
-%\fbox{
 \includegraphics[width=6in]{KILLERBEEZ_Server_Architecture.png}
-%}
 \caption{Killerbeez Server Architecture}
 \label{fig:Killerbeez-server}
 \end{figure}
 \begin{multicols}{2}
 
+\subsubsection{Manager} \label{Manager Overview}
 Because the manager is not responsible for running the target application, it
 does not need to run on any specific platform.  It can happily run on Linux and
 serve out work to be executed by Windows machines and collect the results.
@@ -33,29 +33,132 @@ The manager is also what will enable future enhancements to be made such as
 using a test case generator to produce seed data, which could be used with the
 ``nop'' mutator, which does not modify the data. Another integration which is
 planned is to use Driller\cite{driller} to generate program inputs which reach
-code which have not yet been reached by mutation. This is done by providing a
-REST API to the manager component, which allows things such as manage seed
-data. The corpus minimization can also be dealt with via this interface, so
-it does not have to be coupled with the internals of the manager, but instead
-run as a standalone process.
+code which have not yet been reached by mutation. These integrations are made
+possible by providing a REST API to the manager component, which allows things
+such as managing seed data or adding more fuzzing targets. The corpus
+minimization can also be dealt with via this interface, so it does not have to
+be coupled with the internals of the manager, but instead can be run as a
+standalone process.
+% TODO: Is the above statement accurate (that the minimization code is not
+%       intertwined with the manager code)?
+% TODO: Will/does the tracer use the REST interface?
 
-In the unlikely event that the manager is ever found to be a bottleneck,
-multiple managers servers could be set up and the REST interface used to share
-information between them.
+If the manager is ever found to be a bottleneck, multiple managers servers
+could be set up and the REST interface used to share information between them.
 
 \subsection{Execution}
 Execution is handled by the fuzzer program, which is aptly named ``fuzzer.''
 This can be run manually from the command line, however it is typically run by
-the manager, via BOINC.  This is responsible for running the target program,
-feeding the program data, tracking code coverage, detecting crashes, and can
-deal with user interaction such as dialog boxes.
+the manager, via \BOINC{}.  In either case, the fuzzer is responsible for
+running the target program, feeding the program data, tracking code coverage,
+detecting crashes, and can deal with user interaction such as dialog boxes.
 
-% TODO: Add diagram of the fuzzer here
+\end{multicols}
+\begin{figure}[hp]
+\centering
+\includegraphics[width=6in]{killerbeez-high-level-block-diagrams.png}
+\caption{Killerbeez Fuzzer Overview}
+\label{fig:Killerbeez-fuzzer-overview}
+\end{figure}
+\begin{multicols}{2}
 
-The fuzzer handles all the nuts and bolts of fuzzing. While the same code base
-is used on Windows, Linux and macOS, and most of the mutators are shared among
-all platforms, much of the instrumentation code is platform specific.
-Similarly, the driver code is often platform specific and sometimes even
-application specific. That said, all modules are written in a way to reuse as
-much code as possible, as code reuse is one of the code objectives of
-Killerbeez.
+The fuzzer handles all the nuts and bolts of fuzzing. The same code base
+is used on Windows, Linux and macOS to enable as much code re-use as possible.
+Most of the mutators are shared among all platforms, however, some of the
+instrumentation code and drivers are platform specific and sometimes the
+drivers are even application specific.
+
+\subsubsection{Driver} \label{Driver Overview}
+Killerbeez offers drivers, which are target-specific wrappers that abstract
+away the concept of loading data into a target program and enable finer
+definition of what failure modes of a particular program look like. While
+typical fuzzers look for crashes and hangs, specifically-written drivers can
+have more context about a given fuzz target.  Better understanding of the fuzz
+target's behavior means that Killerbeez can make better-informed decisions
+about the status of a program after a particular input, and it can terminate or
+classify the result of a particular input more quickly than a na\"ive approach
+that only waits for a timeout. More knowledge of the target means shorter fuzz
+loops, which means more fuzz iterations, which means more bugs.
+
+For example, if a malformed PDF file is given to a PDF reader application, it
+typically will pop up a dialog box indicating that the file is corrupt. Fuzzers
+such as Honggfuzz or WinAFL would wait until the timeout period. In Killerbeez,
+a driver could be written for the specific PDF reader which monitors the
+application for dialog boxes, detects when dialog boxes appear, analyze the
+text of the dialog box and determine that the status is a clean exit rather
+than a hang.  This would allow the fuzzer to move on to the next input more
+quickly, as it would not need to wait the full timeout period.  It also helps
+discern between hangs, which may indicate a Denial of Service vulnerability
+such as an infinite loop, and an error which is handled in the expected manner.
+
+In addition to better analyze what the outcome of a particular test case, the
+driver module also is responsible for feeding inputs to a program.  This is a
+departure from most fuzzers, which only work for one type of input.  In the
+case of AFL, the input is a file or stdin (which is also a file under UNIX).
+Syzkaller\cite{syzkaller}, on the other hand, uses system calls.
+
+Rather than being able to only load files, or read from standard input, a
+driver enables users of the fuzzer to specify which method the fuzz target
+accepts input. This allows for more exotic use cases, such as GUI applications,
+IOCTLs, or fuzzing network clients and servers. AFL and its many forks
+interface with programs in a limited set of ways, but by leaving the
+implementation open and restricting only with an API, we are able to apply
+Killerbeez to a wider range of potential targets, and easily modify the fuzzer
+to the particular use case for efficiency. We created a Windows Media Player
+(WMP) driver as an example.  Typically, a fuzzer's execution loop involves
+mutating input, feeding it to a target, and then monitoring the target for
+interesting behavior such as a crash or a hang; the WMP driver can also end the
+fuzz loop when music starts playing, which would signify the program did not
+crash nor hang, without having to wait for the entire timeout period.
+
+Many of the drivers will work on many fuzzing targets in a particular category.
+Targets which are server applications which accept input from the network, are
+handled by the Network Server instrumentation module, for example. Other driver
+can be written to handle things which are specific to one particular
+application.  Some targets will handle opening files differently if opened via
+double clicking an icon as compared to using the open option from the file
+menu. Other examples include error message analysis to determine if the system
+should move on to the next input, or if it should click ``OK'' and continue
+(e.g. in the event of a warning message).
+
+\subsubsection{Mutator} \label{Mutator Overview}
+Killerbeez also implements ``mutators,'' which are abstractions on modifying
+program's input. They decide where to modify bytes in the input file, and how
+to modify them.
+
+Killerbeez uses a selection of user-selectable mutators. Parameters are passed
+to the mutator module via the driver, which control the operation of the
+mutator. For example, the bit flip mutator flips a parametrized number of bits
+throughout the entire input, one at a time.
+
+Modular mutators also enable trivial combination of different approaches. Using
+the multipart mutator, we can apply different mutators to different parts of
+the input. This is required for efficiently fuzzing network protocols, as it is
+often desirable to not mutate the initial packets as they may be a handshake or
+authentication and any mutation would prevent interesting code from being
+executed, as the target program would go down an error path instead. It can
+also be used to ensure that the first few bytes in a file are not modified so
+the file will still be recognized as being the correct file type.
+
+
+\subsubsection{Instrumentation} \label{Instrumentation Overview}
+Instrumentation modules are responsible for tracking program execution and
+determining if new code has been executed by the input data. How it does this,
+and what level of granularity is used, are questions left to the module author.
+There is an \IPT{} instrumentation module which is very high resolution, which
+means if a loop somewhere in the target is executed 178 times instead of 177
+times, it will detect this as a new code path, as the state explored is
+different than what was seen before.  The \AFL{} instrumentation module, on the
+other hand, would not consider this to be an input which covers new code. This
+is due to the bucketing system \AFL{} uses which groups executions of the same
+code and considers anything which executes a portion of code 128-255 times to
+be equivalent.
+
+Sometimes instrumentation involves dealing with specific drivers, which are
+implemented differently on different operating systems. The \IPT{}
+instrumentation module uses the perf subsystem on Linux, which is not available
+on macOS or Windows. Other instrumentation technologies, such as Intel's
+Pin\cite{pin}, have a very similar interface across different operating
+systems, which means more of the code in the instrumentation module can be
+re-used, simply using \#ifdef directives if there are portions which are
+specific to a particular operating system.

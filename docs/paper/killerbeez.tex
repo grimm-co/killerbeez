@@ -5,6 +5,10 @@
 \author{Adam Nichols}
 \date{04 DEC 2018}
 
+\def\AFL{\renewcommand\AFL{AFL}American Fuzzy Lop (AFL)}
+\def\BOINC{\renewcommand\BOINC{BOINC}Berkeley Open Infrastructure for Network Computing (BOINC)}
+\def\IPT{\renewcommand\IPT{IPT}Intel Processor Trace (IPT)}
+
 \begin{document}
 % Heading for the first page has the title, author(s) and date
 \makeatletter
@@ -29,9 +33,14 @@
 \section{Background} \label{Background}
 \input{background}
 
+% The overview describes what components exist (driver, mutator, manager, etc.)
+% and why. Examples are provided as needed, but just enough to cover the
+% concepts.
 \section{Killerbeez Overview} \label{Killerbeez Overview}
 \input{overview}
 
+% The implementation goes over each component in detail to showcase what we
+% have available so far.
 \section{Implementation} \label{Implementation}
 \input{implementation}
 
@@ -41,6 +50,10 @@
 
 \section{Related Work} \label{Related Work}
 
+% This is where we cover planned expansions, both in terms of additional things
+% to pull in, such as grammars which generate test files, Driller style
+% integration of symbolic execution, and additional modules for the existing
+% components (drivers, instrumentation, etc.).
 \section{Future Work} \label{Future Work}
 \input{future_work}
 
