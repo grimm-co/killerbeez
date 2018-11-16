@@ -8,7 +8,7 @@ from, and return results to, a central server.
 % TODO: Talk about the real power being the ability to mix and match different
 %       technologies for different situations
 
-\subsection{Driver}
+\subsection{Driver} \label{Driver}
 Driver modules use the mutator module which is passed in to mutate an input,
 the instrumentation module to trace the target's execution, and are responsible
 for getting the input data into the program.  A simple example would be a
@@ -29,7 +29,59 @@ We implemented the following drivers:
 \item \textbf{Windows Media Player} - for Windows Media Player
 \end{itemize}
 
-\subsection{Mutator}
+The File and Stdin drivers provide feature parity with AFL, in terms of input
+methods. There is nothing particularly novel about these drivers, so we will
+move on.
+
+The Network Server and Network Client drivers provide parity with AFL when it
+is combined with Preeny.  We found we needed two drivers, as one will establish
+a connection to a server, while the other will accept a connection from a
+client. These drivers are what caused the creation of the multipart mutator,
+which is covered in more detail in section \ref{Mutator}.
+
+We created a Windows Media Player (WMP) driver to demonstrate how to deal with
+a \GUI{} application which does not exit without user interaction. Applications
+with a \GUI{} are difficult to fuzz and many fuzzers deal with this by not
+supporting this feature.  The typical recommendation is to fuzz the library
+which does the heavy lifting, or modify the application to not load a \GUI{}.
+This does not work well when dealing with closed source applications. A test
+harness can be written which calls the undocumented functions in the closed
+source library, but there is no guarantee that bugs found will also be present
+and reachable in the real application.  This is due to constraints which may
+be placed of function arguments in the main application, or that functions are
+called in a different order.  While writing a custom harness to test a library
+is a good recommendation, it should not be the only option. Thus there is a
+desire to actually deal with this problem instead of simply avoiding it.
+
+Typically, a fuzzer's execution loop involves mutating input, feeding it to a
+target, and then monitoring the target for interesting behavior such as a crash
+or a hang, and if it doesn't exit after the timeout period, it is considered to
+be hung. Setting a timeout which is too low results in stopping before the
+program is finished processing the input, while setting it too high means
+wasting time. WinAFL partially addresses this problem by forcing the user to
+reverse engineer the target program to identify the function which reads and
+processes input data.  This is time consuming, and if there is one function
+which reads the data into memory and another function which parses it, this
+strategy does not work well. This can sometimes be worked around by going up
+a level in the call stack until the function is hit which calls both of these.
+Sometimes, that function is also the one which loads the \GUI{}, which means
+it will never return. The next alternative is to patch the target executable
+to exit after parsing. All of these approaches require reversing the target,
+and will have varied results depending on the details of application under test.
+
+The WMP driver uses the same strategy as WinAFL, where a specific function
+name or offset needs to be specified and when that function returns, however
+this is not the only stopping condition. The driver also checks for sound
+playing and assumes that if it was able to decode the file and start playing
+sound, that the application is done parsing the input file and has started
+playing it. The underlying assumptions here are that the errors will be in the
+code which does the parsing, not the code which does the playing, and that all
+the parsing is done up front.  While this is named after Windows Media Player,
+it should work on any media playing application.  This allows the target
+process to be terminated much earlier than waiting for the entire clip to
+play or the timeout to occur.
+
+\subsection{Mutator} \label{Mutator}
 We leverage the mutators from Honggfuzz, Radamsa, AFL, and Ni by wrapping the
 code to be Killerbeez compliant, and exposing them via command-line options. By
 defining an API for the mutators, researchers can modify components of other
@@ -63,7 +115,7 @@ fuzzers to conform to the Killerbeez API and easily swap in the new mutators.
 % Mention that we have written a patch to allow Honggfuzz to use Killerbeez modules
 
 
-\subsection{Instrumentation}
+\subsection{Instrumentation} \label{Instrumentation}
 Killerbeez also uses an instrumentation abstraction, to implement the
 feedback-based portion of the fuzzer. Instrumentation monitors code coverage of
 binaries. It is essential in feedback-based fuzzing because helps expand code
@@ -110,3 +162,66 @@ information, which informs smarter mutation of input data.
 For example, the instrumentation module may use Intel PT to trace a binary, and
 only record a hash of the Trace information.  Instead, the tracer will generate
 a list of branch edges that the program takes throughout its execution.
+
+\subsection{Picker} \label{Picker}
+Instrumenting all libraries for a real application using a dynamic
+instrumentation technology is prohibitively slow. Even when using more
+efficient instrumentation methods, there's a desire to minimize the amount of
+overhead in instrumentation so more effort can be spent finding bugs instead of
+performing bookkeeping operations.  The Picker automatically determines which
+libraries should be instrumented so the fuzzer can limit instrumentation to
+just what is interesting, and omit all the other libraries. For deterministic
+code, this comes with a level of certainty that what is instrumented is, in
+fact, all of the code which handles the input the fuzzer is sending it.
+
+The Picker does this by running through all seed values and instrumenting each
+library one at a time. If the code is never executed, or the coverage is the
+same for every input, it implies the library is not important in parsing the
+fuzz input.  It is possible that the library handles some aspect of the
+protocol which was simply never executed by any of the seed inputs, however,
+with a diverse set of starting inputs, there can be some confidence that
+nothing is omitted for the list of modules to instrument.
+
+Code which is non-deterministic causes problems with the algorithm above.
+Tracking down each source of non-determinism and attempting to eliminate it
+would be very tedious task. One example was a call to a graphics libraries
+failing to allocate a surface object. It is difficult to know how to remove
+this type of non-determinism. Every system call which fails on a regular
+basis would have to be analyzed, and a decision made on what to do about it.
+Making it always fail may cut off code paths later which trigger a bug which
+would be reachable in the program in practice.  Repeatedly making the call
+until it succeeded may also eliminate code paths later, plus makes execution
+slower at best and an infinite loop at worst.
+
+Instead of trying to force the non-deterministic program to behave in a
+deterministic fashion, the Picker just accepts that the code in question is
+going to behave erratically and ignores the execution data related to those
+sections of code.  This is done by running the same input through the target
+\textit{N} times and finding all of the bytes in the coverage info which
+vary. By default, \textit{N} is 10, however it must be large enough that a
+significant number of executions did not identify any more bytes where the
+execution varied. This will vary from one target to another.  For Windows
+Media Player, this was around 500 executions.  % TODO: make sure the previous
+% sentence is accurate, and a reference to the graph recommended in the comment
+% below...
+
+% TODO: Insert a graph showing the number of bad bytes (Y axis) over the
+%       number of executions (X axis).  The line should look similar to
+%       y = log(n).  It would be nice to have multiple graphs in a single image
+%       so we can compare several libraries.  The graphs can be generated in
+%       post by parsing the debug output of Picker, specifically this line:
+% DEBUG_MSG("Module %s File %s iteration (%d/%d) ignore count %d total ignore count %d",
+%           module_names[index],
+%           filenames[file_count],
+%           iteration - 1,
+%           iteration,
+%           ignore_count,
+%           total_ignore_count);
+
+The algorithm the picker uses is not really compatible will all instrumentation
+modules. Anything which uses the \AFL{}-style bitmap will work fine.  This
+would include the Dynamo RIO and \AFL{} instrumentation modules. The IPT
+instrumentation output is the hashes of the TNT and TIP packets, so any
+non-determinism will change every byte of the instrumentation data.  Because of
+this, the IPT instrumentation does not have any option to specify the bytes to
+ignore, while the DynamoRIO instrumentation does have this.
