@@ -31,7 +31,7 @@ void usage(char * program_name)
 		"\t -i instrumentation_options    Set the options for the instrumentation\n"
 		"\t -ib ignore_bytes_dir          The directory to write the list of bytes in the instrumentation to ignore\n"
 		"\t -l logging_options            Set the options for logging\n"
-		"\t -n num_iterations             The number of iterations to run per file [5 per file]\n"
+		"\t -n num_iterations             The number of iterations to run per file [default 10 per file]\n"
 		"\n",
 		program_name
 	);
