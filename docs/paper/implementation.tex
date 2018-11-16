@@ -20,7 +20,7 @@ on the command line, a custom driver would be required to use keyboard
 shortcuts, mouse input, or some other method of getting the file into the
 program.
 
-We implemented the following drivers:
+The following drivers have been implemented:
 \begin{itemize}[noitemsep]
 \item \textbf{File} - for programs that read input from a file
 \item \textbf{Stdin} - for programs that read input from standard input
@@ -29,17 +29,20 @@ We implemented the following drivers:
 \item \textbf{Windows Media Player} - for Windows Media Player
 \end{itemize}
 
-The File and Stdin drivers provide feature parity with AFL, in terms of input
-methods. There is nothing particularly novel about these drivers, so we will
-move on.
+The File and Stdin drivers provide feature parity with \AFL{}, in terms of input
+methods. There is nothing particularly novel about these drivers, but they are
+an important feature as sending malicious files via email is a popular attack
+vector, so there is an interest in finding those bugs proactively. Having these
+drivers also provides Killerbeez with feature parity with other tools, such as
+\AFL{}.
 
-The Network Server and Network Client drivers provide parity with AFL when it
-is combined with Preeny.  We found we needed two drivers, as one will establish
-a connection to a server, while the other will accept a connection from a
-client. These drivers are what caused the creation of the multipart mutator,
+The Network Server and Network Client drivers provide parity with \AFL{} when it
+is combined with Preeny.  Two drivers are needed, one to establish
+a connection to a server, and the other to accept a connection from a
+client. These drivers caused the creation of the multipart mutator,
 which is covered in more detail in section \ref{Mutator}.
 
-We created a Windows Media Player (WMP) driver to demonstrate how to deal with
+A Windows Media Player (WMP) driver was created to demonstrate how to deal with
 a \GUI{} application which does not exit without user interaction. Applications
 with a \GUI{} are difficult to fuzz and many fuzzers deal with this by not
 supporting this feature.  The typical recommendation is to fuzz the library
@@ -82,8 +85,8 @@ process to be terminated much earlier than waiting for the entire clip to
 play or the timeout to occur.
 
 \subsection{Mutator} \label{Mutator}
-We leverage the mutators from Honggfuzz, Radamsa, AFL, and Ni by wrapping the
-code to be Killerbeez compliant, and exposing them via command-line options. By
+The mutators from Honggfuzz, Radamsa, AFL, and Ni are leveraged by wrapping the
+code from these projects to conform to the Killerbeez Mutator API. By
 defining an API for the mutators, researchers can modify components of other
 fuzzers to conform to the Killerbeez API and easily swap in the new mutators.
 
@@ -112,7 +115,7 @@ fuzzers to conform to the Killerbeez API and easily swap in the new mutators.
 
 % Talk about the modules
 
-% Mention that we have written a patch to allow Honggfuzz to use Killerbeez modules
+% Mention that a patch has been written to allow Honggfuzz to use Killerbeez modules
 
 
 \subsection{Instrumentation} \label{Instrumentation}
@@ -121,7 +124,7 @@ feedback-based portion of the fuzzer. Instrumentation monitors code coverage of
 binaries. It is essential in feedback-based fuzzing because helps expand code
 coverage by keeping inputs which reach new code.
 
-We implemented the following instrumentation modules:
+The following instrumentation modules have been implemented:
 \begin{itemize}[noitemsep]
 \item \textbf{Debug} - A na\"ive Windows-only instrumentation that uses determine the
 	result of a fuzz target via the Windows Debug API.
@@ -208,7 +211,7 @@ Media Player, this was around 500 executions.  % TODO: make sure the previous
 % TODO: Insert a graph showing the number of bad bytes (Y axis) over the
 %       number of executions (X axis).  The line should look similar to
 %       y = log(n).  It would be nice to have multiple graphs in a single image
-%       so we can compare several libraries.  The graphs can be generated in
+%       so several libraries can be compared.  The graphs can be generated in
 %       post by parsing the debug output of Picker, specifically this line:
 % DEBUG_MSG("Module %s File %s iteration (%d/%d) ignore count %d total ignore count %d",
 %           module_names[index],
