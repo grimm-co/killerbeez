@@ -1,18 +1,21 @@
 The core components of Killerbeez can be split into two logical categories:
 those which are related to orchestration, and those related to feeding data
-to the target program and collecting results.  The former refers to decisions
-such as what inputs to use as seed data to be mutated, which mutation
-algorithms to use, and other decisions which are best left to a central
-controller such as how to minimize the input corpus.  The latter category
-contains actions such as launching the application, tracking code coverage,
-and determining when the target application is done processing the input.
+to the target\footnote{The program under test is referred to a the ``target''}
+program and collecting results.  The former refers to decisions such as what
+inputs to use as seed data,\footnote{The initial inputs which will be modified
+are referred to as ``seeds''} which mutation algorithms to use, how to minimize
+the input corpus and other decisions which are best left to a central
+controller.  The latter category contains actions such as launching the
+application, tracking code coverage, determining when the target application is
+done processing the input and whether the target application crashed, froze due
+to something like an infinite loop, or executed new portions of code.
 
 \subsection{Orchestration}
 There is a manager that runs on a central server which handles all of the
 orchestration tasks.  It decides what mutators will be used on each target
 application, handles minimizing interesting inputs, determines if crashes
-and hangs are unique, which inputs can be dropped because the code they
-reach is already covered by other inputs. A \BOINC{} is used to transmit
+and hangs are unique, and which inputs can be dropped because the code they
+reach is already covered by other inputs. A \BOINC{} server is used to transmit
 the work to worker nodes and receive results.
 
 % TODO: Fix the client box which has the "target" listed twice, and put
@@ -30,7 +33,8 @@ the work to worker nodes and receive results.
 \subsubsection{Manager} \label{Manager Overview}
 Because the manager is not responsible for running the target application, it
 does not need to run on any specific platform.  It can happily run on Linux and
-serve out work to be executed by Windows machines and collect the results.
+serve out work to be executed by Windows or macOS machines and collect the
+results.
 
 The manager is also what will enable future enhancements to be made such as
 using a test case generator to produce seed data, which could be used with the
@@ -42,20 +46,67 @@ such as managing seed data or adding more fuzzing targets. The corpus
 minimization can also be dealt with via this interface, so it does not have to
 be coupled with the internals of the manager, but instead can be run as a
 standalone process.
-% TODO: Is the above statement accurate (that the minimization code is not
-%       intertwined with the manager code)?
-% TODO: Will/does the tracer use the REST interface?
 
-If the manager is ever found to be a bottleneck, multiple managers servers
-could be set up and the REST interface used to share information between them.
+The manager can decide how long each job takes by specifying things like the
+number of iterations, so it should be able to scale up to a very large number
+of clients.  However, if the manager is ever found to be a bottleneck, multiple
+managers servers could be set up and the REST interface used to share
+information between them.
+
+There is also a phase of fuzzing workflows which is often overlooked or
+dismissed, which is setting up the target application and deciding specific
+fuzzing parameters. This occurs before any real fuzzing begins and includes
+things such as compiling the software, possibly with a specific compiler or
+compiler flags, determining what options should be enabled in the target
+application, decided which portions of the code should be tracked for code
+coverage, and how to deal with non-deterministic code.
+
+The compilation requirements are driven by the type of instrumentation chosen,
+which has typically just a matter of choosing the option with the lowest
+performance penalty. What options to enable is application specific and
+subjective.  It depends on the higher level goals.  If the goal is to find a
+vulnerability with wide applicability, chose default options. If it is to test
+out a specific feature, disable everything except that option. If it's to just
+find any bug in any configuration, enable everything.  While these are
+important questions, the most interesting step is what to track in terms of
+code coverage, and how to deal with non-deterministic code.
+
+The solution \AFL{} uses is to only instrument the main binary, not any of the
+libraries. To make sure all code is covered, compiling everything into one
+large static executable is recommended. This means tracking execution on code
+which doesn't process any user input, and not tracking important code if you
+are not able to get the code to compile statically. Killerbeez includes a tool
+called the ``Picker'' which automatically determines which libraries should be
+instrumented.  The algorithm for doing so is described in section \ref{Picker}.
+
+One important detail is that the picker can not operate effectively when the
+target does not have deterministic execution.  If feeding the same file into
+the application multiple times results in different code being executed, this
+is a problem not only for the Picker, but also for code coverage in general.
+\AFL{} does not deal with this problem directly, but it does alert the user to
+the fact that the target is non-deterministic. The user can then do things like
+hijack calls to functions such as srand() which intentionally introduce
+randomness. This is often done for applications which employ cryptography for
+initialization vectors and nonces. Under command line Linux applications, this
+works fairly well.  On GUI applications in Windows, it does not work as well.
+There are system calls in Windows which just fail for no apparent reason. This
+is not a problem as the application should be checking the return code to
+detect this and handle it appropriately.  However, when this happens it has the
+side effect of making the fuzzer think an input was interesting when it was
+not.  The details of how non-determinism is handled is also described in
+section \ref{Picker}.
 
 \subsection{Execution}
 Execution is handled by the fuzzer program, which is aptly named ``fuzzer.''
 This can be run manually from the command line, however it is typically run by
-the manager, via \BOINC{}.  In either case, the fuzzer is responsible for
-running the target program, feeding the program data, tracking code coverage,
-detecting crashes, and can deal with user interaction such as dialog boxes.
+the manager, via a \BOINC{} client.  In either case, the fuzzer is responsible
+for running the target program, feeding the program data, tracking code
+coverage, detecting crashes, and can deal with user interaction such as dialog
+boxes.
 
+% TODO: This graphic looks ugly with the boxes around the arrow labels
+%       Not all arrows are labeled (e.g. fuzzer <-> driver)
+%       It should be fuzzer, not fuzzer.exe
 \end{multicols}
 \begin{figure}[hp]
 \centering
@@ -65,11 +116,19 @@ detecting crashes, and can deal with user interaction such as dialog boxes.
 \end{figure}
 \begin{multicols}{2}
 
-The fuzzer handles all the nuts and bolts of fuzzing. The same code base
-is used on Windows, Linux and macOS to enable as much code re-use as possible.
-Most of the mutators are shared among all platforms, however, some of the
-instrumentation code and drivers are platform specific and sometimes the
-drivers are even application specific.
+The fuzzer is really just a bunch of glue code which pulls together various
+modules, which are where all the interesting things occur. The purpose of
+the Driver, Mutator and Instrumentation modules are covered in sections
+\ref{Driver Overview}, \ref{Mutator Overview}, and
+\ref{Instrumentation Overview}, respectively.  The modules which currently
+exist and how they work are covered in the ``\nameref{Implementation}''
+section.
+
+The same code base is used on Windows, Linux and macOS to enable as much code
+re-use as possible.  Most of the mutators are shared among all platforms.
+Some of the instrumentation and driver\footnote{Unless otherwise noted, we use
+the term ``driver'' to refer to driver modules, not operating system drivers}
+modules contain platform specific and sometimes the application specific code.
 
 \subsubsection{Driver} \label{Driver Overview}
 Killerbeez offers drivers, which are target-specific wrappers that abstract
@@ -79,50 +138,48 @@ typical fuzzers look for crashes and hangs, specifically-written drivers can
 have more context about a given fuzz target.  Better understanding of the fuzz
 target's behavior means that Killerbeez can make better-informed decisions
 about the status of a program after a particular input, and it can terminate or
-classify the result of a particular input more quickly than a na\"ive approach
-that only waits for a timeout. More knowledge of the target means shorter fuzz
-loops, which means more fuzz iterations, which means more bugs.
+classify the result of a particular input more quickly than waiting for a
+timeout.
 
-For example, if a malformed PDF file is given to a PDF reader application, it
-typically will pop up a dialog box indicating that the file is corrupt. Fuzzers
-such as Honggfuzz or WinAFL would wait until the timeout period. In Killerbeez,
-a driver could be written for the specific PDF reader which monitors the
-application for dialog boxes, detects when dialog boxes appear, analyze the
-text of the dialog box and determine that the status is a clean exit rather
-than a hang.  This would allow the fuzzer to move on to the next input more
-quickly, as it would not need to wait the full timeout period.  It also helps
-discern between hangs, which may indicate a Denial of Service vulnerability
-such as an infinite loop, and an error which is handled in the expected manner.
+First, the driver module is responsible for feeding inputs to a program.  This
+is a departure from most fuzzers, which only work for one type of input.  In
+the case of AFL, the input is a file or stdin (which is also a file under
+UNIX).  Syzkaller\cite{syzkaller}, on the other hand, uses only system calls.
+Each tool then has to implement their own mutation algorithms, code coverage,
+results collection and so forth. Drivers enable Killerbeez to reuse all of
+these components and select how to interact with the target by simply selecting
+the appropriate driver.  Abstracting this away allows for more exotic use
+cases, such as fuzzing IOCTLs, network servers, network clients, \IPC{} such as
+Mach Messages, XPC, Distributed Objects, or COM, and others, all with minimal
+effort.
 
-In addition to better analyze what the outcome of a particular test case, the
-driver module also is responsible for feeding inputs to a program.  This is a
-departure from most fuzzers, which only work for one type of input.  In the
-case of AFL, the input is a file or stdin (which is also a file under UNIX).
-Syzkaller\cite{syzkaller}, on the other hand, uses system calls.
-
-Rather than being able to only load files, or read from standard input, a
-driver enables users of the fuzzer to specify which method the fuzz target
-accepts input. This allows for more exotic use cases, such as GUI applications,
-IOCTLs, or fuzzing network clients and servers. AFL and its many forks
-interface with programs in a limited set of ways, but by leaving the
-implementation open and restricting only with an API, we are able to apply
-Killerbeez to a wider range of potential targets, and easily modify the fuzzer
-to the particular use case for efficiency. We created a Windows Media Player
-(WMP) driver as an example.  Typically, a fuzzer's execution loop involves
-mutating input, feeding it to a target, and then monitoring the target for
-interesting behavior such as a crash or a hang; the WMP driver can also end the
-fuzz loop when music starts playing, which would signify the program did not
-crash nor hang, without having to wait for the entire timeout period.
+The second thing drivers are responsible for is dealing with any application
+specific issues, such as handling GUI interactions.  For example, if a PDF file
+with a malformed header is given to a PDF reader application, it typically will
+pop up a dialog box indicating that the file is corrupt. Fuzzers such as
+Honggfuzz or WinAFL would wait until the timeout period.\footnote{WinAFL can
+exit at the end of a function, but dialog boxes tend to prevent that function
+from returning in practice} This results in all executions which hit this code
+path to appear as a hung process.  In Killerbeez, a driver could be written for
+the specific PDF reader which monitors the application for dialog boxes,
+detects when dialog boxes appear, analyze the text of the dialog box and
+determine that the status is a clean exit rather than a hang.  This would allow
+the fuzzer to move on to the next input more quickly, as it would know the
+input is done being processed and would not need to wait the full timeout
+period.  It also helps discern between hangs, which may indicate a Denial of
+Service vulnerability such as an infinite loop, and an error which is handled
+in the expected manner. For another example, see the Windows Media Player
+driver in section \ref{Driver}.
 
 Many of the drivers will work on many fuzzing targets in a particular category.
-Targets which are server applications which accept input from the network, are
-handled by the Network Server instrumentation module, for example. Other driver
-can be written to handle things which are specific to one particular
-application.  Some targets will handle opening files differently if opened via
-double clicking an icon as compared to using the open option from the file
-menu. Other examples include error message analysis to determine if the system
-should move on to the next input, or if it should click ``OK'' and continue
-(e.g. in the event of a warning message).
+Targets which accept input from the network, are handled by the Network Server
+driver module, programs which open a file are generally handled by the file
+driver and so forth.  Other driver can be written to handle things which are
+specific to one particular application.  Some targets will handle opening files
+differently if opened via double clicking an icon as compared to using the open
+option from the file menu. Other examples include error message analysis to
+determine if the system should move on to the next input, or if it should click
+``OK'' and continue (e.g. in the event of a warning message).
 
 \subsubsection{Mutator} \label{Mutator Overview}
 Killerbeez also implements ``mutators,'' which are abstractions on modifying
