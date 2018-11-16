@@ -147,24 +147,31 @@ The tracer runs the fuzz target and takes detailed information on exactly which
 edges were executed.  Unlike the instrumentation module, which just gives a
 hash or bitmap of what was executed, the tracer shows every basic block that
 was hit and in what order.  This information will be fed into the manager,
-which will periodically run through all seed files and minimize them to only
-include the minimum number of files, and the minimum file size which hits the
+to store in the database where it will later be used to minimize seed to only
+include the minimum number of files, or the minimum file size which hits the
 maximum amount of code. The concept of minimizing test corpora while
 maintaining the maximum code coverage dates back to at least October of 2008,
 when Peach Fuzzer version 2.2 was released, which included the minset
-tool.\cite{peach22}
+tool.\cite{peach22} This granular code coverage data will also be used for
+weighting seeds based on various algorithms, such as attempting to get to code
+which is less frequently covered, or targeting a particular piece of code such
+as a parser which was manually identified or a new piece of code which was
+identified using automated analysis.
 
 The tracer uses the driver to run the fuzzed program (feed the program the
-input data, and tell when the program has finished processing it). While the
+input data and tell when the program has finished processing it). While the
 instrumentation module is built for speed, the tracer is built for high
 resolution.  The instrumentation module is used during the main fuzzing
 process, and as such only records what is absolutely necessary to do its job.
 Meanwhile, the tracer is slow, but gives more granular data about the path
 information, which informs smarter mutation of input data.
 
-For example, the instrumentation module may use Intel PT to trace a binary, and
+For example, the instrumentation module may use \IPT{} to trace a binary, and
 only record a hash of the Trace information.  Instead, the tracer will generate
-a list of branch edges that the program takes throughout its execution.
+a list of branch edges that the program takes throughout its execution.  The
+underlying technology may still be \IPT{}, but how it is used will be very
+different.  In the case of \IPT{} it will require decoding the TNT and TIP
+packets and matching those up with the executable.
 
 \subsection{Picker} \label{Picker}
 Instrumenting all libraries for a real application using a dynamic

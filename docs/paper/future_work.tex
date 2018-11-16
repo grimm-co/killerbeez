@@ -6,21 +6,74 @@ now which have yet to be applied in different domains. Once the state of the
 art has been incorporated, more automation and designing interfaces to pull in
 projects which don't fit into the existing modules will be the next priority.
 
+Expanding the coverage of the instrumentation modules so they work on more
+operating systems is a high priority. The \IPT{} module currently only works
+on Linux, but should be able to work on Windows now that driver support has
+improved. The opposite is true for DynamoRIO, which currently works on Windows
+but should be able to be ported to run on macOS and Linux without too much
+difficulty.  Pulling in more instrumentation technologies such as Intel's PIN,
+and Dyninst\cite{dyninst} is also on the list of things to do. Wrapping up the
+future enhancements to instrumentation is making more instrumentations aware of
+the non-deterministic portions of code which were identified by the Picker.
+Currently only the DynamoRIO instrumentation can use this information, but
+it should be easy to extend this to all of the \AFL{}-bitmap compatible
+instrumentation modules.  This includes the \AFL{} module and the to-be-written
+PIN and Dyninst modules.  The \IPT{} module will not be able to use this data
+because it does not actually decode the TNT and TIP bitstreams to determine what
+code is being executed. Adding real-time parsing would slow down the target
+software significantly, however this would still be considered if the benefit
+of handling non-deterministic code appears to be worth the additional overhead
+which would be incurred.
 
-% More Instrumentation modules: PIN, Dyninst, IPT on Windows
-% More Drivers: monitor dialog boxes
-%               more input methods (tie in existing kernel fuzzers)
-% More Mutators: Python interface to pull in BrundleFuzz and 010 mutators
-% Pull in concepts from academic papers which modified AFL (see citations for a list)
-%   Mention that we will prioritize papers which released code, and things like
-%   Angora which promised to release code then never did, will be last in line.
-% Integrate How to generate seeds
-%   Give shout out to JRozner with his project & DEF CON talk \cite{synfuzz}
+Expanding the selection of drivers to include the ability to monitor dialog
+box pop-ups on Windows is an area of interest. There are already drivers for
+the more common input methods, such as files, stdin, and network data, however
+these should also be expanded to cover kernel functions via syscalls, drivers
+via ioctls, IPC messages, and so forth. This will make Killerbeez be a fuzzer
+which can handle not only applications on multiple operating systems, but also
+the kernel of multiple operating systems as well.  Currently this is only
+theoretically possible with Killerbeez, which is not much help to researchers
+in the field. Making it actually possible in practice will be a big step.
 
+The mutation algorithms from several other projects have already been
+integrated with Killerbeez, however it is desirable to have the ability
+to write mutators in Python.  This will allow pulling in mutators from
+projects like BrundleFuzz\cite{brundlefuzz} as well as quickly putting
+together a custom mutator without needing to learn as many of the Killerbeez
+APIs, nor even needed a compiler.
 
-% The picker and IPT instrumentation could be updated to be compatible with
-% one another.  This would be a decent amount of work, for a questionable
-% amount of benefit.
+In addition the aforementioned modules on the client side, there are a number
+of algorithms to pull in from academic publications.  This includes the seed
+energy rating and power schedules from AFLFast\cite{aflfast} and
+AFLGo.\cite{aflgo} FairFuzz presents another seed selection algorithm to bias
+seed files toward code segments which are not often executed.\cite{fairfuzz}
+The algorithm from the PerfFuzz\cite{perffuzz} paper can be pulled into
+Killerbeez to find algorithmic complexity vulnerabilities. The research on
+using estimators and extrapolators to determine if a fuzzing campaign should
+be stopped, or continue running, can be pulled in from Pythia.\cite{pythia}
+Instrumentation modules can be updated to implement the collision resistent
+algorithm from CollAFL.\cite{collafl} Angora is also on the list of techniques
+to integrate into Killerbeez, however it is at the end of the queue of
+improvements due to the fact that it would need to be completely re-implemented
+on account of the authors never releasing the code.\cite{angora}
+
+The need to obtain a wide variety of seed values is a weakness of Killerbeez
+as well as many other fuzzers. The quality of the starting corpus makes a big
+difference of the efficiency of fuzzing.
+
+There are a number of security analysis and even fuzzing tools which do not
+fit into mutators, drivers, nor instrumentation modules. This includes input
+generation tools, such as Driller\cite{driller} and Synfuzz\cite{synfuzz}.
+Integrating Driller will require some code to be written to obtain the target
+executable and code coverage information information from the Killerbeez
+Manager, run Driller, and add new inputs which will reach new code. All of this
+can be accomplished with adding endpoints to the existing REST server. Pulling
+in inputs generated with Synfuzz should be even easier, as the only required
+REST API which should be required is the ability to add files to the corpus.
+Some automation of setting up Synfuzz may also be possible, but it requires
+an oracle to determine which inputs are valid or not, which will likely mean
+it will need to be set up manually, short of a development which allows
+autonomously detecting such oracles and hooking the appropriate functions.
 
 
 % Not sure if we want to take on the things below or not, but if so they will
