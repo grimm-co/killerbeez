@@ -1,20 +1,27 @@
 Over the past few years, coverage-guided fuzzing has become a popular way to
 find software and hardware vulnerabilities due to advances in publicly
-available tools such as AFL\cite{afl} and its derivatives.\cite{vanhauser} Many
+available tools such as \AFL{}\cite{afl} and its derivatives.\cite{vanhauser} Many
 fuzzers track bugs which were found with their tools in ``trophy cases'' which
 demonstrate their effectiveness against real world application.  However, most
 tools are primarily focused on finding bugs in open source, command line Linux
 software which reads input from files or standard input. There has been some
-exploration to get AFL working on other operating
+exploration to get \AFL{} working on other operating
 systems\cite{aflosx}\cite{winafl} as well as supporting network
 input.\cite{netafl}\cite{preeny}
 
-Most of the published improvements over the original version of AFL are
+Most of the published improvements over the original version of \AFL{} are
 implemented as forks of
-AFL.\cite{aflfast}\cite{aflgo}\cite{fairfuzz}\cite{perffuzz}\cite{pythia}\cite{collafl}
+\AFL{}.\cite{aflfast}\cite{aflgo}\cite{fairfuzz}\cite{perffuzz}\cite{pythia}\cite{collafl}
 Thus the enhancements are mutually exclusive, short of embarking on a
 development effort to go through the modifications and merge the forks back
-together, manually resolving any conflicts and incompatibilities.
+together, manually resolving any conflicts and incompatibilities.  The issue
+of incompatibility is not limited to projects which are modified versions of
+\AFL{}. Mixing and matching features from various tools requires a significant
+amount of effort. Using a tool against a type of software it has never been
+used against before, such as using a Linux kernel fuzzer against the macOS
+kernel, can find a large number of bugs.  However, in practice, security
+professionals do not have the amount of time to invest to get the tools working
+together, or working in other contexts.
 
 We present Killerbeez, a fuzzing framework which brings together many of the
 various security analysis tools so they can be used together.  The code
