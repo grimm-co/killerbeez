@@ -665,17 +665,30 @@ static void destroy_target_process(linux_ipt_state_t * state)
 static int create_target_process(linux_ipt_state_t * state, char* cmd_line, char * stdin_input, size_t stdin_length)
 {
   char ** argv;
+  char * temp_path;
   int i, pid;
 
   if(!state->fork_server_setup) {
-    if(split_command_line(cmd_line, &state->target_path, &argv))
+    if(split_command_line(cmd_line, &temp_path, &argv))
       return -1;
-    fork_server_init(&state->fs, state->target_path, argv, 1, state->persistence_max_cnt, stdin_length != 0);
-    record_fork_server_address_info(state);
-    state->fork_server_setup = 1;
+
+    //Get the absolute path for the target
+    state->target_path = realpath(temp_path, NULL);
+    if(state->target_path) {
+      fork_server_init(&state->fs, state->target_path, argv, 1, state->persistence_max_cnt, stdin_length != 0);
+      record_fork_server_address_info(state);
+      state->fork_server_setup = 1;
+    }
+
+    //Free the split up command line
     for(i = 0; argv[i]; i++)
       free(argv[i]);
     free(argv);
+    free(temp_path);
+
+    //if realpath failed, return failure
+    if(!state->target_path)
+      return -1;
   }
 
   pid = fork_server_fork(&state->fs);
@@ -787,6 +800,7 @@ static int get_ipt_system_info(linux_ipt_state_t * state)
 static linux_ipt_state_t * setup_options(char * options)
 {
   linux_ipt_state_t * state;
+  char * temp_path;
   size_t i;
   size_t pagesize = getpagesize();
 
@@ -811,6 +825,16 @@ static linux_ipt_state_t * setup_options(char * options)
       linux_ipt_cleanup(state);
       return NULL;
     }
+
+    //Get the absolute path for the library
+    temp_path = realpath(state->coverage_libraries[i], NULL);
+    if(!temp_path) {
+      ERROR_MSG("Could determining the absolute address of the specified coverage library \"%s\"", state->coverage_libraries[i]);
+      linux_ipt_cleanup(state);
+      return NULL;
+    }
+    free(state->coverage_libraries[i]);
+    state->coverage_libraries[i] = temp_path;
   }
 
   //Fix up the IPT mmap size if it's not page aligned
