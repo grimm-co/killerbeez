@@ -18,9 +18,6 @@ and hangs are unique, and which inputs can be dropped because the code they
 reach is already covered by other inputs. A \BOINC{} server is used to transmit
 the work to worker nodes and receive results.
 
-% TODO: Fix the client box which has the "target" listed twice, and put
-% a dashed line on the left of the legend so it is in a box instead of
-% in 3/4 of a box
 \end{multicols}
 \begin{figure}[hp]
 \centering
@@ -31,10 +28,6 @@ the work to worker nodes and receive results.
 \begin{multicols}{2}
 
 \subsubsection{Manager} \label{Manager Overview}
-% TODO: start with the explanation of what the point of the manager is, not
-%       with details about what platform it runs on.  In fact, the platform
-%       thing might be something which should be moved to the implementation
-%       section
 The manager is what glues together all the server side components.  It is
 primarily a bookkeeper to track which targets are available for fuzzing,
 the jobs need to be served out to, process the results which come back to
@@ -132,9 +125,6 @@ for running the target program, feeding the program data, tracking code
 coverage, detecting crashes, and can deal with user interaction such as dialog
 boxes.
 
-% TODO: This graphic looks ugly with the boxes around the arrow labels
-%       Not all arrows are labeled (e.g. fuzzer <-> driver)
-%       It should be fuzzer, not fuzzer.exe
 \end{multicols}
 \begin{figure}[hp]
 \centering
