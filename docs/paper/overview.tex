@@ -35,10 +35,11 @@ the work to worker nodes and receive results.
 %       with details about what platform it runs on.  In fact, the platform
 %       thing might be something which should be moved to the implementation
 %       section
-% Select which mutators to run, which instrumentation to use?, how much CPU
-% power to allocate to various targets, weight seeds?, finding unique new
-% paths (when two nodes independently find inputs which hit the same new path,
-% only one of them should be kept
+The manager is what glues together all the server side components.  It is
+primarily a bookkeeper to track which targets are available for fuzzing,
+the jobs need to be served out to, process the results which come back to
+determine if code paths are unique, and interface with external components.
+
 Because the manager is not responsible for running the target application, it
 does not need to run on any specific platform.  It can happily run on Linux and
 serve out work to be executed by Windows or macOS machines and collect the
@@ -62,11 +63,24 @@ managers servers could be set up and the REST interface used to share
 information between them.
 
 % TODO: create a diagram showing how other components can be added on
-%       to the system, such as the tracer, Driller, Synfuzz, and so on
+%       to the system, such as Driller, Synfuzz, and so on
 
-% TODO: Mention the tracer here
+Killerbeez also introduces the idea of obtaining detailed information about
+execution for each input which has a unique code path.  This is typically
+not done by fuzzers, as obtaining a full trace is much more overhead than
+the lightweight instrumentation that \AFL{} or Honggfuzz use. When doing the
+typical fuzzing, Killerbeez will typically use lightweight methods of tracking
+execution. However, having a full trace is still useful when determining which
+seeds to keep or which ones should be weighted more heavily. This concept has
+been encapsulated in a Tracer. A tracer is just a special mode of an
+instrumentation module, which does not have to be supported. Each time an input
+is found which hits a new code path, a tracer job can be added via the manager.
+This will be handled via some \BOINC{} client, just like any other fuzzing job.
+The results will include full trace data, which will be stored in the manager's
+database.  More information about the trace can be found in section
+\ref{Tracer}.
 
-\subsubsection{Tracer}  \label{Tracer Overview}
+\subsubsection{Preparation}  \label{Preparation Overview}
 There is also a phase of fuzzing workflows which is often overlooked or
 dismissed, which is setting up the target application and deciding specific
 fuzzing parameters. This occurs before any real fuzzing begins and includes
