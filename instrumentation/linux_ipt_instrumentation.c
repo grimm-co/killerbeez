@@ -829,7 +829,7 @@ static linux_ipt_state_t * setup_options(char * options)
     //Get the absolute path for the library
     temp_path = realpath(state->coverage_libraries[i], NULL);
     if(!temp_path) {
-      ERROR_MSG("Could determining the absolute address of the specified coverage library \"%s\"", state->coverage_libraries[i]);
+      ERROR_MSG("Could not determine the absolute address of the specified coverage library \"%s\"", state->coverage_libraries[i]);
       linux_ipt_cleanup(state);
       return NULL;
     }
