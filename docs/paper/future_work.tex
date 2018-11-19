@@ -23,7 +23,10 @@ because it does not actually decode the TNT and TIP bitstreams to determine what
 code is being executed. Adding real-time parsing would slow down the target
 software significantly, however this would still be considered if the benefit
 of handling non-deterministic code appears to be worth the additional overhead
-which would be incurred.
+which would be incurred. Finally, adding in the Linux-only instrumentation
+technologies from Honggfuzz\cite{honggfuzz} is planned to get the performance
+boost on software which runs on Linux, especially that which is closed source
+or not written in either C or C++.
 
 Expanding the selection of drivers to include the ability to monitor dialog
 box pop-ups on Windows is an area of interest. There are already drivers for
@@ -59,22 +62,37 @@ on account of the authors never releasing the code.\cite{angora}
 
 The need to obtain a wide variety of seed values is a weakness of Killerbeez
 as well as many other fuzzers. The quality of the starting corpus makes a big
-difference of the efficiency of fuzzing.
+difference of the efficiency of fuzzing. This will be addressed by leveraging
+existing tools which find new inputs more efficiently, or are able to find
+inputs which reach code that is unlikely to be hit via mutation.
 
 There are a number of security analysis and even fuzzing tools which do not
 fit into mutators, drivers, nor instrumentation modules. This includes input
 generation tools, such as Driller\cite{driller} and Synfuzz\cite{synfuzz}.
-Integrating Driller will require some code to be written to obtain the target
-executable and code coverage information information from the Killerbeez
-Manager, run Driller, and add new inputs which will reach new code. All of this
-can be accomplished with adding endpoints to the existing REST server. Pulling
-in inputs generated with Synfuzz should be even easier, as the only required
+Integrating Driller can be accomplished by simply scheduling \BOINC{} jobs
+which run Driller instead of the fuzzer component. The input to the process
+is still the executable and the code which has been covered thus far, and the
+output is still inputs which cause new code to be executed, so this will fit
+right in with the current system.  This allows the \BOINC{} code to be
+leveraged to handle things like scheduling tasks, dealing with worker notes
+which time out, and the campaign manager can deal with deciding how much time
+to spend drilling versus fuzzing. Preparing an Driller environment which can
+be easily deployed will require a bit of work, however this should only need
+to be done one time, not once for each fuzzing target.
+
+Pulling in inputs generated with Synfuzz should be even easier, as the only
 REST API which should be required is the ability to add files to the corpus.
-Some automation of setting up Synfuzz may also be possible, but it requires
-an oracle to determine which inputs are valid or not, which will likely mean
-it will need to be set up manually, short of a development which allows
+Some automation of setting up Synfuzz may also be possible, but it requires an
+oracle to determine which inputs are valid or not, which will likely mean it
+will need to be set up manually, short of a development which allows
 autonomously detecting such oracles and hooking the appropriate functions.
 
+Finally, expanding to support fuzzers other than the Killerbeez fuzzer. With
+the client/server architecture which was chosen, there's no reason Killerbeez
+has to be limited to a single fuzzer.  It could easily just run Honggfuzz,
+\AFL{}, WinAFL, or others.  Doing so will require additional configuration in
+\BOINC{} to ensure the previous state is sent to the \BOINC{} clients, as well
+as a new assimilator which is the \BOINC{} component which gathers the results.
 
 % Not sure if we want to take on the things below or not, but if so they will
 % be in the far future.
