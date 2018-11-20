@@ -115,10 +115,68 @@ fuzzers to conform to the Killerbeez API and easily swap in the new mutators.
 \item \textbf{zzuf} - Mutation algorithm from zzuf\cite{zzuf}
 \end{itemize}
 
-% TODO: Talk about the mutator modules
+As indicated in the list above, several of the mutators were taken from \AFL{}
+and adapted to the Killerbeez API. These have proven to be effective algorithms
+and were a solid starting point.
 
-% Mention that a patch has been written to allow Honggfuzz to use Killerbeez modules
+Honggfuzz has a different set of mutators, some of which are similar to those
+from \AFL{}, however there are slight variations which should work better
+against some targets than others.  Honggfuzz is the only fuzzer to have found a
+vulnerability in OpenSSL which was marked as critical.  Again, the approach was
+one of pragmatism and taking the existing techniques and bringing them to new
+environments, such as Windows with code coverage capabilities.
 
+The multipart mutator was driven by the network driver and the desire to have
+the handshake or authentication section of the input not be mutated, as this
+would prevent much of the interesting code from being reached.  The input is
+divided into parts and a mutator is run on each part. For any parts which
+should not be modified, the ``nop'' mutator, which is described below, is
+selected. This allows different mutators to be used on different segments of
+the input and the ones which perform the best can be selected more often by the
+campaign manager.
+
+Aki Helin, the author of Radamsa, also wrote a mutation algorithm called Ni.
+This code was adopted with minimal changes to provide more diversity in
+mutation methods, and based on Aki's reputation for having novel ideas on how
+to mutate inputs.
+
+During development, it quickly became clear that having a mutator which does
+not do any mutation would be handy when debugging issues.  This is how the nop
+mutator was born. It was later used when the multipart mutator was developed.
+
+Radamsa is a general purpose fuzzer, written in Lisp, which came from the
+OUSPG's Protos Genome Project. It works well against a variety of network
+protocols and file formats, and has found dozens of vulnerabilities.  The
+radamsa mutator modules in Killerbeez is just a simple wrapper which feeds data
+to the Radamsa process.  The strategy of using an external process was chosen
+to allow the process to be long lived, so Radamsa's internal state can be
+updated over the course of many inputs.  The alternative approach, which some
+other fuzzing projects have taken when adopting Radamsa, is to pull in the C
+code for the main function and execute it once per input.  This is much faster
+in terms of execution time, as data does not need to be piped from one process
+to another and then back again, however it loses a key value of Radamsa, which
+is that it tends to get better as it sees more data. While the implementation
+in Killerbeez is slower, and this reflects poorly on the metric of executions
+of the target application per second, it is arguably higher quality mutations
+in the long run.  There was an effort to get Radamsa compiled on Windows as a
+DLL, which was painstakingly implemented, only to find that it was about twice
+as slow as using an external process. The cause of this was not immediately
+apparent, and the effort was abandoned in favor of developing other features.
+
+Finally there is zzuf, which is yet another application fuzzer, this one
+primarily targeting media players, image viewers and web browsers.  As with
+other mutators which were pulled in from other projects, it has found bugs in
+production code ranging from audio and video codecs to objdump and nm.
+
+Each of the mutators brings diversity to Killerbeez.  Different authors are
+going to frequently have different approaches, and even when the algorithms
+are similar, there are frequently implementation details which will vary in
+ways which are sometimes important.  Different mutation algorithms will
+perform differently on various targets.  The benefit of being able to easily
+switch from one to another enables Killerbeez to measure which ones are finding
+more inputs which hit new code on different targets and at different points in
+the fuzzing process.  A mutator which performs poorly with the initial corpus
+of inputs may be the best later when a different section of code is unearthed.
 
 \subsection{Instrumentation} \label{Instrumentation}
 Killerbeez also uses an instrumentation abstraction, to implement the
