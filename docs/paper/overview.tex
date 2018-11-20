@@ -18,14 +18,12 @@ and hangs are unique, and which inputs can be dropped because the code they
 reach is already covered by other inputs. A \BOINC{} server is used to transmit
 the work to worker nodes and receive results.
 
-\end{multicols}
-\begin{figure}[hp]
+\begin{figure*}[htb]
 \centering
 \includegraphics[width=6in]{KILLERBEEZ_Server_Architecture.png}
 \caption{Killerbeez Server Architecture}
 \label{fig:Killerbeez-server}
-\end{figure}
-\begin{multicols}{2}
+\end{figure*}
 
 \subsubsection{Manager} \label{Manager Overview}
 The manager is what glues together all the server side components.  It is
@@ -125,14 +123,12 @@ for running the target program, feeding the program data, tracking code
 coverage, detecting crashes, and can deal with user interaction such as dialog
 boxes.
 
-\end{multicols}
-\begin{figure}[hp]
+\begin{figure*}[htb]
 \centering
 \includegraphics[width=6in]{killerbeez-high-level-block-diagrams.png}
 \caption{Killerbeez Fuzzer Overview}
 \label{fig:Killerbeez-fuzzer-overview}
-\end{figure}
-\begin{multicols}{2}
+\end{figure*}
 
 The fuzzer is really just a bunch of glue code which pulls together various
 modules, which are where all the interesting things occur. The purpose of
