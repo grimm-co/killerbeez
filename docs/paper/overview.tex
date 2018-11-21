@@ -28,7 +28,7 @@ the work to worker nodes and receive results.
 \subsubsection{Manager} \label{Manager Overview}
 The manager is what glues together all the server side components.  It is
 primarily a bookkeeper to track which targets are available for fuzzing,
-the jobs need to be served out to, process the results which come back to
+queue up jobs to be served out to clients, process the results which come back to
 determine if code paths are unique, and interface with external components.
 
 Because the manager is not responsible for running the target application, it
@@ -36,25 +36,41 @@ does not need to run on any specific platform.  It can happily run on Linux and
 serve out work to be executed by Windows or macOS machines and collect the
 results.
 
-The manager is also what will enable future enhancements to be made such as
+The manager will enable future enhancements to be made by taking advantage of
+external tools, such as
 using a test case generator to produce seed data, which could be used with the
 ``nop'' mutator, which does not modify the data. Another integration which is
 planned is to use Driller\cite{driller} to generate program inputs which reach
 code which have not yet been reached by mutation. These integrations are made
-possible by providing a REST API to the manager component, which allows things
-such as managing seed data or adding more fuzzing targets. The corpus
-minimization can also be dealt with via this interface, so it does not have to
-be coupled with the internals of the manager, but instead can be run as a
-standalone process.
+possible by providing a REST API to the manager component, which allows clients
+to access and configure seed data, fuzzing targets, and low-level metadata
+produced during fuzzing.
+
+The API can also be used for some of the manager's internal functionality. The
+campaign manager, which plans out jobs to be
+executed, consists of pluggable modules to choose the job's type, inputs, and
+parameters. The API can be used by these modules to gather the data they need,
+and by the campaign manager to submit the final job. The corpus
+minimization can also be dealt with via this interface by making calls to read
+execution traces and modify the working set. This allows these components to be
+less coupled with the internals of the manager, enabling them to run as
+standalone processes. Figure
+\ref{fig:Killerbeez-integrations} shows how these tools can interface with the
+manager via the REST API.
 
 The manager can decide how long each job takes by specifying things like the
 number of iterations, so it should be able to scale up to a very large number
 of clients.  However, if the manager is ever found to be a bottleneck, multiple
-managers servers could be set up and the REST interface used to share
+manager servers could be set up and the REST interface used to share
 information between them.
 
-% TODO: create a diagram showing how other components can be added on
-%       to the system, such as Driller, Synfuzz, and so on
+\begin{figure*}[htb]
+\centering
+\includegraphics[width=6in]{KILLERBEEZ_Integrations.png}
+\caption{Killerbeez Integration with External Tools}
+\label{fig:Killerbeez-integrations}
+\end{figure*}
+
 
 Killerbeez also introduces the idea of obtaining detailed information about
 execution for each input which has a unique code path.  This is typically
