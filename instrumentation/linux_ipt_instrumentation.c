@@ -643,10 +643,10 @@ static void record_fork_server_address_info(linux_ipt_state_t * state)
  * This function terminates the fuzzed process.
  * @param state - The linux_ipt_state_t object containing this instrumentation's state
  */
-static void destroy_target_process(linux_ipt_state_t * state)
+static void destroy_target_process(linux_ipt_state_t * state, int force)
 {
-  if(state->child_pid) {
-    if(!state->persistence_max_cnt) {
+  if(state->child_pid && state->child_pid != -1) {
+    if(!state->persistence_max_cnt || force) {
       kill(state->child_pid, SIGKILL);
       state->child_pid = 0;
     }
@@ -708,15 +708,17 @@ static int create_target_process(linux_ipt_state_t * state, char* cmd_line, char
     ioctl(state->perf_fd, PERF_EVENT_IOC_ENABLE, 0);
   }
 
-  //Take care of the stdin input, write over the file, then truncate it accordingly
-  lseek(state->fs.target_stdin, 0, SEEK_SET);
-  if(stdin_input != NULL && stdin_length != 0) {
-    if(write(state->fs.target_stdin, stdin_input, stdin_length) != stdin_length)
-      FATAL_MSG("Short write to target's stdin file");
+  if(state->fs.target_stdin != -1) {
+    //Take care of the stdin input, write over the file, then truncate it accordingly
+    lseek(state->fs.target_stdin, 0, SEEK_SET);
+    if(stdin_input != NULL && stdin_length != 0) {
+      if(write(state->fs.target_stdin, stdin_input, stdin_length) != stdin_length)
+        FATAL_MSG("Short write to target's stdin file");
+    }
+    if(ftruncate(state->fs.target_stdin, stdin_length))
+      FATAL_MSG("ftruncate() failed");
+    lseek(state->fs.target_stdin, 0, SEEK_SET);
   }
-  if(ftruncate(state->fs.target_stdin, stdin_length))
-    FATAL_MSG("ftruncate() failed");
-  lseek(state->fs.target_stdin, 0, SEEK_SET);
   return 0;
 }
 
@@ -897,7 +899,7 @@ void linux_ipt_cleanup(void * instrumentation_state)
   linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
 
   //Kill any remaining target processes
-  destroy_target_process(state);
+  destroy_target_process(state, 1);
 
   //Cleanup the fork server
   if(state->fork_server_setup) {
@@ -1042,7 +1044,7 @@ int linux_ipt_set_state(void * instrumentation_state, char * state)
     return 1;
 
   //If a child process is running when the state is being set
-  destroy_target_process(current_state); //kill it so we don't orphan it
+  destroy_target_process(current_state, 0); //kill it so we don't orphan it
 
   //Free any existing hashes already in the hashtable
   HASH_ITER(hh, current_state->head, hash, tmp) {
@@ -1090,7 +1092,7 @@ int linux_ipt_enable(void * instrumentation_state, pid_t * process, char * cmd_l
 {
   linux_ipt_state_t * state = (linux_ipt_state_t *)instrumentation_state;
   if(state->child_pid)
-    destroy_target_process(state);
+    destroy_target_process(state, 0);
 
   if(create_target_process(state, cmd_line, input, input_length))
     return -1;
@@ -1109,7 +1111,7 @@ static int finish_fuzz_round(linux_ipt_state_t * state)
   if(!state->fuzz_results_set) {
     //if it's still alive, it's a hang
     if(!linux_ipt_is_process_done(state)) {
-      destroy_target_process(state);
+      destroy_target_process(state, 1);
       state->last_fuzz_result = FUZZ_HANG;
     }
     //If it died from a signal (and it wasn't SIGKILL, that we send), it's a crash
