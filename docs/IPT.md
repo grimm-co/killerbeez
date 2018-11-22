@@ -253,17 +253,17 @@ server's function hooking behavior:
 * `DISABLE_HOOKING` - This macro disables function hooking. This macro should be
 set to 0 to enable function hooking.
 * `USE_LIBC_START_MAIN` - This macro controls whether the default function
-(`__libc_start_main`) is hooked or not.  To customize the hooked function, this
+(`__libc_start_main`) is hooked or not. To customize the hooked function, this
 must be set to 0.
 * `CUSTOM_FUNCTION_NAME` - This macro should contain the name of the function to
-hook.  The name should NOT be placed in quotes.
+hook. The name should NOT be placed in quotes.
 * `RUN_BEFORE_CUSTOM_FUNCTION` - This macro determines whether the fork server
-should startup before or after the hooked function is called.  Set it to 0 to
+should startup before or after the hooked function is called. Set it to 0 to
 start the fork server after the hooked function returns, or 1 to start the fork
 server before the hooked function is called.
 
 The deferred executable in the corpus/persist/ directory is an example of a
-target where deferred startup mode is advantageous.  This target calls sleep at
+target where deferred startup mode is advantageous. This target calls sleep at
 the beginning of the program, which will substantially slowdown fuzzing.
 Killerbeez can be instructed to wait to start the fork server until after the
 sleep call by modifying forkserver_config.h to set the macros as shown below:
@@ -285,7 +285,7 @@ fork server library.
 
 Once the target program's source code is modified, the `DISABLE_HOOKING` macro
 in the forkserver_config.h file should be set to 1. This ensures the forkserver
-does not also try to hook a function to startup.  The deferred_nohook executable
+does not also try to hook a function to startup. The deferred_nohook executable
 in the corpus/persist/ directory shows an example of using source code
 instrumentation to enable deferred startup mode.
 

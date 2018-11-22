@@ -32,6 +32,14 @@ corpus/libtest/libtest1.so
 corpus/libtest/libtest2.so
 corpus/libtest/test
 corpus/libtest/pie
+corpus/afl_test/test
+corpus/afl_test/test32
+corpus/afl_test/test-qemu
+corpus/afl_test/test-fast
+corpus/afl_test/test-fast-deferred
+corpus/afl_test/test-fast-persist
+corpus/afl_test/test-fast-persist-deferred
+corpus/afl_test/test-fast-persist-hang
 
 # Visual Studio 2015 cache/options directory
 .vs/
@@ -283,3 +291,25 @@ __pycache__/
 
 # sqlite database files
 *.db
+
+# CMake directory
+build/
+
+# AFL program files
+afl_progs/afl-as
+afl_progs/afl-clang
+afl_progs/afl-clang++
+afl_progs/afl-g++
+afl_progs/afl-gcc
+afl_progs/afl-qemu-trace
+afl_progs/afl-showmap
+afl_progs/as
+afl_progs/qemu_mode/qemu-2.10.0.tar.xz
+afl_progs/qemu_mode/qemu-2.10.0/
+afl_progs/afl-clang-fast
+afl_progs/afl-clang-fast++
+afl_progs/afl-llvm-pass.so
+afl_progs/afl-llvm-rt-64.o
+afl_progs/afl-llvm-rt-32.o
+afl_progs/afl-llvm-rt.o
+

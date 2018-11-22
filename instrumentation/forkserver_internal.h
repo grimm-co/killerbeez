@@ -1,12 +1,14 @@
 #pragma once
 
 #define PERSIST_MAX_VAR "PERSISTENCE_MAX_CNT"
+#define DEFER_ENV_VAR   "DEFER_ENV_VAR"
 
 //Designated file descriptors for read/write to the forkserver
 //and target process
 #define FUZZER_TO_FORKSRV   198
 #define FORKSRV_TO_FUZZER   199
-#define MAX_FORKSRV_FD      200
+#define QEMU_TSL_FD         200
+#define MAX_FORKSRV_FD      201
 
 //Commands that the fuzzer can send to the forkserver
 #define EXIT       0
@@ -29,9 +31,6 @@ struct forkserver {
 };
 typedef struct forkserver forkserver_t;
 
-pid_t run_target(int needs_stdin_fd, char *target_path, char **argv,
-                forkserver_t * fs, int use_forkserver_library, int *st_pipe,
-                int *ctl_pipe, int persistence_max_cnt);
 //These functions control all interactions with the forkserver, sending the
 //commands listed above
 void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int use_forkserver_library,

@@ -50,6 +50,7 @@ def stage_file(prefix, contents):
     else:
         with open(abspath, 'wb') as new_file:
             new_file.write(contents)
+        os.chmod(abspath, 0o755)
     return abspath
 
 def get_filename(prefix, hash):
@@ -71,7 +72,7 @@ def submit_job(appname, cmdline, seed_file=None, seed_contents=None):
         raise errors.InternalError('No seed specified')
 
     # TODO: should the cmdline files have guaranteed unique filenames?
-    cmd_contents = '%1 {}'.format(cmdline).encode('utf8')
+    cmd_contents = cmdline.encode('utf8')
     cmd_file = os.path.basename(stage_file('cmdline', cmd_contents))
 
     create_work_args = ['bin/create_work', '--appname', appname, '--verbose',
