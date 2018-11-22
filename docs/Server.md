@@ -88,22 +88,29 @@
         cp /usr/local/killerbeez/killerbeez/server/*.py bin
         cp -r /usr/local/killerbeez/killerbeez/server/skel .
         ```
-    7. Killerbeez does not use the BOINC API, however BOINC has a wrapper which
-       wraps an executable and deals with all the BOINC-specific stuff.  This
-       allows any application to be leveraged by BOINC. We need this wrapper
-       program for all platforms which we intend to support.  For Windows,
-       download the latest
-       [killerbeez-x64.zip](https://github.com/grimm-co/killerbeez/releases) and
-       place it in the `skel/windows_x86_64` directory
-    8. Extract the wrapper binary (or see the [build instructions](#wrapper) to
+    7. We need the killerbeez binaries to run on the target system. Download the
+       latest [release](https://github.com/grimm-co/killerbeez/releases) for the
+       target platform and place it in the `skel/<platform>` directory
+    8. The Killerbeez fuzzer binary does not use the BOINC API, however BOINC
+       has a wrapper which wraps an executable and deals with all the
+       BOINC-specific stuff.  This allows any application to be leveraged by
+       BOINC. We need this wrapper program for all platforms which we intend to
+       support. Extract the wrapper binary (or see the [build instructions](#wrapper) to
        build your own copy):
+
+       For 64-bit Windows:
         ```
         unzip -j -d skel/windows_x86_64 skel/windows_x86_64/killerbeez-x64.zip \
           '*wrapper_26014_windows_x86_64.exe'
         ```
-    9. If you want to support Linux or Mac, get the approripriate wrappers
-       from the [BOINC wiki](https://boinc.berkeley.edu/trac/wiki/WrapperApp)
-       and put the executables in the appropriate place in the skel/ directory.
+       For 64-bit Linux:
+        ```
+        unzip -j -d skel/x86_64-pc-linux-gnu \
+          skel/x86_64-pc-linux-gnu/killerbeez-Linux.zip */wrapper
+        ```
+    9. If you want to support MacOS, you will need to [build the wrapper
+       yourself](#wrapper), as the versions on the [BOINC
+       wiki](https://boinc.berkeley.edu/trac/wiki/WrapperApp) are too old.
     10. Enable the project
         ```
         bin/start
@@ -189,17 +196,46 @@ Wiki](https://boinc.berkeley.edu/trac/wiki/BoincPlatforms).
    (`apps/<target>_<platform>/1/<platform>`).  At a minimum, you will probably
    want to put the executable there (unless the assumption is that it is already
    on the clients' computers).
-3. Finalize the app creation
+3. Add an entry for each added file to the
+   `apps/<target>_<platform>/1/<platform>/version.xml` file, as in the
+   following example:
+
+    ```
+    <file>
+        <physical_name>myfile.exe</physical_name>
+        <logical_name>myfile.exe</logical_name>
+        <copy_file/>
+    </file>
+    ```
+    The physical name is the actual filename you added, while the logical name
+    is the name it will be given on the client system. `<copy_file/>` ensures
+    that the real file is placed at that name rather than a BOINC-specific
+    "link" file. See the [BOINC
+    docs](https://boinc.berkeley.edu/trac/wiki/AppVersionNew) for more
+    information on configuring your app.
+4. Finalize the app creation
 
     ```
     bin/update_versions
     ```
+5. If you need to make changes to your app, you can do so by creating a new app
+   version. Keep in mind that BOINC files are immutable, so if you change a file
+   you must also change its filename. The following is a good workflow:
+    1. In the `apps/<target>_<platform>/<version>/<platform>` directory, change
+       whatever files you need to update.
+    2. Add a version number to the names of updated files (e.g. myfile.zip.1 or
+       myfile.1.exe)
+    3. Edit `apps/<target>_<platform>/<version>/<platform>/version.xml` with the
+       new physical names of all files.
+    4. Rename the whole `apps/<target>_<platform>/<version>` directory to
+       `apps/<target>_<platform>/<version+1>`.
+    5. Run `bin/update_versions`.
 
 Supporting a new platform is kind of a big deal.  If you want to take a stab at
-it, take a look at the comments in add_target.py to get started.  You will
-probably want to have the [BOINC wiki](https://boinc.berkeley.edu/trac/wiki)
-loaded up, especially if you're not already familiar with how the implementation
-details of BOINC.
+it, take a look at the files in the [skel](../server/skel) directory and the
+comments in add_target.py to get started.  You will probably want to have the
+[BOINC wiki](https://boinc.berkeley.edu/trac/wiki) loaded up, especially if
+you're not already familiar with how the implementation details of BOINC.
 
 
 ### Submit job
