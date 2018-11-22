@@ -46,11 +46,11 @@ add_subdirectory(corpus) # test programs
 add_subdirectory(fuzzer) # instantiates & coordinates other parts
 add_subdirectory(driver) # starts program, feeds input, determines when program is done
 add_subdirectory(instrumentation) # inserts instructions to program to tell whether an input makes the binary take a new path
+add_subdirectory(merger) # merges instrumentation data between fuzzer nodes
+add_subdirectory(tracer) # runs through program and records basic block edges
 
 if (WIN32)
-add_subdirectory(merger) # merges instrumentation data between fuzzer nodes
 add_subdirectory(picker) # picks which libraries of a target program are being used, and worth fuzzing
-add_subdirectory(tracer) # runs through program and records basic block edges
 add_subdirectory(winafl) # parts ripped from winafl for dynamorio
 endif (WIN32)
 

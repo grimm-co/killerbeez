@@ -1,0 +1,26 @@
+--- qemu-2.10.0/linux-user/elfload.c.orig	2018-03-16 11:43:21.000000000 +0100
++++ qemu-2.10.0/linux-user/elfload.c	2018-04-04 05:25:47.535020053 +0200
+@@ -2086,8 +2086,21 @@
+     info->end_data = 0;
+     info->brk = 0;
+     info->elf_flags = ehdr->e_flags;
+-
+-    if (!afl_entry_point) afl_entry_point = info->entry;
++    
++    if (!afl_entry_point) {
++      char *ptr;
++      if ((ptr = getenv("AFL_ENTRYPOINT")) != NULL) {
++        afl_entry_point = strtoul(ptr, NULL, 16);
++      } else {
++        if (!afl_entry_point) afl_entry_point = info->entry;
++      }
++#ifdef TARGET_ARM
++      /* The least significant bit indicates Thumb mode. */
++      afl_entry_point = afl_entry_point & ~(target_ulong)1;
++#endif
++      if (getenv("AFL_DEBUG") != NULL)
++        fprintf(stderr, "AFL forkserver entrypoint: %p\n", (void*)afl_entry_point);
++    } while(0);
+ 
+     for (i = 0; i < ehdr->e_phnum; i++) {
+         struct elf_phdr *eppnt = phdr + i;
