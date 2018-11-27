@@ -1,22 +1,23 @@
 The core components of Killerbeez can be split into two logical categories:
 those which are related to orchestration, and those related to feeding data
-to the target\footnote{The program under test is referred to a the ``target''}
+to the target\footnote{Software under test is referred to a the ``target''}
 program and collecting results.  The former refers to decisions such as what
-inputs to use as seed data,\footnote{The initial inputs which will be modified
+inputs to use as seed data,\footnote{Initial inputs which will be modified
 are referred to as ``seeds''} which mutation algorithms to use, how to minimize
 the input corpus and other decisions which are best left to a central
-controller.  The latter category contains actions such as launching the
-application, tracking code coverage, determining when the target application is
-done processing the input and whether the target application crashed, froze due
+controller.  The latter category contains actions such as launching the target,
+feeding the target input data, tracking code coverage, determining when the target is
+done processing the input and whether the target crashed, froze due
 to something like an infinite loop, or executed new portions of code.
 
 \subsection{Orchestration}
 There is a manager that runs on a central server which handles all of the
-orchestration tasks.  It decides what mutators will be used on each target
-application, handles minimizing interesting inputs, determines if crashes
+orchestration tasks.  It decides what mutators will be used on each target,
+handles minimizing interesting inputs, determines if crashes
 and hangs are unique, and which inputs can be dropped because the code they
 reach is already covered by other inputs. A \BOINC{} server is used to transmit
-the work to worker nodes and receive results.
+the work to worker nodes and receive results.  All of this is depicted in
+Figure \ref{fig:Killerbeez-server}.
 
 \begin{figure*}[htb]
 \centering
@@ -28,7 +29,7 @@ the work to worker nodes and receive results.
 \subsubsection{Manager} \label{Manager Overview}
 The manager is what glues together all the server side components.  It is
 primarily a bookkeeper to track which targets are available for fuzzing,
-queue up jobs to be served out to clients, process the results which come back to
+queue up jobs to be served out to \BOINC{} clients, process the results which come back to
 determine if code paths are unique, and interface with external components.
 
 Because the manager is not responsible for running the target application, it
@@ -38,29 +39,30 @@ results.
 
 The manager will enable future enhancements to be made by taking advantage of
 external tools, such as
-using a test case generator to produce seed data, which could be used with the
-``nop'' mutator, which does not modify the data. Another integration which is
+using a test case generator to produce syntactically correct seed data. Another integration which is
 planned is to use Driller\cite{driller} to generate program inputs which reach
 code which have not yet been reached by mutation. These integrations are made
 possible by providing a REST API to the manager component, which allows clients
 to access and configure seed data, fuzzing targets, and low-level metadata
 produced during fuzzing.
 
-The API can also be used for some of the manager's internal functionality. The
+The API is also used for some of the manager's built-in functionality. The
 campaign manager, which plans out jobs to be
 executed, consists of pluggable modules to choose the job's type, inputs, and
-parameters. The API can be used by these modules to gather the data they need,
-and by the campaign manager to submit the final job. The corpus
-minimization can also be dealt with via this interface by making calls to read
-execution traces and modify the working set. This allows these components to be
+parameters. The API is used by these modules to gather the data they need,
+and then submit fuzzing jobs.\footnote{``jobs'' is a \BOINC{} term here, referring to a unit of work} The corpus
+minimization uses this REST interface to obtain
+execution traces and modify the working set of seed values. This allows components to be
 less coupled with the internals of the manager, enabling them to run as
 standalone processes. Figure
 \ref{fig:Killerbeez-integrations} shows how these tools can interface with the
 manager via the REST API.
 
 The manager can decide how long each job takes by specifying things like the
-number of iterations, so it should be able to scale up to a very large number
-of clients.  However, if the manager is ever found to be a bottleneck, multiple
+number of fuzz iterations, so it should be able to scale up to a very large number
+of clients by ensuring each job takes a long time.  This will allow a lot of
+work to get done with a minimal amount of coordination and network overhead.
+However, if the manager is ever found to be a bottleneck, multiple
 manager servers could be set up and the REST interface used to share
 information between them.
 
@@ -74,31 +76,33 @@ information between them.
 
 Killerbeez also introduces the idea of obtaining detailed information about
 execution for each input which has a unique code path.  This is typically
-not done by fuzzers, as obtaining a full trace is much more overhead than
+not done by other fuzzers, as obtaining a full trace is much more overhead than
 the lightweight instrumentation that \AFL{} or Honggfuzz use. When doing the
-typical fuzzing, Killerbeez will typically use lightweight methods of tracking
-execution. However, having a full trace is still useful when determining which
+normal fuzzing, Killerbeez will typically use lightweight methods of tracking
+execution as well. However, having a full trace is still useful when determining which
 seeds to keep or which ones should be weighted more heavily. This concept has
 been encapsulated in a Tracer. A tracer is just a special mode of an
 instrumentation module, which does not have to be supported. Each time an input
 is found which hits a new code path, a tracer job can be added via the manager.
-This will be handled via some \BOINC{} client, just like any other fuzzing job.
+This will be executed by a \BOINC{} client, just like any other fuzzing job.
 The results will include full trace data, which will be stored in the manager's
 database.  More information about the trace can be found in section
 \ref{Tracer}.
 
 \subsubsection{Preparation}  \label{Preparation Overview}
 There is also a phase of fuzzing workflows which is often overlooked or
-dismissed, which is setting up the target application and deciding specific
+dismissed, which is setting up the target software and deciding specific
 fuzzing parameters. This occurs before any real fuzzing begins and includes
-things such as compiling the software, possibly with a specific compiler or
+things such as compiling the target, possibly with a specific compiler or
 compiler flags, determining what options should be enabled in the target
-application, decided which portions of the code should be tracked for code
+software, deciding which portions of the code should be tracked for code
 coverage, and how to deal with non-deterministic code.
 
-The compilation requirements are driven by the type of instrumentation chosen,
-which has typically just a matter of choosing the option with the lowest
-performance penalty. What options to enable is application specific and
+The compilation step is driven by the type of instrumentation chosen,
+which is typically just a matter of choosing the option with the lowest
+performance penalty. Instrumentation does not need to be added at compile
+time, but it is added here when possible, as it reduces the overhead at runtime.
+What options to enable in the target software is target specific and
 subjective.  It depends on the higher level goals.  If the goal is to find a
 vulnerability with wide applicability, chose default options. If it is to test
 out a specific feature, disable everything except that option. If it's to just
@@ -117,16 +121,16 @@ instrumented.  The algorithm for doing so is described in section \ref{Picker}.
 One important detail is that the picker can not operate effectively when the
 target does not have deterministic execution.  If feeding the same file into
 the application multiple times results in different code being executed, this
-is a problem not only for the Picker, but also for code coverage in general.
+is a problem, not only for the Picker, but also for code coverage in general.
 \AFL{} does not deal with this problem directly, but it does alert the user to
 the fact that the target is non-deterministic. The user can then do things like
-hijack calls to functions such as srand() which intentionally introduce
+hijack calls to functions such as srand() which intentionally introduces
 randomness. This is often done for applications which employ cryptography for
 initialization vectors and nonces. Under command line Linux applications, this
 works fairly well.  On GUI applications in Windows, it does not work as well.
 There are system calls in Windows which just fail for no apparent reason. This
-is not a problem as the application should be checking the return code to
-detect this and handle it appropriately.  However, when this happens it has the
+should not be a problem for the target software, as it should be checking the return code to
+detect and handle this appropriately.  However, when this happens it has the
 side effect of making the fuzzer think an input was interesting when it was
 not.  The details of how non-determinism is handled is also described in
 section \ref{Picker}.
@@ -135,7 +139,7 @@ section \ref{Picker}.
 Execution is handled by the fuzzer program, which is aptly named ``fuzzer.''
 This can be run manually from the command line, however it is typically run by
 the manager, via a \BOINC{} client.  In either case, the fuzzer is responsible
-for running the target program, feeding the program data, tracking code
+for running the target, feeding it input data, tracking code
 coverage, detecting crashes, and can deal with user interaction such as dialog
 boxes.
 
@@ -156,22 +160,22 @@ section.
 
 The same code base is used on Windows, Linux and macOS to enable as much code
 re-use as possible.  Most of the mutators are shared among all platforms.
-Some of the instrumentation and driver\footnote{Unless otherwise noted,
-the term ``driver'' refers to driver modules, not operating system drivers}
-modules contain platform specific and sometimes the application specific code.
+Some of the instrumentation and driver\footnote{
+``driver'' refers to driver modules, not operating system drivers}
+modules contain platform specific and sometimes target specific code.
 
 \subsubsection{Driver} \label{Driver Overview}
 Killerbeez offers drivers, which are target-specific wrappers that abstract
-away the concept of loading data into a target program and enable finer
-definition of what failure modes of a particular program look like. While
+away the concept of loading data into a target and enable finer
+definition of what failure modes of a particular piece of software. While
 typical fuzzers look for crashes and hangs, specifically-written drivers can
 have more context about a given fuzz target.  Better understanding of the fuzz
 target's behavior means that Killerbeez can make better-informed decisions
-about the status of a program after a particular input, and it can terminate or
+about the status of a target after a particular input, and it can terminate or
 classify the result of a particular input more quickly than waiting for a
 timeout.
 
-First, the driver module is responsible for feeding inputs to a program.  This
+First, the driver module is responsible for feeding inputs to a target.  This
 is a departure from most fuzzers, which only work for one type of input.  In
 the case of AFL, the input is a file or stdin (which is also a file under
 UNIX).  Syzkaller\cite{syzkaller}, on the other hand, uses only system calls.
@@ -180,10 +184,10 @@ results collection and so forth. Drivers enable Killerbeez to reuse all of
 these components and select how to interact with the target by simply selecting
 the appropriate driver.  Abstracting this away allows for more exotic use
 cases, such as fuzzing IOCTLs, network servers, network clients, \IPC{} such as
-Mach Messages, XPC, Distributed Objects, or COM, and others, all with minimal
+Mach Messages, XPC, Distributed Objects, \COM{}, and others, all with minimal
 effort.
 
-The second thing drivers are responsible for is dealing with any application
+The second thing drivers are responsible for is dealing with any target
 specific issues, such as handling GUI interactions.  For example, if a PDF file
 with a malformed header is given to a PDF reader application, it typically will
 pop up a dialog box indicating that the file is corrupt. Fuzzers such as
@@ -193,7 +197,7 @@ from returning in practice} This results in all executions which hit this code
 path to appear as a hung process.  In Killerbeez, a driver could be written for
 the specific PDF reader which monitors the application for dialog boxes,
 detects when dialog boxes appear, analyze the text of the dialog box and
-determine that the status is a clean exit rather than a hang.  This would allow
+determines that the status is a clean exit rather than a hang.  This would allow
 the fuzzer to move on to the next input more quickly, as it would know the
 input is done being processed and would not need to wait the full timeout
 period.  It also helps discern between hangs, which may indicate a Denial of
@@ -204,8 +208,8 @@ driver in section \ref{Driver}.
 Many of the drivers will work on many fuzzing targets in a particular category.
 Targets which accept input from the network, are handled by the Network Server
 driver module, programs which open a file are generally handled by the file
-driver and so forth.  Other driver can be written to handle things which are
-specific to one particular application.  Some targets will handle opening files
+driver and so forth.  Other drivers can be written to handle things which are
+specific to particular pieces of software.  Some targets will handle opening files
 differently if opened via double clicking an icon as compared to using the open
 option from the file menu. Other examples include error message analysis to
 determine if the system should move on to the next input, or if it should click
@@ -213,7 +217,7 @@ determine if the system should move on to the next input, or if it should click
 
 \subsubsection{Mutator} \label{Mutator Overview}
 Killerbeez also implements ``mutators,'' which are abstractions on modifying
-program's input. They decide where to modify bytes in the input file, and how
+program's input. They decide where to modify bytes in the input data, and how
 to modify them.
 
 Killerbeez uses a selection of user-selectable mutators. Parameters are passed
@@ -225,8 +229,8 @@ Modular mutators also enable trivial combination of different approaches. Using
 the multipart mutator, different mutators can be applied to different parts of
 the input. This is required for efficiently fuzzing network protocols, as it is
 often desirable to not mutate the initial packets as they may be a handshake or
-authentication and any mutation would prevent interesting code from being
-executed, as the target program would go down an error path instead. It can
+authentication.  Any mutation to this section would prevent a lot code from being
+executed, as the target software would go down an error path instead. It can
 also be used to ensure that the first few bytes in a file are not modified so
 the file will still be recognized as being the correct file type.
 
@@ -235,12 +239,12 @@ the file will still be recognized as being the correct file type.
 Instrumentation modules are responsible for tracking program execution and
 determining if new code has been executed by the input data. How it does this,
 and what level of granularity is used, are questions left to the module author.
-There is an \IPT{} instrumentation module which is very high resolution, which
-means if a loop somewhere in the target is executed 178 times instead of 177
+There is an \IPT{} instrumentation module which is very high resolution.
+If a loop somewhere in the target is executed 178 times instead of 177
 times, it will detect this as a new code path, as the state explored is
 different than what was seen before.  The \AFL{} instrumentation module, on the
 other hand, would not consider this to be an input which covers new code. This
-is due to the bucketing system \AFL{} uses which groups executions of the same
+is due to the bucketing system the \AFL{} instrumentation uses which groups executions of the same
 code and considers anything which executes a portion of code 128-255 times to
 be equivalent.
 
@@ -248,7 +252,7 @@ Sometimes instrumentation involves dealing with specific drivers, which are
 implemented differently on different operating systems. The \IPT{}
 instrumentation module uses the perf subsystem on Linux, which is not available
 on macOS or Windows. Other instrumentation technologies, such as Intel's
-Pin\cite{pin}, have a very similar interface across different operating
+Pin,\cite{pin} have a very similar interface across different operating
 systems, which means more of the code in the instrumentation module can be
 re-used, simply using \#ifdef directives if there are portions which are
 specific to a particular operating system.
