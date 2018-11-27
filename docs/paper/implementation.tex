@@ -385,6 +385,13 @@ Media Player, this was around 500 executions.  % TODO: make sure the previous
 %           ignore_count,
 %           total_ignore_count);
 
+\begin{figure*}[htb]
+\centering
+\includegraphics[width=4in]{picker.png}
+\caption{Total Non-deterministic Basic Block Transitions Detected per Exeuction}
+\label{fig:picker}
+\end{figure*}
+
 The algorithm the picker uses is not really compatible will all instrumentation
 modules. Anything which uses the \AFL{}-style bitmap will work fine.  This
 would include the Dynamo RIO and \AFL{} instrumentation modules. The IPT
