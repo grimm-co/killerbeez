@@ -1,16 +1,16 @@
 There are a huge number of fuzzing tools which are publicly available, many of
 which are actually very useful on real world binaries.  However, each tool
-typically only handles one very specific case, and are not designed to scale
+typically only handles one very specific use case, and are not designed to scale
 out.  There are a number of system call kernel fuzzers, different ones for
 fuzzing IOCTLs, some userland Linux fuzzers which only effectively work with
-command line programs which were written in C or C++.  Some only work with
+command line programs which were written in C or C++.  Some only function with
 source code, others only work on 32-bit Linux, or require a person to go
 through and describe the format of the data which the program under test is
 expecting.  Finally, there is a category of tools which work amazingly well
 on toy programs but do not work on production software due to bugs or lack of
 support for features such as multithreading.
 
-This is typically not an issue in academia, as the problem to address can be
+This is typically not viewed an issue in academia, as the problem to address can be
 scoped based on the tools that are available and assume that the problem can
 be solved in other situations, but leave the proof for ``future work.''  They
 are typically correct in their assumption, however practitioners need tools
@@ -21,7 +21,7 @@ and there is often not a choice as to what language the target program is
 written in, whether source code is available, what operating system it runs
 on, or which CPU architectures it supports. This leaves the security
 professional to choose between a limited set of options many of which will
-turn out to be mutually exclusive. This also feeds the problem, as a common
+turn out to be mutually exclusive. This also adds to the problem, as a common
 response to this dilemma is to put together a custom tool which meets their
 needs, and to do so in the shortest amount of time possible.  Furthermore,
 this results in the same code being re-written for different platforms, or
