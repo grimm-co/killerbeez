@@ -417,18 +417,12 @@ Media Player, this was around 500 executions.  % TODO: make sure the previous
 % sentence is accurate, and a reference to the graph recommended in the comment
 % below...
 
-% TODO: Insert a graph showing the number of bad bytes (Y axis) over the
-%       number of executions (X axis).  The line should look similar to
-%       y = log(n).  It would be nice to have multiple graphs in a single image
-%       so several libraries can be compared.  The graphs can be generated in
-%       post by parsing the debug output of Picker, specifically this line:
-% DEBUG_MSG("Module %s File %s iteration (%d/%d) ignore count %d total ignore count %d",
-%           module_names[index],
-%           filenames[file_count],
-%           iteration - 1,
-%           iteration,
-%           ignore_count,
-%           total_ignore_count);
+\begin{figure*}[htb]
+\centering
+\includegraphics[width=4in]{picker.png}
+\caption{Total Non-deterministic Basic Block Transitions Detected per Execution In Windows Media Player Libraries}
+\label{fig:picker}
+\end{figure*}
 
 The algorithm the Picker uses is not effective with all instrumentation
 modules. The Picker uses the instrumentation module which will be used in
@@ -442,10 +436,3 @@ the instrumentation data.  This will cause the Picker to mask out all bytes of
 the coverage data, which is not actually useful. If the Intel PT
 instrumentation was also a tracer, it would be capable of using an internal
 format which is compatible with the Picker.
-
-\begin{figure*}[htb]
-\centering
-\includegraphics[width=4in]{picker.png}
-\caption{Total Non-deterministic Basic Block Transitions Detected per Execution In Windows Media Player Libraries}
-\label{fig:picker}
-\end{figure*}
