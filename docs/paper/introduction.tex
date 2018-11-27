@@ -1,13 +1,13 @@
 Over the past few years, coverage-guided fuzzing has become a popular way to
 find software and hardware vulnerabilities due to advances in publicly
 available tools such as \AFL{}\cite{afl} and its derivatives.\cite{vanhauser} Many
-fuzzers track bugs which were found with their tools in ``trophy cases'' which
-demonstrate their effectiveness against real world application.  However, most
+fuzzers have ``trophy cases'' consisting of a list bugs known to be found with that tool, to
+demonstrate their effectiveness against real world applications.  However, most
 tools are primarily focused on finding bugs in open source, command line Linux
-software which reads input from files or standard input. There has been some
+software which reads input from files or standard input. While there has been some
 exploration to get \AFL{} working on other operating
 systems\cite{aflosx}\cite{winafl} as well as supporting network
-input.\cite{netafl}\cite{preeny}
+input,\cite{netafl}\cite{preeny} it is a feature which is often omitted.
 
 Most of the published improvements over the original version of \AFL{} are
 implemented as forks of
@@ -26,7 +26,7 @@ together, or working in other contexts.
 We present Killerbeez, a fuzzing framework which brings together many of the
 various security analysis tools so they can be used together.  The code
 compiles on multiple operating systems, can handle target applications with or
-without source code, software with a Graphical User Interface (GUI).
+without source code, and software with a \GUI{}.
 Furthermore, the input mutation algorithms, instrumentation, seed selection
 algorithms, and methods for feeding input data to the target are all easily
 interchangeable.  This enables two things (1) easily mixing and matching
