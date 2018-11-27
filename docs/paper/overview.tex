@@ -11,8 +11,8 @@ done processing the input and whether the target crashed, froze due
 to something like an infinite loop, or executed new portions of code.
 
 \subsection{Orchestration}
-There is a manager that runs on a central server which handles all of the
-orchestration tasks.  It decides what mutators will be used on each target,
+All of the orchestration tasks are handled by the manger running on a central
+server .  It decides what mutators will be used on each target,
 handles minimizing interesting inputs, determines if crashes
 and hangs are unique, and which inputs can be dropped because the code they
 reach is already covered by other inputs. A \BOINC{} server is used to transmit
@@ -39,9 +39,9 @@ results.
 
 The manager will enable future enhancements to be made by taking advantage of
 external tools, such as
-using a test case generator to produce syntactically correct seed data. Another integration which is
-planned is to use Driller\cite{driller} to generate program inputs which reach
-code which have not yet been reached by mutation. These integrations are made
+using a test case generator to produce syntactically correct seed data. Another planned integration
+is to use Driller\cite{driller} to generate program inputs which reach
+code which has not yet been reached by mutation. These integrations are made
 possible by providing a REST API to the manager component, which allows clients
 to access and configure seed data, fuzzing targets, and low-level metadata
 produced during fuzzing.
@@ -60,9 +60,9 @@ manager via the REST API.
 
 The manager can decide how long each job takes by specifying things like the
 number of fuzz iterations, so it should be able to scale up to a very large number
-of clients by ensuring each job takes a long time.  This will allow a lot of
+of clients by ensuring each job takes a long time.  This will allow a substantial amount of
 work to get done with a minimal amount of coordination and network overhead.
-However, if the manager is ever found to be a bottleneck, multiple
+However, if the manager becomes a bottleneck, multiple
 manager servers could be set up and the REST interface used to share
 information between them.
 
