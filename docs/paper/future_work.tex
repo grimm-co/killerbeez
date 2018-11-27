@@ -1,24 +1,22 @@
-% Summary of the future work
 The short term focus will be to pull in existing technologies from other
 projects and get them integrated with Killerbeez and running on all the
 supported platforms.  There is ample research, tools and techniques available
 now which have yet to be applied in different domains. Once the state of the
-art has been incorporated, more automation and designing interfaces to pull in
-projects which don't fit into the existing modules will be the next priority.
+art has been incorporated, more automation will be the next priority.
 
 Expanding the coverage of the instrumentation modules so they work on more
 operating systems is a high priority. The \IPT{} module currently only works
 on Linux, but should be able to work on Windows now that driver support has
-improved. The opposite is true for DynamoRIO, which currently works on Windows
+improved. The reverse is true for DynamoRIO, which currently works on Windows
 but should be able to be ported to run on macOS and Linux without too much
-difficulty.  Pulling in more instrumentation technologies such as Intel's PIN,
+difficulty.  Pulling in more instrumentation technologies such as Intel's Pin,
 and Dyninst\cite{dyninst} is also on the list of things to do. Wrapping up the
 future enhancements to instrumentation is making more instrumentations aware of
 the non-deterministic portions of code which were identified by the Picker.
 Currently only the DynamoRIO instrumentation can use this information, but
 it should be easy to extend this to all of the \AFL{}-bitmap compatible
 instrumentation modules.  This includes the \AFL{} module and the to-be-written
-PIN and Dyninst modules.  The \IPT{} module will not be able to use this data
+Pin and Dyninst modules.  The \IPT{} module will not be able to use this data
 because it does not actually decode the TNT and TIP bitstreams to determine what
 code is being executed. Adding real-time parsing would slow down the target
 software significantly, however this would still be considered if the benefit
@@ -32,18 +30,19 @@ Expanding the selection of drivers to include the ability to monitor dialog
 box pop-ups on Windows is an area of interest. There are already drivers for
 the more common input methods, such as files, stdin, and network data, however
 these should also be expanded to cover kernel functions via syscalls, drivers
-via ioctls, IPC messages, and so forth. This will make Killerbeez be a fuzzer
+via \IOCTLs{}, IPC messages, and so forth. This will make Killerbeez be a fuzzer
 which can handle not only applications on multiple operating systems, but also
 the kernel of multiple operating systems as well.  Currently this is only
 theoretically possible with Killerbeez, which is not much help to researchers
-in the field. Making it actually possible in practice will be a big step.
+in the field. Making it supported without any development or modifications
+will be a big step in helping industry researchers.
 
 The mutation algorithms from several other projects have already been
 integrated with Killerbeez, however it is desirable to have the ability
 to write mutators in Python.  This will allow pulling in mutators from
 projects like BrundleFuzz\cite{brundlefuzz} as well as quickly putting
 together a custom mutator without needing to learn as many of the Killerbeez
-APIs, nor even needed a compiler.
+APIs, nor even needing a compiler.
 
 In addition the aforementioned modules on the client side, there are a number
 of algorithms to pull in from academic publications.  This includes the seed
@@ -76,7 +75,7 @@ output is still inputs which cause new code to be executed, so this will fit
 right in with the current system.  This allows the \BOINC{} code to be
 leveraged to handle things like scheduling tasks, dealing with worker notes
 which time out, and the campaign manager can deal with deciding how much time
-to spend drilling versus fuzzing. Preparing an Driller environment which can
+to spend drilling versus fuzzing. Preparing a Driller environment which can
 be easily deployed will require a bit of work, however this should only need
 to be done one time, not once for each fuzzing target.
 
