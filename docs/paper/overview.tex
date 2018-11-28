@@ -105,7 +105,7 @@ time, but it is added here when possible, as it reduces the overhead at runtime.
 What options to enable in the target software is target specific and
 subjective.  It depends on the higher level goals.  If the goal is to find a
 vulnerability with wide applicability, choose default options. If it is to test
-out a specific feature, disable everything except that option. If it's just to
+out a specific feature, disable everything except that option. If it is just to
 find any bug in any configuration, enable everything.  While these are
 important questions, the most interesting step is what to track in terms of
 code coverage, and how to deal with non-deterministic code.
@@ -113,7 +113,7 @@ code coverage, and how to deal with non-deterministic code.
 The solution \AFL{} uses is to only instrument the main binary, not any of the
 libraries. To make sure all code is covered, compiling everything into one
 large static executable is recommended. This means tracking execution on code
-which doesn't process any user input, and not tracking important code if you
+which does not process any user input, and not tracking important code if you
 are not able to get the code to compile statically. Killerbeez improves on this
 by including a tool
 called the ``Picker'' which automatically determines which libraries should be

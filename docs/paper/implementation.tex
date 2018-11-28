@@ -63,7 +63,7 @@ The next issue a driver has to deal with is determining when the target is done
 processing the input.
 Typically, a fuzzer's execution loop involves mutating input, feeding it to a
 target, and then monitoring the target for interesting behavior such as a crash
-or a hang, and if it doesn't exit after the timeout period, it is considered to
+or a hang, and if it does not exit after the timeout period, it is considered to
 be hung.  This works for command line programs which exit immediately after processing
 the input, but falls apart when dealing with \GUI{} applications.
 Setting a timeout which is too low results in stopping before the
@@ -284,7 +284,7 @@ the kernel driver as one TIP packet and one byte of TNT packet data with no
 information about the order in which these events occurred.  To make sense of
 this data, the executable must be analyzed to determine the order in which to
 pull things from the TNT and TIP queues. This parsing adds to the performance
-overhead, so the Intel PT instrumentation modules doesn't do it. Instead it just
+overhead, so the Intel PT instrumentation modules does not do it. Instead it just
 takes a hash of the entire TNT bit stream and the entire set of TIP packets.
 This does not identify what code was executed, but it does determine if a
 different code path was taken, as a different code path would result in
@@ -378,7 +378,7 @@ components from using trace data.
 \subsection{Picker} \label{Picker}
 Instrumenting all libraries for a real application using a dynamic
 instrumentation technology is prohibitively slow. Even when using more
-efficient instrumentation methods, there's a desire to minimize the amount of
+efficient instrumentation methods, there is a desire to minimize the amount of
 overhead in instrumentation so more effort can be spent finding bugs instead of
 performing bookkeeping operations.  The Picker automatically determines which
 libraries should be instrumented so the fuzzer can limit instrumentation to
