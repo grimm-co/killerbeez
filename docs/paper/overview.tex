@@ -7,14 +7,14 @@ are referred to as ``seeds''} which mutation algorithms to use, how to minimize
 the input corpus and other decisions which are best left to a central
 controller.  The latter category contains actions such as launching the target,
 feeding the target input data, tracking code coverage, determining when the target is
-done processing the input and whether the target crashed, froze due
+done processing the input and reporting whether the target crashed, froze due
 to something like an infinite loop, or executed new portions of code.
 
 \subsection{Orchestration}
 All of the orchestration tasks are handled by the manger running on a central
 server .  It decides what mutators will be used on each target,
 handles minimizing interesting inputs, determines if crashes
-and hangs are unique, and which inputs can be dropped because the code they
+and hangs are unique, and identifies inputs that can be dropped because the code they
 reach is already covered by other inputs. A \BOINC{} server is used to transmit
 the work to worker nodes and receive results.  All of this is depicted in
 Figure \ref{fig:Killerbeez-server}.
@@ -33,7 +33,7 @@ queue up jobs to be served out to \BOINC{} clients, process the results which co
 determine if code paths are unique, and interface with external components.
 
 Because the manager is not responsible for running the target application, it
-does not need to run on any specific platform.  It can happily run on Linux and
+does not need to run on the same platform as the target.  It can happily run on Linux and
 serve out work to be executed by Windows or macOS machines and collect the
 results.
 
@@ -78,11 +78,11 @@ Killerbeez also introduces the idea of obtaining detailed information about
 execution for each input which has a unique code path.  This is typically
 not done by other fuzzers, as obtaining a full trace is much more overhead than
 the lightweight instrumentation that \AFL{} or Honggfuzz use. When doing the
-normal fuzzing, Killerbeez will typically use lightweight methods of tracking
+normal fuzzing, Killerbeez will by default use lightweight methods of tracking
 execution as well. However, having a full trace is still useful when determining which
 seeds to keep or which ones should be weighted more heavily. This concept has
 been encapsulated in a Tracer. A tracer is just a special mode of an
-instrumentation module, which does not have to be supported. Each time an input
+instrumentation module, which not all instrumentations support. Each time an input
 is found which hits a new code path, a tracer job can be added via the manager.
 This will be executed by a \BOINC{} client, just like any other fuzzing job.
 The results will include full trace data, which will be stored in the manager's
@@ -96,7 +96,7 @@ fuzzing parameters. This occurs before any real fuzzing begins and includes
 things such as compiling the target, possibly with a specific compiler or
 compiler flags, determining what options should be enabled in the target
 software, deciding which portions of the code should be tracked for code
-coverage, and how to deal with non-deterministic code.
+coverage, and specifying how to deal with non-deterministic code.
 
 The compilation step is driven by the type of instrumentation chosen,
 which is typically just a matter of choosing the option with the lowest
@@ -104,8 +104,8 @@ performance penalty. Instrumentation does not need to be added at compile
 time, but it is added here when possible, as it reduces the overhead at runtime.
 What options to enable in the target software is target specific and
 subjective.  It depends on the higher level goals.  If the goal is to find a
-vulnerability with wide applicability, chose default options. If it is to test
-out a specific feature, disable everything except that option. If it's to just
+vulnerability with wide applicability, choose default options. If it is to test
+out a specific feature, disable everything except that option. If it's just to
 find any bug in any configuration, enable everything.  While these are
 important questions, the most interesting step is what to track in terms of
 code coverage, and how to deal with non-deterministic code.
@@ -114,7 +114,8 @@ The solution \AFL{} uses is to only instrument the main binary, not any of the
 libraries. To make sure all code is covered, compiling everything into one
 large static executable is recommended. This means tracking execution on code
 which doesn't process any user input, and not tracking important code if you
-are not able to get the code to compile statically. Killerbeez includes a tool
+are not able to get the code to compile statically. Killerbeez improves on this
+by including a tool
 called the ``Picker'' which automatically determines which libraries should be
 instrumented.  The algorithm for doing so is described in section \ref{Picker}.
 
@@ -128,11 +129,11 @@ hijack calls to functions such as srand() which intentionally introduces
 randomness. This is often done for applications which employ cryptography for
 initialization vectors and nonces. Under command line Linux applications, this
 works fairly well.  On GUI applications in Windows, it does not work as well.
-There are system calls in Windows which just fail for no apparent reason. This
+There are system calls in Windows which occasionally fail for no apparent reason. This
 should not be a problem for the target software, as it should be checking the return code to
 detect and handle this appropriately.  However, when this happens it has the
 side effect of making the fuzzer think an input was interesting when it was
-not.  The details of how non-determinism is handled is also described in
+not.  The details of how non-determinism is handled are also described in
 section \ref{Picker}.
 
 \subsection{Execution}
@@ -140,7 +141,7 @@ Execution is handled by the fuzzer program, which is aptly named ``fuzzer.''
 This can be run manually from the command line, however it is typically run by
 the manager, via a \BOINC{} client.  In either case, the fuzzer is responsible
 for running the target, feeding it input data, tracking code
-coverage, detecting crashes, and can deal with user interaction such as dialog
+coverage, detecting crashes, and dealing with user interaction such as dialog
 boxes.
 
 \begin{figure*}[htb]
@@ -167,7 +168,7 @@ modules contain platform specific and sometimes target specific code.
 \subsubsection{Driver} \label{Driver Overview}
 Killerbeez offers drivers, which are target-specific wrappers that abstract
 away the concept of loading data into a target and enable finer
-definition of what failure modes of a particular piece of software. While
+definition of the failure modes of a particular piece of software. While
 typical fuzzers look for crashes and hangs, specifically-written drivers can
 have more context about a given fuzz target.  Better understanding of the fuzz
 target's behavior means that Killerbeez can make better-informed decisions
@@ -191,16 +192,16 @@ The second thing drivers are responsible for is dealing with any target
 specific issues, such as handling GUI interactions.  For example, if a PDF file
 with a malformed header is given to a PDF reader application, it typically will
 pop up a dialog box indicating that the file is corrupt. Fuzzers such as
-Honggfuzz or WinAFL would wait until the timeout period.\footnote{WinAFL can
+Honggfuzz or WinAFL would wait until a timeout expires.\footnote{WinAFL can
 exit at the end of a function, but dialog boxes tend to prevent that function
 from returning in practice} This results in all executions which hit this code
 path to appear as a hung process.  In Killerbeez, a driver could be written for
 the specific PDF reader which monitors the application for dialog boxes,
-detects when dialog boxes appear, analyze the text of the dialog box and
+detects when dialog boxes appear, analyzes the text of the dialog box and
 determines that the status is a clean exit rather than a hang.  This would allow
 the fuzzer to move on to the next input more quickly, as it would know the
 input is done being processed and would not need to wait the full timeout
-period.  It also helps discern between hangs, which may indicate a Denial of
+period.  It also helps discern between a hang, which may indicate a Denial of
 Service vulnerability such as an infinite loop, and an error which is handled
 in the expected manner. For another example, see the Windows Media Player
 driver in section \ref{Driver}.
@@ -217,7 +218,7 @@ determine if the system should move on to the next input, or if it should click
 
 \subsubsection{Mutator} \label{Mutator Overview}
 Killerbeez also implements ``mutators,'' which are abstractions on modifying
-program's input. They decide where to modify bytes in the input data, and how
+program input. They decide where to modify bytes in the input data, and how
 to modify them.
 
 Killerbeez uses a selection of user-selectable mutators. Parameters are passed
@@ -229,7 +230,7 @@ Modular mutators also enable trivial combination of different approaches. Using
 the multipart mutator, different mutators can be applied to different parts of
 the input. This is required for efficiently fuzzing network protocols, as it is
 often desirable to not mutate the initial packets as they may be a handshake or
-authentication.  Any mutation to this section would prevent a lot code from being
+authentication.  Any mutation to this section would prevent a lot of code from being
 executed, as the target software would go down an error path instead. It can
 also be used to ensure that the first few bytes in a file are not modified so
 the file will still be recognized as being the correct file type.
@@ -248,7 +249,7 @@ is due to the bucketing system the \AFL{} instrumentation uses which groups exec
 code and considers anything which executes a portion of code 128-255 times to
 be equivalent.
 
-Sometimes instrumentation involves dealing with specific drivers, which are
+Sometimes instrumentation modules need to interface with kernel drivers, which are
 implemented differently on different operating systems. The \IPT{}
 instrumentation module uses the perf subsystem on Linux, which is not available
 on macOS or Windows. Other instrumentation technologies, such as Intel's

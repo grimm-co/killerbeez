@@ -22,7 +22,7 @@ code is being executed. Adding real-time parsing would slow down the target
 software significantly, however this would still be considered if the benefit
 of handling non-deterministic code appears to be worth the additional overhead
 which would be incurred. Finally, adding in the Linux-only instrumentation
-technologies from Honggfuzz\cite{honggfuzz} is planned to get the performance
+technologies from Honggfuzz\cite{honggfuzz} is planned, to get the performance
 boost on software which runs on Linux, especially that which is closed source
 or not written in either C or C++.
 
@@ -30,7 +30,7 @@ Expanding the selection of drivers to include the ability to monitor dialog
 box pop-ups on Windows is an area of interest. There are already drivers for
 the more common input methods, such as files, stdin, and network data, however
 these should also be expanded to cover kernel functions via syscalls, drivers
-via \IOCTLs{}, IPC messages, and so forth. This will make Killerbeez be a fuzzer
+via \IOCTLs{}, IPC messages, and so forth. This will make Killerbeez a fuzzer
 which can handle not only applications on multiple operating systems, but also
 the kernel of multiple operating systems as well.  Currently this is only
 theoretically possible with Killerbeez, which is not much help to researchers
@@ -44,7 +44,7 @@ projects like BrundleFuzz\cite{brundlefuzz} as well as quickly putting
 together a custom mutator without needing to learn as many of the Killerbeez
 APIs, nor even needing a compiler.
 
-In addition the aforementioned modules on the client side, there are a number
+In addition to the aforementioned modules on the client side, there are a number
 of algorithms to pull in from academic publications.  This includes the seed
 energy rating and power schedules from AFLFast\cite{aflfast} and
 AFLGo.\cite{aflgo} FairFuzz presents another seed selection algorithm to bias
@@ -53,7 +53,7 @@ The algorithm from the PerfFuzz\cite{perffuzz} paper can be pulled into
 Killerbeez to find algorithmic complexity vulnerabilities. The research on
 using estimators and extrapolators to determine if a fuzzing campaign should
 be stopped, or continue running, can be pulled in from Pythia.\cite{pythia}
-Instrumentation modules can be updated to implement the collision resistent
+Instrumentation modules can be updated to implement the collision resistant
 algorithm from CollAFL.\cite{collafl} Angora is also on the list of techniques
 to integrate into Killerbeez, however it is at the end of the queue of
 improvements due to the fact that it would need to be completely re-implemented
@@ -73,7 +73,7 @@ which run Driller instead of the fuzzer component. The input to the process
 is still the executable and the code which has been covered thus far, and the
 output is still inputs which cause new code to be executed, so this will fit
 right in with the current system.  This allows the \BOINC{} code to be
-leveraged to handle things like scheduling tasks, dealing with worker notes
+leveraged to handle things like scheduling tasks, dealing with worker nodes
 which time out, and the campaign manager can deal with deciding how much time
 to spend drilling versus fuzzing. Preparing a Driller environment which can
 be easily deployed will require a bit of work, however this should only need
@@ -86,7 +86,7 @@ oracle to determine which inputs are valid or not, which will likely mean it
 will need to be set up manually, short of a development which allows
 autonomously detecting such oracles and hooking the appropriate functions.
 
-Finally, expanding to support fuzzers other than the Killerbeez fuzzer. With
+Finally, expanded support for fuzzers other than the Killerbeez fuzzer is planned. With
 the client/server architecture which was chosen, there's no reason Killerbeez
 has to be limited to a single fuzzer.  It could easily just run Honggfuzz,
 \AFL{}, WinAFL, or others.  Doing so will require additional configuration in

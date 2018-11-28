@@ -1,4 +1,4 @@
-There are projects which have addressed some of aspects covered by Killerbeez
+There are projects which have addressed some of the aspects covered by Killerbeez
 such as platform independence, distributed fuzzing, leveraging existing tools,
 and so forth.
 
@@ -12,7 +12,7 @@ into the overall system. This adds efficiency, as the test cases can eliminate
 code like GUI libraries, which is not the real target of the fuzzing, however
 it also means not being able to test closed source code.
 
-Peach Fuzzer\cite{peach} now supports distributed fuzzing, modular mutators,
+Peach Fuzzer\cite{peach} now supports distributed fuzzing, modular mutators, and
 modules for launching apps, is able to do both file and network based fuzzing,
 and does work on closed source applications.  However, the distributed aspect
 is only available in the proprietary version of the fuzzer; it does not exist
@@ -36,16 +36,17 @@ other fuzzer, including Killerbeez at the time of writing, however none of
 these work on Windows. The \BTS{} and \IPT{} instrumentations are only for
 Linux, as is the hardware-based counters instrumentation which tracks the
 number of instructions and branches which were executed. There is compile time
-instrumentation, but this only is helpful in the case where source code is
+instrumentation, but this is only helpful in the case where source code is
 available, and it can be compiled by GCC or LLVM.  It is possible to compile
 some C/C++ code for windows using LLVM, but anything which requires Microsoft
 Visual Studio to be compiled will not have any instrumentation.  Supporting
 Windows does not seem to be a priority for Honggfuzz, as it can not be compiled
-nativity, but only via Cygwin.
+natively, but only via Cygwin.
 
 Honggfuzz is a great tool, which is why a modified version of it was created
 which can use all of the Killerbeez modules.\cite{honggfuzzgrimm} Section
-\ref{Future Work} describes the Linux instrumentation technologies planned on
-being integrated from Honggfuzz. If it is feasible to add the ability to use
+\ref{Future Work} describes the Linux instrumentation technologies from
+Honggfuzz planned for integration with Killerbeez.
+If it is feasible to add the ability to use
 Killerbeez instrumentation modules, that is another contribution which will be
 made to the Honggfuzz project.
