@@ -1,9 +1,9 @@
 The core components of Killerbeez can be split into two logical categories:
 those which are related to orchestration, and those related to feeding data
-to the target\footnote{Software under test is referred to a the ``target''}
+to the target\footnote{Software under test is referred to a the ``target.''}
 program and collecting results.  The former refers to decisions such as what
 inputs to use as seed data,\footnote{Initial inputs which will be modified
-are referred to as ``seeds''} which mutation algorithms to use, how to minimize
+are referred to as ``seeds.''} which mutation algorithms to use, how to minimize
 the input corpus and other decisions which are best left to a central
 controller.  The latter category contains actions such as launching the target,
 feeding the target input data, tracking code coverage, determining when the target is
@@ -29,7 +29,7 @@ Figure \ref{fig:Killerbeez-server}.
 \subsubsection{Manager} \label{Manager Overview}
 The manager combines all of the server side components.  It is
 primarily a bookkeeper to track which targets are available for fuzzing,
-queue jobs\footnote{``jobs'' is a \BOINC{} term here, referring to a unit of work} to be served to \BOINC{} clients, process the results to
+queue jobs\footnote{``jobs'' is a \BOINC{} term here, referring to a unit of work.} to be served to \BOINC{} clients, process the results to
 determine if code paths are unique, and interface with external components.
 
 Because the manager is not responsible for running the target application, it
@@ -162,7 +162,7 @@ section.
 The same code base is used on Windows, Linux and macOS to enable as much code
 re-use as possible.  Most of the mutators are shared among all platforms.
 Some of the instrumentation and driver\footnote{
-``driver'' refers to driver modules, not operating system drivers}
+``driver'' refers to driver modules, not operating system drivers.}
 modules contain platform specific and sometimes target specific code.
 
 \subsubsection{Driver} \label{Driver Overview}
@@ -194,7 +194,7 @@ with a malformed header is given to a PDF reader application, it typically will
 pop up a dialog box indicating that the file is corrupt. Fuzzers such as
 Honggfuzz or WinAFL would wait until a timeout expires.\footnote{WinAFL can
 exit at the end of a function, but dialog boxes tend to prevent that function
-from returning in practice} This results in all executions which hit this code
+from returning in practice.} This results in all executions which hit this code
 path to appear as a hung process.  In Killerbeez, a driver could be written for
 the specific PDF reader which monitors the application for dialog boxes,
 detects when dialog boxes appear, analyzes the text of the dialog box and
