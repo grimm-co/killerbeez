@@ -417,12 +417,22 @@ deterministic fashion, the Picker accepts that the code in question is
 going to behave erratically and ignores the execution data related to those
 sections of code.  This is done by running the same input through the target
 \textit{N} times and finding all of the bytes in the coverage info which
-vary. By default, \textit{N} is 10, however it must be large enough that a
-significant number of executions did not identify any more bytes where the
-execution varied. This will vary from one target to another.  For Windows
-Media Player, this was around 500 executions.  % TODO: make sure the previous
-% sentence is accurate, and a reference to the graph recommended in the comment
-% below...
+vary. By default, \textit{N} is 10, however it should be large enough that a
+significant number of executions do not identify any more bytes where the
+execution varied. The correct value for N will vary from one target to another.
+The data for Windows Media Player, shown in Figure \ref{fig:picker}, indicates
+new non-deterministic code was being found after 325 executions. However, after
+10 executions, more than half of the non-deterministic transitions were
+identified for each of the four DLLs.
+
+Choosing the number of executions is a trade-off between spending time up front
+to get more efficient fuzzing, and getting started more quickly but being less
+efficient.  In addition to determining which libraries to instrument, the
+identified non-deterministic transitions can be used by some instrumentation
+modules in determining if an input caused new code paths to be found.  This is
+currently only implemented in the DynamoRIO instrumentation module, but will
+likely be implemented in the several of the instrumentation modules listed in
+the section on future work.
 
 \begin{figure*}[htb]
 \centering

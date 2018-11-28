@@ -6,5 +6,4 @@ set output '../picker.png'
 plot "data/AudioSes.dll" title 'AudioSes.dll' with lines, \
 		"data/MFPlat.dll" title 'MFPlat.dll' with lines, \
 		"data/MSIMG32.dll" title 'MSIMG32.dll' with lines, \
-		"data/WindowsCodecs.dll" title 'WindowsCodecs.dll' with lines, \
-		"data/wmp.dll" title 'wmp.dll' with lines
+		"data/WindowsCodecs.dll" title 'WindowsCodecs.dll' with lines
