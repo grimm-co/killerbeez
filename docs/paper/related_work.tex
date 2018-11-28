@@ -10,7 +10,7 @@ Google.  Another difference is that OSS-Fuzz requires source code for the
 target software, and also requires that tests be written to integrate it
 into the overall system. This adds efficiency, as the test cases can eliminate
 code like GUI libraries, which is not the real target of the fuzzing, however
-it also means not being able to test closed source code.
+it is unable to test closed source software.
 
 Peach Fuzzer\cite{peach} now supports distributed fuzzing, modular mutators, and
 modules for launching apps, is able to do both file and network based fuzzing,
@@ -35,12 +35,12 @@ section \ref{Future Work}. Honggfuzz has more types of instrumentation than any
 other fuzzer, including Killerbeez at the time of writing, however none of
 these work on Windows. The \BTS{} and \IPT{} instrumentations are only for
 Linux, as is the hardware-based counters instrumentation which tracks the
-number of instructions and branches which were executed. There is compile time
+number of instructions and branches which were executed. There is also compile time
 instrumentation, but this is only helpful in the case where source code is
 available, and it can be compiled by GCC or LLVM.  It is possible to compile
 some C/C++ code for windows using LLVM, but anything which requires Microsoft
 Visual Studio to be compiled will not have any instrumentation.  Supporting
-Windows does not seem to be a priority for Honggfuzz, as it can not be compiled
+Windows does not seem to be a priority for Honggfuzz, as it cannot be compiled
 natively, but only via Cygwin.
 
 Honggfuzz is a great tool, which is why a modified version of it was created

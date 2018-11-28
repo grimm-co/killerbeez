@@ -1,5 +1,5 @@
 There are a huge number of fuzzing tools which are publicly available, many of
-which are actually very useful on real world binaries.  However, each tool
+which are very useful on real world binaries.  However, each tool
 typically only handles one very specific use case, and most are not designed to scale
 out.  There are a number of system call kernel fuzzers, different ones for
 fuzzing \IOCTLs{}, some userland Linux fuzzers which only effectively work with
@@ -10,7 +10,7 @@ expecting.  Finally, there is a category of tools which work amazingly well
 on toy programs but do not work on production software due to bugs or lack of
 support for features such as multithreading.
 
-This is typically not viewed an issue in academia, as the problem to address can be
+This is typically not viewed as an issue in academic work, as the problem to address can be
 scoped based on the tools that are available and one may assume that the problem can
 be solved in other situations, but leave the proof for ``future work.''  They
 are typically correct in their assumption, however practitioners need tools
@@ -28,11 +28,11 @@ this results in the same code being re-written for different platforms, or
 sometimes for the same platform simply because the security professional was
 unaware of existing implementations.  The new implementation will probably
 contain some of the same bugs and limitations that were in the initial
-version of the existing tool, which may or may not get fixed before is is
+version of the existing tool, which may or may not get fixed before it is
 abandoned.
 
 In short, while that state of security research is advancing rapidly, the
 tools to bring their benefits to life are sorely lacking.  Though there are some
-fuzzing projects which come close, such as oss-fuzz,\cite{ossfuzz} there
-isn't anything which is freely available, works on closed source applications,
+fuzzing projects which come close, such as OSS-Fuzz,\cite{ossfuzz} there
+is not anything which is freely available, works on closed source applications,
 and runs against Windows and Linux applications.

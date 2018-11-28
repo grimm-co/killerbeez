@@ -12,7 +12,7 @@ to something like an infinite loop, or executed new portions of code.
 
 \subsection{Orchestration}
 All of the orchestration tasks are handled by the manger running on a central
-server .  It decides what mutators will be used on each target,
+server.  It decides what mutators will be used on each target,
 handles minimizing interesting inputs, determines if crashes
 and hangs are unique, and identifies inputs that can be dropped because the code they
 reach is already covered by other inputs. A \BOINC{} server is used to transmit
@@ -27,14 +27,14 @@ Figure \ref{fig:Killerbeez-server}.
 \end{figure*}
 
 \subsubsection{Manager} \label{Manager Overview}
-The manager is what glues together all the server side components.  It is
+The manager combines all of the server side components.  It is
 primarily a bookkeeper to track which targets are available for fuzzing,
-queue up jobs to be served out to \BOINC{} clients, process the results which come back to
+queue jobs\footnote{``jobs'' is a \BOINC{} term here, referring to a unit of work} to be served to \BOINC{} clients, process the results to
 determine if code paths are unique, and interface with external components.
 
 Because the manager is not responsible for running the target application, it
 does not need to run on the same platform as the target.  It can happily run on Linux and
-serve out work to be executed by Windows or macOS machines and collect the
+serve work to be executed by Windows or macOS machines and collect the
 results.
 
 The manager will enable future enhancements to be made by taking advantage of
@@ -50,7 +50,7 @@ The API is also used for some of the manager's built-in functionality. The
 campaign manager, which plans out jobs to be
 executed, consists of pluggable modules to choose the job's type, inputs, and
 parameters. The API is used by these modules to gather the data they need,
-and then submit fuzzing jobs.\footnote{``jobs'' is a \BOINC{} term here, referring to a unit of work} The corpus
+and then submit fuzzing jobs. The corpus
 minimization uses this REST interface to obtain
 execution traces and modify the working set of seed values. This allows components to be
 less coupled with the internals of the manager, enabling them to run as
@@ -77,21 +77,21 @@ information between them.
 Killerbeez also introduces the idea of obtaining detailed information about
 execution for each input which has a unique code path.  This is typically
 not done by other fuzzers, as obtaining a full trace is much more overhead than
-the lightweight instrumentation that \AFL{} or Honggfuzz use. When doing the
+the lightweight instrumentation that \AFL{} or Honggfuzz use. During
 normal fuzzing, Killerbeez will by default use lightweight methods of tracking
-execution as well. However, having a full trace is still useful when determining which
-seeds to keep or which ones should be weighted more heavily. This concept has
-been encapsulated in a Tracer. A tracer is just a special mode of an
+execution. However, having a full trace is useful when minimizing the seed corpus
+and determining which seeds should be weighted more heavily. This concept has
+been encapsulated in the tracer module. A tracer is a special mode of an
 instrumentation module, which not all instrumentations support. Each time an input
 is found which hits a new code path, a tracer job can be added via the manager.
 This will be executed by a \BOINC{} client, just like any other fuzzing job.
 The results will include full trace data, which will be stored in the manager's
-database.  More information about the trace can be found in section
+database.  More information about the tracer can be found in section
 \ref{Tracer}.
 
 \subsubsection{Preparation}  \label{Preparation Overview}
-There is also a phase of fuzzing workflows which is often overlooked or
-dismissed, which is setting up the target software and deciding specific
+There is a preparation phase of fuzzing workflows which is often overlooked or
+dismissed, that includes setting up the target software and deciding specific
 fuzzing parameters. This occurs before any real fuzzing begins and includes
 things such as compiling the target, possibly with a specific compiler or
 compiler flags, determining what options should be enabled in the target
@@ -105,15 +105,15 @@ time, but it is added here when possible, as it reduces the overhead at runtime.
 What options to enable in the target software is target specific and
 subjective.  It depends on the higher level goals.  If the goal is to find a
 vulnerability with wide applicability, choose default options. If it is to test
-out a specific feature, disable everything except that option. If it's just to
+out a specific feature, disable everything except that option. If it is just to
 find any bug in any configuration, enable everything.  While these are
-important questions, the most interesting step is what to track in terms of
+important questions, the most interesting decision is what to track in terms of
 code coverage, and how to deal with non-deterministic code.
 
 The solution \AFL{} uses is to only instrument the main binary, not any of the
 libraries. To make sure all code is covered, compiling everything into one
 large static executable is recommended. This means tracking execution on code
-which doesn't process any user input, and not tracking important code if you
+which does not process any user input, and not tracking important code if you
 are not able to get the code to compile statically. Killerbeez improves on this
 by including a tool
 called the ``Picker'' which automatically determines which libraries should be
@@ -132,12 +132,12 @@ works fairly well.  On GUI applications in Windows, it does not work as well.
 There are system calls in Windows which occasionally fail for no apparent reason. This
 should not be a problem for the target software, as it should be checking the return code to
 detect and handle this appropriately.  However, when this happens it has the
-side effect of making the fuzzer think an input was interesting when it was
-not.  The details of how non-determinism is handled are also described in
+side effect of making the fuzzer misinterpret the new code coverage to think an input was interesting when it was
+not.  The details of how non-determinism is handled in Killerbeez are also described in
 section \ref{Picker}.
 
 \subsection{Execution}
-Execution is handled by the fuzzer program, which is aptly named ``fuzzer.''
+Execution is handled by the client fuzzer program, which is aptly named ``fuzzer.''
 This can be run manually from the command line, however it is typically run by
 the manager, via a \BOINC{} client.  In either case, the fuzzer is responsible
 for running the target, feeding it input data, tracking code
@@ -151,12 +151,12 @@ boxes.
 \label{fig:Killerbeez-fuzzer-overview}
 \end{figure*}
 
-The fuzzer is really just a bunch of glue code which pulls together various
-modules, which are where all the interesting things occur. The purpose of
-the Driver, Mutator and Instrumentation modules are covered in sections
+The fuzzer consists of glue code that combines together various
+modules, which is where all the interesting things occur. The purpose of
+the Driver, Mutator and Instrumentation modules used in the fuzzer are covered in sections
 \ref{Driver Overview}, \ref{Mutator Overview}, and
 \ref{Instrumentation Overview}, respectively.  The modules which currently
-exist and how they work are covered in the ``\nameref{Implementation}''
+exist and how they work are covered in the \nameref{Implementation}
 section.
 
 The same code base is used on Windows, Linux and macOS to enable as much code
@@ -229,28 +229,28 @@ throughout the entire input, one at a time.
 Modular mutators also enable trivial combination of different approaches. Using
 the multipart mutator, different mutators can be applied to different parts of
 the input. This is required for efficiently fuzzing network protocols, as it is
-often desirable to not mutate the initial packets as they may be a handshake or
-authentication.  Any mutation to this section would prevent a lot of code from being
-executed, as the target software would go down an error path instead. It can
+often desirable to not mutate the initial packets as they may include a handshake or
+authentication.  Any mutation to this section would prevent the majority of code from being
+executed, as the target software would execute an error path instead. It can
 also be used to ensure that the first few bytes in a file are not modified so
 the file will still be recognized as being the correct file type.
 
 
 \subsubsection{Instrumentation} \label{Instrumentation Overview}
 Instrumentation modules are responsible for tracking program execution and
-determining if new code has been executed by the input data. How it does this,
+determining if an input has caused the target program to execute new code. How it does this,
 and what level of granularity is used, are questions left to the module author.
 There is an \IPT{} instrumentation module which is very high resolution.
 If a loop somewhere in the target is executed 178 times instead of 177
 times, it will detect this as a new code path, as the state explored is
 different than what was seen before.  The \AFL{} instrumentation module, on the
-other hand, would not consider this to be an input which covers new code. This
-is due to the bucketing system the \AFL{} instrumentation uses which groups executions of the same
+other hand, would not consider this to be an input which causes the execution of new code.
+The \AFL{} instrumentation module uses a bucketing system that groups executions of the same
 code and considers anything which executes a portion of code 128-255 times to
 be equivalent.
 
 Sometimes instrumentation modules need to interface with kernel drivers, which are
-implemented differently on different operating systems. The \IPT{}
+implemented differently on different operating systems. For instance, the \IPT{}
 instrumentation module uses the perf subsystem on Linux, which is not available
 on macOS or Windows. Other instrumentation technologies, such as Intel's
 Pin,\cite{pin} have a very similar interface across different operating
