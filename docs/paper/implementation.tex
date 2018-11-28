@@ -393,10 +393,10 @@ code, this comes with a level of certainty that what is instrumented is, in
 fact, all of the code which handles the input the fuzzer is sending it. This
 step is taken when configuring a target, before any fuzzing begins.
 
-The Picker does this by running through all seed values and instrumenting each
-library one at a time. If the code is never executed, or the coverage is the
+The Picker determines the library to instrument by running through all seed values and instrumenting each
+library separately. If the code is never executed, or the coverage is the
 same for every input, it implies the library is not important in parsing the
-fuzz input.  It is possible that the library handles some aspect of the
+input.  It is possible that the library handles some aspect of the
 protocol which was simply never executed by any of the seed inputs, however,
 with a diverse set of starting inputs, there can be some confidence that
 nothing is omitted for the list of modules to instrument.
@@ -413,7 +413,7 @@ Repeatedly making the call until it succeeded may also eliminate code paths
 later, plus makes execution slower at best and an infinite loop at worst.
 
 Instead of trying to force the non-deterministic program to behave in a
-deterministic fashion, the Picker just accepts that the code in question is
+deterministic fashion, the Picker accepts that the code in question is
 going to behave erratically and ignores the execution data related to those
 sections of code.  This is done by running the same input through the target
 \textit{N} times and finding all of the bytes in the coverage info which
@@ -433,13 +433,13 @@ Media Player, this was around 500 executions.  % TODO: make sure the previous
 
 The algorithm the Picker uses is not effective with all instrumentation
 modules. The Picker uses the instrumentation module which will be used in
-practice, and uses the same options for that module. It them operates on
+practice, and uses the same options for that module. It then operates on
 the opaque blob which represents the code coverage information.  It does
 this without any knowledge of the internal format.  Anything which uses the
-\AFL{}-style bitmap will work fine.  This would include the Dynamo RIO and
+\AFL{}-style bitmap will work fine.  This would include the DynamoRIO and
 \AFL{} instrumentation modules. The \IPT{} instrumentation output is the hashes
 of the \TNT{} and \TIP{} packets, so any non-determinism will change every byte of
 the instrumentation data.  This will cause the Picker to mask out all bytes of
-the coverage data, which is not actually useful. If the Intel PT
+the coverage data, which is not useful. If the Intel PT
 instrumentation was also a tracer, it would be capable of using an internal
 format which is compatible with the Picker.
