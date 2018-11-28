@@ -1,16 +1,16 @@
-The short term focus will be to pull in existing technologies from other
+The short term focus will be to incorporate existing technologies from other
 projects and get them integrated with Killerbeez and running on all the
 supported platforms.  There is ample research, tools and techniques available
 now which have yet to be applied in different domains. Once the state of the
 art has been incorporated, more automation will be the next priority.
 
-Expanding the coverage of the instrumentation modules so they work on more
+Expanding the portability of the instrumentation modules so they work on more
 operating systems is a high priority. The \IPT{} module currently only works
-on Linux, but should be able to work on Windows now that driver support has
+on Linux, but should be able to work on Windows now that Windows \IPT{} driver support has
 improved. The reverse is true for DynamoRIO, which currently works on Windows
 but should be able to be ported to run on macOS and Linux without too much
 difficulty.  Pulling in more instrumentation technologies such as Intel's Pin,
-and Dyninst\cite{dyninst} is also on the list of things to do. Wrapping up the
+and Dyninst\cite{dyninst} is also on the list of future work. Wrapping up the
 future enhancements to instrumentation is making more instrumentations aware of
 the non-deterministic portions of code which were identified by the Picker.
 Currently only the DynamoRIO instrumentation can use this information, but
@@ -30,18 +30,18 @@ Expanding the selection of drivers to include the ability to monitor dialog
 box pop-ups on Windows is an area of interest. There are already drivers for
 the more common input methods, such as files, stdin, and network data, however
 these should also be expanded to cover kernel functions via syscalls, drivers
-via \IOCTLs{}, \IPC{} messages, and so forth. This will make Killerbeez a fuzzer
+via \IOCTLs{}, \IPC{} messages, etc. This will make Killerbeez a fuzzer
 which can handle not only applications on multiple operating systems, but also
 the kernel of multiple operating systems as well.  Currently this is only
 theoretically possible with Killerbeez, which is not much help to researchers
 in the field. Making it supported without any development or modifications
-will be a big step in helping industry researchers.
+will be a big step in helping industry researchers analyze operating system kernels.
 
 The mutation algorithms from several other projects have already been
 integrated with Killerbeez, however it is desirable to have the ability
 to write mutators in Python.  This will allow pulling in mutators from
 projects like BrundleFuzz\cite{brundlefuzz} as well as quickly putting
-together a custom mutator without needing to learn as many of the Killerbeez
+together custom target-specific mutators without needing to learn as many of the Killerbeez
 APIs, nor even needing a compiler.
 
 In addition to the aforementioned modules on the client side, there are a number
@@ -49,30 +49,30 @@ of algorithms to pull in from academic publications.  This includes the seed
 energy rating and power schedules from AFLFast\cite{aflfast} and
 AFLGo.\cite{aflgo} FairFuzz presents another seed selection algorithm to bias
 seed files toward code segments which are not often executed.\cite{fairfuzz}
-The algorithm from the PerfFuzz\cite{perffuzz} paper can be pulled into
+The algorithm from PerfFuzz\cite{perffuzz} can be incorporated into
 Killerbeez to find algorithmic complexity vulnerabilities. The research on
 using estimators and extrapolators to determine if a fuzzing campaign should
-be stopped, or continue running, can be pulled in from Pythia.\cite{pythia}
+be stopped, or continue running, can be integrated from Pythia.\cite{pythia}
 Instrumentation modules can be updated to implement the collision resistant
 algorithm from CollAFL.\cite{collafl} Angora is also on the list of techniques
 to integrate into Killerbeez, however it is at the end of the queue of
-improvements due to the fact that it would need to be completely re-implemented
+improvements due to it needing to be completely re-implemented
 on account of the authors never releasing the code.\cite{angora}
 
 The need to obtain a wide variety of seed values is a weakness of Killerbeez
 as well as many other fuzzers. The quality of the starting corpus makes a big
-difference of the efficiency of fuzzing. This will be addressed by leveraging
+difference in the efficiency of fuzzing. This issue will be addressed by leveraging
 existing tools which find new inputs more efficiently, or are able to find
 inputs which reach code that is unlikely to be hit via mutation.
 
-There are a number of security analysis and even fuzzing tools which do not
+There are a number of security analysis and fuzzing tools which do not
 fit into mutators, drivers, nor instrumentation modules. This includes input
 generation tools, such as Driller\cite{driller} and Synfuzz\cite{synfuzz}.
 Integrating Driller can be accomplished by simply scheduling \BOINC{} jobs
 which run Driller instead of the fuzzer component. The input to the process
 is still the executable and the code which has been covered thus far, and the
-output is still inputs which cause new code to be executed, so this will fit
-right in with the current system.  This allows the \BOINC{} code to be
+output is still inputs which cause new code to be executed, so this will work
+perfectly with the current system.  This allows the \BOINC{} code to be
 leveraged to handle things like scheduling tasks, dealing with worker nodes
 which time out, and the campaign manager can deal with deciding how much time
 to spend drilling versus fuzzing. Preparing a Driller environment which can
@@ -83,15 +83,15 @@ Pulling in inputs generated with Synfuzz should be even easier, as the only
 REST API which should be required is the ability to add files to the corpus.
 Some automation of setting up Synfuzz may also be possible, but it requires an
 oracle to determine which inputs are valid or not, which will likely mean it
-will need to be set up manually, short of a development which allows
+will need to be set up manually, short of new research that allows
 autonomously detecting such oracles and hooking the appropriate functions.
 
 Finally, expanded support for fuzzers other than the Killerbeez fuzzer is planned. With
 the client/server architecture which was chosen, there is no reason Killerbeez
-has to be limited to a single fuzzer.  It could easily just run Honggfuzz,
+has to be limited to a single fuzzer.  It could easily run Honggfuzz,
 \AFL{}, WinAFL, or others.  Doing so will require additional configuration in
 \BOINC{} to ensure the previous state is sent to the \BOINC{} clients, as well
-as a new assimilator which is the \BOINC{} component which gathers the results.
+as a new \BOINC{} assimilator to gather the results.
 
 % Not sure if we want to take on the things below or not, but if so they will
 % be in the far future.
