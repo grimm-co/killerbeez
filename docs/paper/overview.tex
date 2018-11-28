@@ -78,13 +78,13 @@ Killerbeez also introduces the idea of obtaining detailed information about
 execution for each input which has a unique code path.  This is typically
 not done by other fuzzers, as obtaining a full trace is much more overhead than
 the lightweight instrumentation that \AFL{} or Honggfuzz use. During
-normal fuzzing, Killerbeez will by default use lightweight methods of tracking
+normal fuzzing, Killerbeez will generally use lightweight methods of tracking
 execution. However, having a full trace is useful when minimizing the seed corpus
 and determining which seeds should be weighted more heavily. This concept has
-been encapsulated in the tracer module. A tracer is a special mode of an
-instrumentation module, which not all instrumentations support. Each time an input
+been encapsulated in the tracer module.
+Each time an input
 is found which hits a new code path, a tracer job can be added via the manager.
-This will be executed by a \BOINC{} client, just like any other fuzzing job.
+This job will be executed by a \BOINC{} client, just like any other fuzzing job.
 The results will include full trace data, which will be stored in the manager's
 database.  More information about the tracer can be found in section
 \ref{Tracer}.
