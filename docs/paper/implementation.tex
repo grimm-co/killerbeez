@@ -333,7 +333,7 @@ instrumentation equivalent with the original implementation and the QEMU
 feature significantly faster.
 
 \subsection{Tracer} \label{Tracer}
-A tracer is just an instrumentation module which captures detailed trace
+A tracer is an instrumentation module which captures detailed trace
 information about exactly which basic blocks were executed, along with the
 transitions between them and implements some optional functions in the API
 which return this information.  This coverage information is commonly referred
@@ -342,8 +342,8 @@ to as nodes and edges.
 The DynamoRIO instrumentation module is an example of both a normal
 instrumentation module and a tracer. By default, it does lightweight tracing to
 obtain the \AFL{}-style bitmap coverage information and returns an error if it
-is asked for nodes and edges. The ``edges'' option can be set to ``1'' to
-switch the module into a mode where it captures full trace information.
+is asked for nodes and edges. The ``edges'' option can be enabled to
+switch the module to capture full trace information.
 Enabling the more accurate tracing mode has a larger overhead, so it is not
 used for every iteration of fuzzing.
 
