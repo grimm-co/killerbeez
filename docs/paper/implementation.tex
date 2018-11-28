@@ -261,9 +261,7 @@ covered by instrumentation. This allows things like tracking code coverage in ac
 when fuzzing Adobe Reader.  Tracking code coverage in modules is an important
 feature, because the majority of the interesting code is encapsulated in a
 DLL and recompiling is not an option. This feature was obtained from the
-WinAFL\cite{winafl} project and is not present in the stock version of \AFL{}
-on account of the instrumentation options being source-based or QEMU userspace
-emulation on Linux.
+WinAFL\cite{winafl} project and is not present in the stock version of \AFL{}.
 
 The Intel PT module uses \IPT{} to gather trace information for CPUs which
 support \IPT{}. This requires a kernel component to manage \IPT{}, but
