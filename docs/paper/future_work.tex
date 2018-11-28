@@ -17,7 +17,7 @@ Currently only the DynamoRIO instrumentation can use this information, but
 it should be easy to extend this to all of the \AFL{}-bitmap compatible
 instrumentation modules.  This includes the \AFL{} module and the to-be-written
 Pin and Dyninst modules.  The \IPT{} module will not be able to use this data
-because it does not actually decode the TNT and TIP bitstreams to determine what
+because it does not actually decode the \TNT{} and \TIP{} bitstreams to determine what
 code is being executed. Adding real-time parsing would slow down the target
 software significantly, however this would still be considered if the benefit
 of handling non-deterministic code appears to be worth the additional overhead
@@ -30,7 +30,7 @@ Expanding the selection of drivers to include the ability to monitor dialog
 box pop-ups on Windows is an area of interest. There are already drivers for
 the more common input methods, such as files, stdin, and network data, however
 these should also be expanded to cover kernel functions via syscalls, drivers
-via \IOCTLs{}, IPC messages, and so forth. This will make Killerbeez a fuzzer
+via \IOCTLs{}, \IPC{} messages, and so forth. This will make Killerbeez a fuzzer
 which can handle not only applications on multiple operating systems, but also
 the kernel of multiple operating systems as well.  Currently this is only
 theoretically possible with Killerbeez, which is not much help to researchers

@@ -3,13 +3,13 @@ environment- and platform-independent. It consists of driver, instrumentation,
 and mutator modules on the client side, a tracer which obtains accurate code
 coverage and a picker which determines which code should be instrumented.
 Scalability is achieved by using a \BOINC{} server to allow multiple client
-nodes to fuzz in parallel.  Clients simply obtain work from, and return results
+nodes to fuzz in parallel.  Clients simply obtain work from and return results
 to the server.
 
-While there are some novel improvements in Killerbeez, it is important to
-remember that the primary benefit is getting so many existing tools to work
-together and run on new platforms.  Each tool which was pulled into Killerbeez was the best in class on its own, but
-when combined with others, the value is more than just the sum of its parts.
+While there are some novel improvements in Killerbeez,
+the primary benefit is getting many existing tools to work
+together and run on new platforms.  Each tool pulled into Killerbeez was the best in class on its own, but
+when combined with others, the value is more than the sum of its parts.
 
 \subsection{Driver} \label{Driver}
 Driver modules use the mutator module which is passed in to mutate an input,
@@ -17,10 +17,10 @@ the instrumentation module to trace the target's execution, and are responsible
 for getting the input data into the target.  A simple example is a
 file-based driver, which will create a file containing the mutated input and
 use the instrumentation module to launch the application in a way that it will
-read this file.  This is typically accomplished by passing a filename in on the
-command line.  For targets which do not have any way to specify the input file
+read this file.  This is typically accomplished by passing a filename on the
+command line.  For targets which do not have any way to specify the input
 on the command line, a custom driver would be required to use keyboard
-shortcuts, mouse input, or some other method of getting the file into the
+shortcuts, mouse input, or some other method of getting the input into the
 program.
 
 The following drivers have been implemented:
@@ -54,10 +54,10 @@ This does not work well when dealing with closed source applications. A test
 harness can be written which calls the undocumented functions in the closed
 source library, but there is no guarantee that bugs found will also be present
 and reachable in the real application.  This is due to constraints which may
-be placed of function arguments in the main application, or that functions are
+be placed on function arguments in the main application, or that functions are
 called in a different order.  While writing a custom harness to test a library
 is a good recommendation, it should not be the only option. Thanks to its
-modular drivers Killerbeez can actually deal with this problem instead of simply avoiding it.
+modular drivers, Killerbeez can deal with this problem instead of simply avoiding it.
 
 The next issue a driver has to deal with is determining when the target is done
 processing the input.
@@ -74,9 +74,9 @@ reverse engineer the target software to identify the function which reads and
 processes input data.  This is time consuming, and if there is one function
 which reads the data into memory and another function which parses it, this
 strategy does not work well. This can sometimes be worked around by going up
-a level in the call stack until the function is hit which calls both the reading and parsing functions.
+a level in the call stack until the function is located which calls both the reading and parsing functions.
 However, that function might also be the one which loads the \GUI{}, which means
-it will never return. This breaks WinAFL's assumption that there is a function
+it may never return. This breaks WinAFL's assumption that there is a function
 which reads input data, parses it, and returns, which means it will fail in the
 same way fuzzers intended for command line programs will fail: with every test
 case being a hang.  The next alternative is to patch the target executable
@@ -87,9 +87,9 @@ The WMP driver, when used with the DynamoRIO instrumentation, uses the same stra
 name or offset needs to be specified and the test is ended when that function returns, however
 this is not the only stopping condition. The driver also checks for sound
 playing and assumes that if it was able to decode the file and start playing
-sound, that the application is done parsing the input file and has started
-playing it. The underlying assumptions here are that the errors will be in the
-code which does the parsing, not the code which does the playing, and that all
+sound, that the application has finished parsing the input file.
+The underlying assumptions are that errors will be in the
+code which does the parsing, rather than the code which does the playing, and that all
 the parsing is done up front.  This does mean that bugs which require a
 significant number of frames will not be found, as the test will conclude
 early and kill the application.  This is a conscious trade-off which was made
@@ -101,7 +101,7 @@ it should work on any media playing application.
 \subsection{Mutator} \label{Mutator}
 The mutators from Honggfuzz, Radamsa, AFL, and Ni are leveraged by wrapping the
 code from these projects to conform to the Killerbeez Mutator API. By
-defining an API for the mutators, researchers can modify components of other
+defining an API for the mutators, researchers can modify other
 fuzzers to conform to the Killerbeez API and easily swap in the new mutators.
 
 The following mutators have been implemented:
@@ -116,15 +116,15 @@ The following mutators have been implemented:
 \item \textbf{splice} - Splices two input files together. From \AFL{}
 \item \textbf{afl} - All of the \AFL{} mutators, run in the same manner as is
                      done in \AFL{}
-\item \textbf{honggfuzz} - All of the mutators from Honggfuzz
+\item \textbf{honggfuzz} - Mutation algorithm from Honggfuzz\cite{honggfuzz}
 \item \textbf{multipart} - Input must be made up of multiple parts, different
                            mutators are applied to different parts of the
                            input. Useful for network protocols where there is
                            a desire to not disrupt the handshake/login
-\item \textbf{ni} - The Ni mutator
-\item \textbf{nop} - A mutator which does not mutate anything, useful for
+\item \textbf{ni} - Mutation algorithm from Ni\cite{ni}
+\item \textbf{nop} - Mutator which does not mutate anything, useful for
                      testing and when combined with the multipart mutator
-\item \textbf{radamsa} - Mutator which wraps Radamsa\cite{radamsa}
+\item \textbf{radamsa} - Mutator which wraps the Radamsa\cite{radamsa} executable
 \item \textbf{zzuf} - Mutation algorithm from zzuf\cite{zzuf}
 \end{itemize}
 
@@ -135,7 +135,7 @@ and were a solid starting point.
 Honggfuzz has a different set of mutators, some of which are similar to those
 from \AFL{}, however there are slight variations which should work better
 against some targets than others.  Honggfuzz is the only fuzzer to have found a
-vulnerability in OpenSSL which was marked as critical, so clearly it does does
+crtical vulnerability in OpenSSL, so clearly it does
 something different than the other fuzzers.  Again, the approach was one of pragmatism:
 taking the existing techniques and bringing them to new
 environments, such as Windows with code coverage capabilities.
@@ -148,7 +148,7 @@ should not be modified, the ``nop'' mutator, which is described below, is
 selected. This allows different mutators to be used on different segments of
 the input and the ones which perform the best can be selected more often by the
 campaign manager.  The multipart mutator could also be used with a file-based
-driver which was multipart aware, allowing different segments of input files to
+driver which is multipart aware, allowing different segments of input files to
 be defined.  This would enable things such as ensuring a file's magic bytes are
 never modified by using the ``nop'' mutator on the first segment.
 
@@ -162,15 +162,15 @@ not do any mutation would be handy when debugging issues.  This is how the nop
 mutator was born. It was later used when the multipart mutator was developed.
 
 Radamsa is a general purpose fuzzer, written in Lisp, which came from the
-OUSPG's Protos Genome Project. It works well against a variety of network
+OUSPG's Protos Genome Project.\cite{genome} It works well against a variety of network
 protocols and file formats, and has found dozens of vulnerabilities.  The
-radamsa mutator module in Killerbeez is just a simple wrapper which feeds data
-to the Radamsa process.  The strategy of using an external process was chosen
+radamsa mutator module in Killerbeez is a simple wrapper which feeds data
+to the Radamsa executable.  The strategy of using an external process was chosen
 to allow the process to be long lived, so Radamsa's internal state can be
-updated over the course of many inputs.  The alternative approach, which some
+updated over the course of many inputs.  The alternative approach, which
 other fuzzing projects have taken when adopting Radamsa, is to pull in the main()
 function from the C code (which is generated by the Radamsa Lisp code) and
-execute main() once per input.  This is much faster
+execute main() once per input.\cite{radamsatob}  This is much faster
 in terms of execution time, because the function is executed within the context of the
 fuzzer process.  This means data does not need to be piped from one process
 to another and then back again, however it loses a key value of Radamsa, which
@@ -182,8 +182,8 @@ DLL, which was painstakingly implemented, only to find that it was about twice
 as slow as using an external process. The cause of this was not immediately
 apparent, and the effort was abandoned in favor of developing other features.
 
-Finally there is zzuf, which is yet another application fuzzer, this one
-primarily targeting media players, image viewers and web browsers.  As with
+Finally there is zzuf, which is yet another application fuzzer, that
+primarily targets media players, image viewers and web browsers.  As with
 other mutators which were pulled in from other projects, it has found bugs in
 production code ranging from audio and video codecs to objdump and nm.
 
@@ -193,15 +193,17 @@ are similar, there are frequently implementation details which will vary in
 ways which are sometimes important.  Different mutation algorithms will
 perform differently on various targets.  The benefit of being able to easily
 switch from one to another enables Killerbeez to measure which ones are finding
-more inputs which hit new code on different targets and at different points in
+more inputs which trigger new code execution on different targets and at different points in
 the fuzzing process.  A mutator which performs poorly with the initial corpus
 of inputs may be the best later when a different section of code is unearthed.
 
 \subsection{Instrumentation} \label{Instrumentation}
-Killerbeez also uses an instrumentation abstraction, to implement the
+Killerbeez uses an instrumentation abstraction, to implement the
 feedback-based portion of the fuzzer. Instrumentation monitors code coverage of
-binaries. It is essential in feedback-based fuzzing because it helps expand code
-coverage by keeping only the inputs which reach new code.
+the target binary. Feedback-based fuzzing helps expand code
+coverage by reducing the input set to only those that reach new code.
+This reduces that the likelihood that multiple inputs will be tested that result
+in the same code coverage.
 
 The following instrumentation modules have been implemented:
 \begin{itemize}[noitemsep]
@@ -209,19 +211,19 @@ The following instrumentation modules have been implemented:
 	result of a round of fuzzing via the Windows Debug API.
 \item \textbf{Return Code} - A Linux-only equivalent to the debug instrumentation that
 	uses the waitpid() system call to determine the result of a fuzz round.
-\item \textbf{DynamoRIO} - An instrumentation that uses the DynamoRIO project to
-	determine new paths discovered in a binary.
-\item \textbf{Intel PT} - Hardware-level ``Process Tracing'' instrumentation
-\item \textbf{AFL} - Instrumentation injected by a modified version of AFL's compilers (afl-gcc or
-	afl-clang-fast), or via running the executable under a modified version of QEMU
+\item \textbf{DynamoRIO} - An instrumentation that uses the DynamoRIO project\cite{dynamo} to
+	determine new code paths discovered in a binary.
+\item \textbf{Intel PT} - An instrumentation that uses Hardware-level ``Process Tracing''
+\item \textbf{AFL} - An instrumentation injected by a modified version of AFL's compilers (afl-gcc or
+	afl-clang-fast), or via running the executable under a modified version of QEMU\cite{qemu}
 \end{itemize}
 
 The instrumentation modules monitor, at minimum, whether a process crashed,
 exited cleanly, or timed out. More advanced instrumentation modules, such as
-DynamoRIO, monitor basic block coverage and can inform the fuzzer of new paths
+DynamoRIO, monitor basic block coverage and can inform the fuzzer of new code paths
 taken in a binary.  Instrumentation developers decide what options their
 module has and whether they will implement optional features. For example, a
-module can do only lightweight tracking, as it done in \AFL{}, or it can
+module can do only lightweight tracking, as is done in \AFL{}, or it can
 optionally support tracking every
 basic block executed and each transition.  If it can do the slower, more
 accurate tracing, it is considered to be not only an instrumentation module,
@@ -230,11 +232,11 @@ but also a tracer.  How tracers are used is covered more in section
 
 The Debug instrumentation is currently a Windows-only instrumentation which
 attaches to the target process using the debugging interface and monitors the
-process for a crash or clean exit.  It does not actually track code coverage.
+process for a crash or clean exit.  It does not track code coverage.
 This is used for ``dumb'' fuzzing.  The driving force behind this module was
 that there is no reliable way to determine if a process crashed or exited normally
-on Windows.  Unlike Unix, the return code does not contain this information,
-so there is no way to tell the difference between a program who decided to
+on Windows without debugging it.  Unlike Unix, the return code does not contain this information,
+so there is no way to tell the difference between a program that decided to
 exit with a non-zero status code to indicate an error, and a crash.
 
 The Return Code instrumentation module is similar to the Debug instrumentation
@@ -245,14 +247,14 @@ waitpid() function and macros such as WIFEXITED and WIFSIGNALED can be used to
 discern between a clean exit with a non-zero exit code and an actual crash.
 
 The DynamoRIO instrumentation module is a modified version of the
-implementation in WinAFL. It requires the user to specify a function which
+instrumentation in WinAFL. It requires the user to specify a function which
 is responsible for loading and processing the input data. At the end of the
 target function, DynamoRIO will kill the process. There is an option to reset
 the stack and jump to the beginning of the function again, which may work in
 test applications, but does not tend to work in real-world software.  
 The typical result is a crash due to global state which is never reset.
 This includes things like open file handles, allocated memory, application specific state
-information, and so forth. The target function must be identified outside of
+information, etc. The target function must be identified outside of
 Killerbeez and is typically done manually. By default, an \AFL{}-style bitmap
 is generated to track code coverage. The module takes options which allow this
 to be changed to obtain a full trace (see section \ref{Tracer} for details on
@@ -266,61 +268,65 @@ on account of the instrumentation options being source-based or QEMU userspace
 emulation on Linux.
 
 The Intel PT module uses \IPT{} to gather trace information for CPUs which
-support the \IPT{} instructions. This requires a kernel driver to manage, but
+support \IPT{}. This requires a kernel component to manage \IPT{}, but
 the tracing itself is done in hardware with a modest performance overhead. The
 current implementation of this instrumentation module only works on Linux, via
 the ``perf'' subsystem. Expanding this to support the \IPT{} driver in Windows
-is on the list of things to do in future work. Regardless of operating system,
-the output of \IPT{} relevant for tracing execution for fuzzing are the \TNT{} and
+is planned in the future. Regardless of operating system,
+the output of \IPT{} relevant for tracing execution in fuzzing are the \TNT{} and
 \TIP{} packets.  The former tracks ``the direction of direct control branches,''
-while the latter records ``the target IP of indirect branches, exceptions,
+while the latter records ``the target \IP{} of indirect branches, exceptions,
 interrupts and other branches or events.''\cite{intelptmanual}
 
-The TNT packets form a bit stream, while the TIP packets contain a series of
-instruction pointer addresses, which may be compressed if the upper bits match
-the previous IP value. These packets are not synchronized, so if there are four
-TNT packets, one TIP packet, and four more TNT packets, this may be given to
-the kernel driver as one TIP packet and one byte of TNT packet data with no
-information about the order in which these events occurred.  To make sense of
+The \TNT{} packets form a bit stream, while the \TIP{} packets contain a series of
+instruction pointer addresses, which may be compressed if the \IP{}'s upper bits match
+the previous \IP{} value. However, these two packet types are not synchronized. For example, if there are four
+conditional branches, an indirect jump, and then four more conditional branches, \IPT{} will generate
+a \TIP{} packet and one byte of \TNT{} packet data with no
+information about the order in which the \TIP{} and \TNT{} events occurred.  To make sense of
 this data, the executable must be analyzed to determine the order in which to
-pull things from the TNT and TIP queues. This parsing adds to the performance
-overhead, so the Intel PT instrumentation modules does not do it. Instead it just
-takes a hash of the entire TNT bit stream and the entire set of TIP packets.
+pull information from the \TNT{} and \TIP{} queues. As this disassembly adds to the performance
+overhead, the Intel PT instrumentation module does not do it. Instead it
+takes a hash of the entire \TNT{} bit stream and the entire set of \IP{} addresses in the \TIP{} packets.
 This does not identify what code was executed, but it does determine if a
 different code path was taken, as a different code path would result in
 different packet data, and thus a different hash. Because the packet order is
-not synchronized between the TNT and TIP streams, hashes are taken of each
+not synchronized between the \TNT{} and \TIP{} streams, hashes are taken of each
 stream separately and the pair of hashes are used to identify a particular code path.
 
-The only other fuzzers known to implement Intel PT based tracing are
-Honggfuzz\cite{honggfuzz} and Richard Johnson's modified version of
-WinAFL\cite{winaflintelpt}. Honggfuzz does full packet decoding using the
+The only other public fuzzers known to implement Intel PT based tracing are
+Honggfuzz\cite{honggfuzz}, Richard Johnson's modified version of
+WinAFL\cite{winaflintelpt}, and kAFL\cite{kafl}. Honggfuzz does full packet decoding using the
 Intel's processor trace decoder library\cite{libipt} which incurs a much
 higher overhead than the Killerbeez implementation.  Richard's fork of WinAFL
 did full packet decoding at one point, but does not seem to use the trace data
-at all with the latest commit.\cite{winaflcommit} There is a comment which says
+at all with the latest commit.\cite{winaflcommit} Instead, there is a comment which says
 ``FIXME winipt'' and the calls to PtTraceProcessStart() and
 PtTraceProcessStop() have been commented out, which implies this is still a
-work in progress.
+work in progress. kAFL utilizes a custom packet decoder built specifically to
+allow efficient parsing of the \IPT{} packets and diassembly of the target
+executable.  As such, kAFL's \IPT{} parser is faster than the Intel processor trace
+decoder library, but is slower than the approach taken in Killerbeez which
+refrains from analyzing the target executable.
 
 Finally, we have the \AFL{} instrumentation module, which is based around the
-instrumentation which is injected at compile time by afl-gcc or the \AFL{}
+instrumentation injected at compile time by afl-gcc or the \AFL{}
 llvm module. Much of the code was taken directly from \AFL{} and adapted to
 conform to the Killerbeez instrumentation API. This module has been tested
 with Linux and macOS, but should work on any POSIX operating system.
-The fork server which is injected is a slightly modified version of the
-implementation in the \AFL{} project. It is the same one which is used by the
+The injected fork server is a slightly modified version of the
+implementation in the \AFL{} project. The forkserver is also used by the
 Intel PT module, which splits the ``fork'' and ``run'' actions, as \IPT{} needs
 to be initialized between these two steps.  The original AFL implementation
-combined these two actions, as they did not have any use case where it would
-be useful for them to be separate.  The \AFL{} instrumentation modules also
+combined these two actions, as they did not have any use case that required
+them to be separate.  The \AFL{} instrumentation modules also
 implements the persistence mode feature
-which is included in \AFL{}.  The QEMU user mode tracing is also included,
-however this only works on Linux on account of this QEMU feature only being
+which is included in \AFL{}.  \AFL{}'s QEMU user mode tracing is also included in Killerbeez,
+however this mode only works on Linux as QEMU user mode is only
 available there.  QEMU chain caching, which is disabled in \AFL{},
-has been enabled in the Killerbeez implementation. This required modifications
-to QEMU to ensure chains are properly tracked and results in a 3-4x improvement
-in performance. This improvement was made by Andrea Biondo.\cite{qemuspeedup}
+has been enabled in the Killerbeez implementation via the patch made by Andrea Biondo.\cite{qemuspeedup} This patch
+to QEMU ensures chains are properly tracked and results in a 3-4x improvement
+in performance.
 
 This puts the Killerbeez implementation of the source-based \AFL{}-style
 instrumentation equivalent with the original implementation and the QEMU
@@ -432,7 +438,7 @@ the opaque blob which represents the code coverage information.  It does
 this without any knowledge of the internal format.  Anything which uses the
 \AFL{}-style bitmap will work fine.  This would include the Dynamo RIO and
 \AFL{} instrumentation modules. The \IPT{} instrumentation output is the hashes
-of the TNT and TIP packets, so any non-determinism will change every byte of
+of the \TNT{} and \TIP{} packets, so any non-determinism will change every byte of
 the instrumentation data.  This will cause the Picker to mask out all bytes of
 the coverage data, which is not actually useful. If the Intel PT
 instrumentation was also a tracer, it would be capable of using an internal
