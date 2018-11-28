@@ -8,8 +8,9 @@ Expanding the portability of the instrumentation modules so they work on more
 operating systems is a high priority. The \IPT{} module currently only works
 on Linux, but should be able to work on Windows now that Windows \IPT{} driver support has
 improved. The reverse is true for DynamoRIO, which currently works on Windows
-but should be able to be ported to run on macOS and Linux without too much
-difficulty.  Pulling in more instrumentation technologies such as Intel's Pin,
+but should be able to be ported to run on macOS\footnote{Pending DynamoRIO's
+completion of support for macOS} and Linux without too much difficulty.
+Pulling in more instrumentation technologies such as Intel's Pin,
 and Dyninst\cite{dyninst} is also on the list of future work. Wrapping up the
 future enhancements to instrumentation is making more instrumentations aware of
 the non-deterministic portions of code which were identified by the Picker.
