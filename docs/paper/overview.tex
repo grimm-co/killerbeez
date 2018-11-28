@@ -125,7 +125,7 @@ the application multiple times results in different code being executed, this
 is a problem, not only for the Picker, but also for code coverage in general.
 \AFL{} does not deal with this problem directly, but it does alert the user to
 the fact that the target is non-deterministic. The user can then do things like
-hijack calls to functions such as srand() which intentionally introduces
+hijack calls to functions such as \texttt{srand()} which intentionally introduces
 randomness. This is often done for applications which employ cryptography for
 initialization vectors and nonces. Under command line Linux applications, this
 works fairly well.  On GUI applications in Windows, it does not work as well.
