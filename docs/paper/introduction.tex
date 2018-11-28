@@ -1,7 +1,7 @@
 Over the past few years, coverage-guided fuzzing has become a popular way to
 find software and hardware vulnerabilities due to advances in publicly
 available tools such as \AFL{}\cite{afl} and its derivatives.\cite{vanhauser} Many
-fuzzers have ``trophy cases'' consisting of a list bugs known to be found with that tool, to
+fuzzers have ``trophy cases'' consisting of a list of bugs known to be found with that tool, to
 demonstrate their effectiveness against real world applications.  However, most
 tools are primarily focused on finding bugs in open source, command line Linux
 software which reads input from files or standard input. While there has been some
@@ -13,23 +13,23 @@ Most of the published improvements over the original version of \AFL{} are
 implemented as forks of
 \AFL{}.\cite{aflfast}\cite{aflgo}\cite{fairfuzz}\cite{perffuzz}\cite{pythia}\cite{collafl}
 Thus the enhancements are mutually exclusive, short of embarking on a
-development effort to go through the modifications and merge the forks back
+development effort to review the modifications and merge the forks back
 together, manually resolving any conflicts and incompatibilities.  The issue
 of incompatibility is not limited to projects which are modified versions of
 \AFL{}. Mixing and matching features from various tools requires a significant
 amount of effort. Using a tool against a type of software it has never been
-used against before, such as using a Linux kernel fuzzer against the macOS
-kernel, can find a large number of bugs.  However, in practice, security
+used against before, such as using a Linux kernel fuzzer against another
+operating system, can find a large number of bugs\cite{anton}.  However, in practice, security
 professionals rarely have the amount of time to invest to get the tools working
 together, or working in other contexts.
 
 We present Killerbeez, a fuzzing framework which brings together many of the
-various security analysis tools so they can be used together.  The code
-compiles on multiple operating systems, can handle target applications with or
+various security analysis tools so they can be used together.  Killerbeez
+supports multiple operating systems, can handle target applications with or
 without source code, and software with a \GUI{}.
 Furthermore, the input mutation algorithms, instrumentation, seed selection
 algorithms, and methods for feeding input data to the target are all easily
-interchangeable.  This enables two things (1) easily mixing and matching
+interchangeable.  This modularity enables two properties (1) easily mixing and matching
 tactics from different researchers, and (2) implementing new algorithms easily.
 Finally, Killerbeez is scalable, using \BOINC{}\cite{boinc} to distribute work
 to multiple nodes from a central server.
@@ -39,5 +39,5 @@ Our contributions include:
 \item An API combining the different components of a fuzzer in a pluggable way
 \item A collection of existing fuzzers ported to the API
 \item A method for automatically determining which libraries are likely to
-	cause a crash, so those can be the targeted while fuzzing
+	cause a crash, so those can be targeted while fuzzing
 \end{enumerate}
