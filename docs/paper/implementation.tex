@@ -247,8 +247,12 @@ discern between a clean exit with a non-zero exit code and an actual crash.
 The DynamoRIO instrumentation module is a modified version of the
 instrumentation in WinAFL. It requires the user to specify a function which
 is responsible for loading and processing the input data. At the end of the
-target function, DynamoRIO will kill the process. There is an option to reset
-the stack and jump to the beginning of the function again, which may work in
+target function, DynamoRIO will kill the process. Alternatively, this instrumentation supports
+persistence mode, which allows for multiple inputs to tested without restarting a
+process.  This mode reduces the overhead of restarting the process, and thus
+increases the number of tests that can be conducted per second.  Persistence
+mode in the DynamoRIO instrumentation is accomplished by resetting the stack and
+jumping to the beginning of the function again, which may work in
 test applications, but does not tend to work in real-world software.  
 The typical result is a crash due to global state which is never reset.
 This includes things like open file handles, allocated memory, application specific state
@@ -290,6 +294,14 @@ different packet data, and thus a different hash. Because the packet order is
 not synchronized between the \TNT{} and \TIP{} streams, hashes are taken of each
 stream separately and the pair of hashes are used to identify a particular code path.
 
+The \IPT{} instrumentation also supports persistence mode.  Persistence mode in the
+\IPT{} instrumentation is accomplished by modifying the target to repeatedly
+accept a new input from the fuzzer, call the code to be fuzzed, and reset the
+target state.  While persistence mode in the \IPT{} instrumentation requires
+source code and manual modifications to the target software, it is much more
+likely to work properly as compared to the DynamoRIO instrumentation persistence
+mode.
+
 The only other public fuzzers known to implement Intel PT based tracing are
 Honggfuzz\cite{honggfuzz}, Richard Johnson's modified version of
 WinAFL\cite{winaflintelpt}, and kAFL\cite{kafl}. Honggfuzz does full packet decoding using the
@@ -317,7 +329,9 @@ to be initialized between these two steps.  The original AFL implementation
 combined these two actions, as they did not have any use case that required
 them to be separate.  The \AFL{} instrumentation modules also
 implements the persistence mode feature
-which is included in \AFL{}.  \AFL{}'s QEMU user mode tracing is also included in Killerbeez,
+included in \AFL{}.  The \AFL{} instrumentation persistence mode is implemented
+similarly to the \IPT{} instrumentation persistence mode and has similar
+advantages and disadvantages. \AFL{}'s QEMU user mode tracing is also included in Killerbeez,
 however this mode only works on Linux as QEMU user mode is only
 available there.  QEMU chain caching, which is disabled in \AFL{},
 has been enabled in the Killerbeez implementation via the patch made by Andrea Biondo.\cite{qemuspeedup} This patch
