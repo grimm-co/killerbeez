@@ -176,7 +176,7 @@ is that it tends to get better as it sees more data. While the implementation
 in Killerbeez is slower, and this reflects poorly on the metric of executions
 of the target application per second, it is arguably higher quality mutations
 in the long run.  There was an effort to get Radamsa compiled on Windows as a
-DLL, which was painstakingly implemented, only to find that it was about twice
+library, which was painstakingly implemented, only to find that it was about twice
 as slow as using an external process. The cause of this was not immediately
 apparent, and the effort was abandoned in favor of developing other features.
 
@@ -264,7 +264,7 @@ this feature). Other options include a list of libraries which should be
 covered by instrumentation. This allows things like tracking code coverage in acrord32.dll
 when fuzzing Adobe Reader.  Tracking code coverage in modules is an important
 feature, because the majority of the interesting code is encapsulated in a
-DLL and recompiling is not an option. This feature was obtained from the
+library and recompiling is not an option. This feature was obtained from the
 WinAFL\cite{winafl} project and is not present in the stock version of \AFL{}.
 
 The Intel PT module uses \IPT{} to gather trace information for CPUs which
@@ -434,7 +434,7 @@ execution varied. The correct value for N will vary from one target to another.
 The data for Windows Media Player, shown in Figure \ref{fig:picker}, indicates
 new non-deterministic code was being found at 325 executions. However, after
 10 executions, more than half of the non-deterministic transitions were
-identified for each of the four DLLs.
+identified for each of the four libraries.
 
 Choosing the number of executions is a trade-off between spending time up front
 to get more efficient fuzzing, and getting started more quickly but being less
