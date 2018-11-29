@@ -2,7 +2,7 @@ set terminal pngcairo  background "#ffffff" enhanced fontscale 1.0 dashlength 2
 set output '../picker.png'
 
 set title "Detected Non-Detemrinistic Basic Block Transitions in\nWindows Media Player Libraries"
-
+set key right center
 set xlabel '{/Helvetica-Oblique Number of Executions}' font 'arial,10'
 set ylabel '{/Helvetica-Oblique Non-deterministic Basic Block Transitions Detected}' font 'arial,10'
 
