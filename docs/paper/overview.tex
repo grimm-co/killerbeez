@@ -42,7 +42,7 @@ external tools, such as
 using a test case generator to produce new seed data. Another planned integration
 is to use Driller\cite{driller} to generate program inputs which reach
 code which has not yet been reached by mutation. These integrations are made
-possible by providing a REST \API{} to the manager component, which allows clients
+possible by providing a \REST{} \API{} to the manager component, which allows clients
 to access and configure seed data, fuzzing targets, and low-level metadata
 produced during fuzzing.
 
@@ -51,19 +51,19 @@ campaign manager, which plans out jobs to be
 executed, consists of pluggable modules to choose the job's type, inputs, and
 parameters. The \API{} is used by these modules to gather the data they need,
 and then submit fuzzing jobs. The corpus
-minimization uses this REST interface to obtain
+minimization uses this \REST{} interface to obtain
 execution traces and modify the working set of seed values. This allows components to be
 less coupled with the internals of the manager, enabling them to run as
 standalone processes. Figure
 \ref{fig:Killerbeez-integrations} shows how these tools can interface with the
-manager via the REST \API{}.
+manager via the \REST{} \API{}.
 
 The manager can decide how long each job takes by specifying things like the
 number of fuzz iterations, so it should be able to scale up to a very large number
 of clients by ensuring each job takes a long time.  This will allow a substantial amount of
 work to get done with a minimal amount of coordination and network overhead.
 However, if the manager becomes a bottleneck, multiple
-manager servers could be set up and the REST interface used to share
+manager servers could be set up and the \REST{} interface used to share
 information between them.
 
 \begin{figure*}[htb]
