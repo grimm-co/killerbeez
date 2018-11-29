@@ -1,8 +1,10 @@
 set terminal pngcairo  background "#ffffff" enhanced fontscale 1.0 dashlength 2
 set output '../picker.png'
 
-set xlabel '{/Helvetica-Oblique Number of Executions}'
-set ylabel '{/Helvetica-Oblique Non-deterministic Basic Block Transitions Detected}'
+set title "Detected Non-Detemrinistic Basic Block Transitions in\nWindows Media Player Libraries"
+
+set xlabel '{/Helvetica-Oblique Number of Executions}' font 'arial,10'
+set ylabel '{/Helvetica-Oblique Non-deterministic Basic Block Transitions Detected}' font 'arial,10'
 
 set linetype 1 dt 1
 set style line 1 lt 1 lw 2
