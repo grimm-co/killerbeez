@@ -238,7 +238,7 @@ so there is no way to tell the difference between a program that decided to
 exit with a non-zero status code to indicate an error, and a crash.
 
 The Return Code instrumentation module is similar to the Debug instrumentation
-in that it does not track code coverage. On POSIX operating systems, the return
+in that it does not track code coverage. On \POSIX{} operating systems, the return
 code of a process is a 32-bit integer.  Only the eight least significant bits
 are provided to the shell, but the full value is available from the
 \texttt{waitpid()} function and macros such as WIFEXITED and WIFSIGNALED can be used to
@@ -320,7 +320,7 @@ Finally, we have the \AFL{} instrumentation module, which is based around the
 instrumentation injected at compile time by afl-gcc or the \AFL{}
 llvm module. Much of the code was taken directly from \AFL{} and adapted to
 conform to the Killerbeez instrumentation \API{}. This module has been tested
-with Linux and macOS, but should work on any POSIX operating system.
+with Linux and macOS, but should work on any \POSIX{} operating system.
 The injected fork server is a slightly modified version of the
 implementation in the \AFL{} project. The forkserver is also used by the
 Intel PT module, which splits the ``fork'' and ``run'' actions, as \IPT{} needs
