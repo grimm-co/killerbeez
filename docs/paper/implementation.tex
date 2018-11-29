@@ -78,8 +78,8 @@ it may never return. This breaks WinAFL's assumption that there is a function
 which reads input data, parses it, and returns, which means it will fail in the
 same way fuzzers intended for command line programs will fail: with every test
 case being a hang.  The next alternative is to patch the target executable
-to exit after parsing. All of these approaches require reversing the target,
-and will have varied results depending on the details of the software under test.
+to exit after parsing. All of these approaches require reversing engineering,
+and will have varied results depending on the details of the target software.
 
 The WMP driver, when used with the DynamoRIO instrumentation, uses the same strategy as WinAFL, where a specific function
 name or offset needs to be specified and the test is ended when that function returns, however
