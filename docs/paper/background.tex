@@ -5,8 +5,8 @@ typically only handles one very specific use case or contains other real-world l
 out.  For instance, there are a number of system call kernel fuzzers\cite{syzkaller,trinity,kafl,osxfuzz}, different ones for
 fuzzing \IOCTLs{}\cite{ioctlfuzzer,ioctlbf}, some userland Linux fuzzers which only effectively work with
 command line programs which were written in C or C++.  Some only function with
-source code, others only work on 32-bit Linux, or require a person to go
-through and describe the format of the data which the target is
+source code, only work on 32-bit Linux, or require users to manually specify 
+the data format which the target is
 expecting.  Finally, there is a category of tools which work amazingly well
 on toy programs but do not work on production software due to bugs or lack of
 support for features such as multithreading.
