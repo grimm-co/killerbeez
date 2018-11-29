@@ -30,6 +30,16 @@ GRIMM\\
 \def\TNT{\renewcommand\TNT{TNT}Taken Not Taken (TNT)}
 \def\TIP{\renewcommand\TIP{TIP}Target IP (TIP)}
 \def\IP{\renewcommand\IP{IP}Instruction Pointer (IP)}
+\def\API{% Whether we use API or APIs first, we want to redefine both
+\renewcommand\API{API}%
+\renewcommand\APIs{APIs}%
+Application Programming Interface (API)%
+}
+\def\APIs{% It would look silly to spell out API and APIs both
+\renewcommand\API{API}%
+\renewcommand\APIs{APIs}%
+Application Programming Interfaces (APIs)%
+}
 
 \begin{document}
 % Heading for the first page has the title, author(s) and date

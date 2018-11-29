@@ -98,9 +98,9 @@ it should work on any media playing application.
 
 \subsection{Mutator} \label{Mutator}
 The mutators from Honggfuzz, Radamsa, AFL, and Ni are leveraged by wrapping the
-code from these projects to conform to the Killerbeez Mutator API. By
-defining an API for the mutators, researchers can modify other
-fuzzers to conform to the Killerbeez API and easily swap in the new mutators.
+code from these projects to conform to the Killerbeez Mutator \API{}. By
+defining an \API{} for the mutators, researchers can modify other
+fuzzers to conform to the Killerbeez \API{} and easily swap in the new mutators.
 
 The following mutators have been implemented:
 \begin{itemize}[noitemsep]
@@ -127,7 +127,7 @@ The following mutators have been implemented:
 \end{itemize}
 
 As indicated in the list above, several of the mutators were taken from \AFL{}
-and adapted to the Killerbeez API. These have proven to be effective algorithms
+and adapted to the Killerbeez \API{}. These have proven to be effective algorithms
 and were a solid starting point.
 
 Honggfuzz has a different set of mutators, some of which are similar to those
@@ -206,7 +206,7 @@ in the same code coverage.
 The following instrumentation modules have been implemented:
 \begin{itemize}[noitemsep]
 \item \textbf{Debug} - A na\"ive Windows-only instrumentation that determines the
-	result of a round of fuzzing via the Windows Debug API.
+	result of a round of fuzzing via the Windows Debug \API{}.
 \item \textbf{Return Code} - A Linux-only equivalent to the debug instrumentation that
 	uses the \texttt{waitpid()} system call to determine the result of a fuzz round.
 \item \textbf{DynamoRIO} - An instrumentation that uses the DynamoRIO project\cite{dynamo} to
@@ -319,7 +319,7 @@ refrains from analyzing the target executable.
 Finally, we have the \AFL{} instrumentation module, which is based around the
 instrumentation injected at compile time by afl-gcc or the \AFL{}
 llvm module. Much of the code was taken directly from \AFL{} and adapted to
-conform to the Killerbeez instrumentation API. This module has been tested
+conform to the Killerbeez instrumentation \API{}. This module has been tested
 with Linux and macOS, but should work on any POSIX operating system.
 The injected fork server is a slightly modified version of the
 implementation in the \AFL{} project. The forkserver is also used by the
@@ -345,7 +345,7 @@ innovations of different authors.
 \subsection{Tracer} \label{Tracer}
 A tracer is an instrumentation module which captures detailed trace
 information about exactly which basic blocks were executed, along with the
-transitions between them and implements some optional functions in the API
+transitions between them and implements some optional functions in the \API{}
 which return this information.  This coverage information is commonly referred
 to as nodes and edges.
 
@@ -362,11 +362,11 @@ tracer.  Without full \IPT{} packet decoding, it is not possible for this
 module to obtain such detailed information.
 
 Any time trace information is found, the assimilator stores it in the manager's
-database in a standard format.  This is possible because the APIs which get
+database in a standard format.  This is possible because the \APIs{} which get
 nodes and edges require the data to be in a specific format.  Any other trace
 data is allowed to be in any format, as it is passed around as an opaque blob
 and not consumed by anything other than the instrumentation module which
-created it.  Trace data is accessible via the manager's REST API.
+created it.  Trace data is accessible via the manager's REST \API{}.
 
 The trace data can later be used to reduce the set of seeds to only include the minimum
 number of files, or the minimum file size, which hits the maximum amount of
