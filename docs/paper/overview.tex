@@ -202,8 +202,8 @@ detects when dialog boxes appear, analyzes the text of the dialog box and
 determines that the status is a clean exit rather than a hang.  This would allow
 the fuzzer to move on to the next input more quickly, as it would know the
 input is done being processed and would not need to wait the full timeout
-period.  It also helps discern between a hang, which may indicate a Denial of
-Service vulnerability such as an infinite loop, and an error which is handled
+period.  It also helps discern between a hang, which may indicate a denial of
+service vulnerability such as an infinite loop, and an error which is handled
 in the expected manner. For another example, see the Windows Media Player
 driver in section \ref{Driver}.
 
