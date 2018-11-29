@@ -110,12 +110,13 @@ find any bug in any configuration, enable everything.  While these are
 important questions, the most interesting decision is what to track in terms of
 code coverage, and how to deal with non-deterministic code.
 
-The solution \AFL{} uses is to only instrument the main binary, not any of the
-libraries. To make sure all code is covered, compiling everything into one
-large static executable is recommended. This means tracking execution on code
-which does not process any user input, and not tracking important code if you
-are not able to get the code to compile statically. Killerbeez improves on this
-by including a tool
+The solution \AFL{} uses is to require the user to manually determine which code
+in the target to instrument. \AFL{} requires the user compile the target library
+or executable with a special instrumenting compiler. Alternatively, \AFL{} can
+use a modified version of QEMU while fuzzing to instrument all of the libraries
+used by a target at run-time.  As expected, instrumenting all of the libraries
+has a higher overhead than only instrumenting a few specific modules. Killerbeez
+improves on this by including a tool
 called the ``Picker'' which automatically determines which libraries should be
 instrumented.  The algorithm for doing so is described in section \ref{Picker}.
 
