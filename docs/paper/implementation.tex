@@ -46,7 +46,7 @@ which is covered in more detail in Section~\ref{Mutator}.
 
 A Windows Media Player (WMP) driver was created to demonstrate how to deal with
 a \GUI{} application which does not exit without user interaction. Applications
-with a \GUI{} are difficult to fuzz and many fuzzers evade this problem by not
+with a \GUI{} are difficult to fuzz and many fuzzers\cite{afl,honggfuzz,peach,vuzzer,boofuzz} evade this problem by not
 supporting targets with a \GUI{}.  The typical recommendation is to fuzz the library
 which does the heavy lifting, or modify the application to not load a \GUI{}.
 This does not work well when dealing with closed source applications. A test
