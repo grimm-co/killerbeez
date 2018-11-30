@@ -76,7 +76,7 @@ integration with various tools.
 \subsubsection{Tracing and Corpus Minimization} \label{Corpus Minimization}
 Killerbeez also introduces the idea of obtaining detailed code coverage information about
 execution for each input which has a unique code path.  This is typically
-not done by other fuzzers, as obtaining a full execution trace is much more overhead than
+not done by other fuzzers, as obtaining a full execution trace is significantly more overhead than
 the lightweight instrumentation that \AFL{} or Honggfuzz\cite{honggfuzz} use.\cite{collafl} During
 normal fuzzing, Killerbeez will generally use lightweight methods of tracking
 execution. However, having a full trace is useful when minimizing the seed corpus
@@ -147,7 +147,7 @@ software, deciding which portions of the code should be tracked for code
 coverage, and specifying how to deal with non-deterministic code.
 
 The compilation step is driven by the type of instrumentation chosen,
-which is typically just a matter of choosing the option with the lowest
+which is typically just a matter of selecting the option with the lowest
 performance penalty. Instrumentation does not need to be added at compile
 time, but it is added here when possible, as it reduces the overhead at runtime.
 What options to enable in the target software is target specific and
@@ -260,7 +260,7 @@ in the expected manner. For another example, see the Windows Media Player
 driver in section \ref{Driver}.
 
 Many of the drivers work on many fuzzing targets in a particular category.
-Targets which accept input from the network, are handled by the Network Server
+Targets which accept input from the network are handled by the Network Server
 driver module, programs which open a file are generally handled by the file
 driver and so forth.  Other drivers can be written to handle things which are
 specific to particular pieces of software.  Some targets will handle opening files
