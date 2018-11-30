@@ -76,7 +76,7 @@ integration with various tools.
 \subsubsection{Tracing and Corpus Minimization} \label{Corpus Minimization}
 Killerbeez also introduces the idea of obtaining detailed code coverage information about
 execution for each input which has a unique code path.  This is typically
-not done by other fuzzers, as obtaining a full trace is much more overhead than
+not done by other fuzzers, as obtaining a full execution trace is much more overhead than
 the lightweight instrumentation that \AFL{} or Honggfuzz use. During
 normal fuzzing, Killerbeez will generally use lightweight methods of tracking
 execution. However, having a full trace is useful when minimizing the seed corpus
