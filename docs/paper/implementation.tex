@@ -387,7 +387,12 @@ all of the seeds equally and go through them in a round-robin fashion.
 
 Determining how often to use the tracer is the responsibility of the job
 type selector in the campaign manager.  This module has the ability, but
-not the obligation, to take node and edge coverage into account.  The simplest
+not the obligation, to take node and edge coverage into account.
+The decision of when to run the tracer is
+made based on whether the trace data is necessary for the configured Killerbeez
+components and how much of a performance impact the tracer will have (as
+compared to scheduling fuzzing jobs during the same time period).
+The simplest
 algorithm would never enable the tracer, which would inhibit all other
 components from using trace data.
 
