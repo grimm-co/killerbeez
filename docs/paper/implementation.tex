@@ -304,8 +304,8 @@ likely to work properly as compared to the DynamoRIO instrumentation persistence
 mode.
 
 The only other public fuzzers known to implement Intel PT based tracing are
-Honggfuzz\cite{honggfuzz}, Richard Johnson's modified version of
-WinAFL\cite{winaflintelpt}, and kAFL\cite{kafl}. Honggfuzz does full packet decoding using the
+Honggfuzz\cite{honggfuzz}, Richard Johnson's modified version\cite{winaflintelpt} of
+WinAFL, and kAFL\cite{kafl}. Honggfuzz does full packet decoding using the
 Intel's processor trace decoder library\cite{libipt} which incurs a much
 higher overhead than the Killerbeez implementation.  Richard's fork of WinAFL
 did full packet decoding at one point, but does not seem to use the trace data
