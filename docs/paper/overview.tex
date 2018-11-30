@@ -219,7 +219,7 @@ timeout.
 
 First, the driver module is responsible for feeding inputs to a target.  This
 is a departure from most fuzzers, which only work for one type of input.  In
-the case of AFL, the input is a file or stdin (which is also a file under
+the case of AFL, the input is a file (or \stdin{}, which is also a file under
 UNIX).  Syzkaller\cite{syzkaller}, on the other hand, uses only system calls.
 Each tool then has to implement their own mutation algorithms, code coverage,
 results collection and so forth. Drivers enable Killerbeez to reuse all of
