@@ -49,9 +49,8 @@ parameters that execute faster), the final instrumentation state from fuzzing
 (to help the next job find fewer duplicate paths), and various other statistics.
 
 Because the manager is not responsible for running the target application, it
-does not need to run on the same platform as the target.  It can happily run on Linux and
-serve work to be executed by Windows or macOS machines and collect the
-results.
+does not need to run on the same platform as the target.  Thus, it can run on Linux while
+serving work to be executed by Windows or macOS machines.
 
 \subsubsection{Integration}
 The manager provides a \REST{} \API{}, which allows clients
