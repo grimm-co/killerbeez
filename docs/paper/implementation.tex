@@ -232,8 +232,8 @@ but also a tracer.  How tracers are used is covered more in section
 
 The Debug instrumentation is currently a Windows-only instrumentation which
 attaches to the target process using the debugging interface and monitors the
-process for a crash or clean exit.  It does not track code coverage.
-This is used for ``dumb'' fuzzing.  The driving force behind this module was
+process for a crash or clean exit.  It does not track code coverage, which is
+commonly referred to as ``black box'' fuzzing.  The driving force behind this module was
 that there is no reliable way to determine if a process crashed or exited normally
 on Windows without debugging it.  Unlike Unix, the return code does not contain this information,
 so there is no way to tell the difference between a program that decided to
