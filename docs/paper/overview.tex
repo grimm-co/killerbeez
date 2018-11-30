@@ -77,7 +77,7 @@ integration with various tools.
 Killerbeez also introduces the idea of obtaining detailed code coverage information about
 execution for each input which has a unique code path.  This is typically
 not done by other fuzzers, as obtaining a full execution trace is much more overhead than
-the lightweight instrumentation that \AFL{} or Honggfuzz use.\cite{collafl} During
+the lightweight instrumentation that \AFL{} or Honggfuzz\cite{honggfuzz} use.\cite{collafl} During
 normal fuzzing, Killerbeez will generally use lightweight methods of tracking
 execution. However, having a full trace is useful when minimizing the seed corpus
 and determining which seeds should be weighted more heavily. Reducing the
@@ -233,7 +233,7 @@ The second thing drivers are responsible for is dealing with any target
 specific issues, such as handling GUI interactions.  For example, if a PDF file
 with a malformed header is given to a PDF reader application, it typically will
 pop up a dialog box indicating that the file is corrupt. Fuzzers such as
-Honggfuzz or WinAFL would wait until a timeout expires.\footnote{WinAFL can
+Honggfuzz or WinAFL\cite{winafl} would wait until a timeout expires.\footnote{WinAFL can
 exit at the end of a function, but dialog boxes tend to prevent that function
 from returning in practice.} This results in all executions which hit this code
 path to appear as a hung process.  In Killerbeez, a driver could be written for
