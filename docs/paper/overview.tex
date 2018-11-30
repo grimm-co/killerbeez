@@ -166,7 +166,7 @@ erroneously keeping inputs which are not actually valuable.
 \AFL{} does not deal with this problem directly, but it does alert the user to
 the fact that the target is non-deterministic. The user can then do things like
 hijack calls to functions such as \texttt{srand()} which intentionally introduces
-randomness. This is often done for applications which employ cryptography for
+randomness and non-determinism. This is often done for applications which employ cryptography for
 initialization vectors and nonces. Under command line Linux applications, this
 works fairly well.  On GUI applications in Windows, it does not work as well.
 There are system calls in Windows which occasionally fail for no apparent reason. This
