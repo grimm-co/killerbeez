@@ -174,7 +174,7 @@ execute \texttt{main()} once per input.\cite{radamsatob}  This is much faster
 in terms of execution time, because the function is executed within the context of the
 fuzzer process.  This means data does not need to be piped from one process
 to another and then back again, however it loses a key value of Radamsa, which
-is that it tends to get better as it sees more data. While the implementation
+is that it tends to get better as it sees more data.\cite{radamsagrrproblems} While the implementation
 in Killerbeez is slower, and this reflects poorly on the metric of executions
 of the target application per second, it is arguably higher quality mutations
 in the long run.  There was an effort to get Radamsa compiled on Windows as a
