@@ -160,6 +160,9 @@ One important detail is that the picker can not operate effectively when the
 target does not have deterministic execution.  If feeding the same file into
 the application multiple times results in different code being executed, this
 is a problem, not only for the Picker, but also for code coverage in general.
+Non-deterministic code causes new code paths to be taken, making it appear as
+if the input file was the reason new code was executed.  This results in
+erroneously keeping inputs which are not actually valuable.
 \AFL{} does not deal with this problem directly, but it does alert the user to
 the fact that the target is non-deterministic. The user can then do things like
 hijack calls to functions such as \texttt{srand()} which intentionally introduces
