@@ -12,8 +12,8 @@ together and run on new platforms.  Each tool pulled into Killerbeez was the bes
 when combined with others, the value is more than the sum of its parts.
 
 \subsection{Driver} \label{Driver}
-Driver modules use the mutator module which is passed in to mutate an input,
-the instrumentation module to trace the target's execution, and are responsible
+Driver modules use a mutator module to mutate an input,
+an instrumentation module to trace the target's execution, and are responsible
 for getting the input data into the target.  A simple example is a
 file-based driver, which will create a file containing the mutated input and
 use the instrumentation module to launch the application in a way that it will
