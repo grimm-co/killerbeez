@@ -201,6 +201,7 @@ section.
 
 The same code base is used on Windows, Linux, and macOS to enable as much code
 re-use as possible.  Most of the mutators are shared among all platforms.
+Only the Radamsa mutator, which runs as a separate process, has platform specific code.
 Some of the instrumentation and driver\footnote{
 ``driver'' refers to driver modules, not operating system drivers.}
 modules contain platform specific and sometimes target specific code.
