@@ -88,7 +88,7 @@ been encapsulated in the tracer module.
 
 Each time an input
 is found which hits a new code path, a tracer job can be added via the manager.
-This job will be executed by a \BOINC{} client, just like any other fuzzing job.
+The new tracer job will be executed by a \BOINC{} client, just like any other fuzzing job.
 The results will include full trace data, which will be stored in the manager's
 database.  The data can be retrieved via the \REST{} \API{}, enabling a ``corpus
 minimizer'' tool to explore the paths covered by the current input corpus and
