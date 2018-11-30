@@ -172,8 +172,8 @@ works fairly well.  On GUI applications in Windows, it does not work as well.
 There are system calls in Windows which occasionally fail for no apparent reason. This
 should not be a problem for the target software, as it should be checking the return code to
 detect and handle this appropriately.  However, when these failures happens it has the
-side effect of making the fuzzer misinterpret the new code coverage to think an input was interesting when it was
-not.  The details of how non-determinism is handled in Killerbeez are also described in
+side effect of making the fuzzer misinterpret the new code coverage to think an uninteresting input was interesting.
+The details of how non-determinism is handled in Killerbeez are also described in
 section \ref{Picker}.
 
 \subsection{Execution}
