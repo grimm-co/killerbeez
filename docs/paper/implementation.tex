@@ -54,8 +54,9 @@ source library, but there is no guarantee that bugs found will also be present
 and reachable in the real application.  This is due to constraints which may
 be placed on function arguments in the main application, or that functions are
 called in a different order.  While writing a custom harness to test a library
-is a good recommendation, it should not be the only option. Thanks to its
-modular drivers, Killerbeez can deal with this problem instead of simply avoiding it.
+is a good recommendation, it should not be the only option.
+Killerbeez addresses the problem of fuzzing \GUI{} applications with modular
+drivers instead of simply avoiding the problem.
 
 The next issue a driver has to deal with is determining when the target is done
 processing the input.
