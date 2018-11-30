@@ -98,7 +98,7 @@ play or the timeout to occur.  While this technique is based on fuzzing Windows 
 it should work on any media playing application. 
 
 \subsection{Mutator} \label{Mutator}
-The mutators from Honggfuzz, Radamsa, AFL, and Ni are leveraged by wrapping the
+The mutators from Honggfuzz, Radamsa, AFL, and Ni\cite{ni} are leveraged by wrapping the
 code from these projects to conform to the Killerbeez mutator \API{}. By
 defining an \API{} for the mutators, researchers can modify other
 fuzzers to conform to the Killerbeez mutator \API{} and easily swap in the new mutators.
@@ -120,7 +120,7 @@ The following mutators have been implemented:
                            mutators are applied to different parts of the
                            input. Useful for network protocols where there is
                            a desire to not disrupt the handshake/login
-\item \textbf{ni} - Mutation algorithm from Ni\cite{ni}
+\item \textbf{ni} - Mutation algorithm from Ni
 \item \textbf{nop} - Mutator which does not mutate anything, useful for
                      testing and when combined with the multipart mutator
 \item \textbf{radamsa} - Mutator which wraps the Radamsa\cite{radamsa} executable
