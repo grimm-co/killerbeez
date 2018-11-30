@@ -1,4 +1,4 @@
-The short term focus will be to incorporate existing technologies from other
+The short-term focus will be to incorporate existing technologies from other
 projects and get them integrated with Killerbeez and running on all the
 supported platforms.  There is ample research, tools, and techniques available
 now which have yet to be applied in different domains. Once the state of the
@@ -11,19 +11,19 @@ improved. The reverse is true for DynamoRIO, which currently works on Windows
 but should be able to be ported to run on macOS\footnote{DynamoRIO's
 support for macOS is a work in progress.} and Linux without too much difficulty.
 Pulling in more instrumentation technologies such as Intel's Pin,
-and Dyninst\cite{dyninst} is also on the list of future work. Wrapping up the
+and Dyninst~\cite{dyninst} is also on the list of future work. Wrapping up the
 future enhancements to instrumentation is making more instrumentations aware of
 the non-deterministic portions of code which were identified by the Picker.
-Currently only the DynamoRIO instrumentation can use this information, but
+Currently, only the DynamoRIO instrumentation can use this information, but
 it should be easy to extend this to all of the \AFL{}-bitmap compatible
 instrumentation modules.  This includes the \AFL{} module and the to-be-written
 Pin and Dyninst modules.  The \IPT{} module will not be able to use this data
 because it does not actually decode the \TNT{} and \TIP{} bitstreams to determine what
 code is being executed. Adding real-time parsing would slow down the target
-software significantly, however this would still be considered if the benefit
+software significantly, however, this would still be considered if the benefit
 of handling non-deterministic code appears to be worth the additional overhead
 which would be incurred. Finally, adding in the Linux-only instrumentation
-technologies from Honggfuzz\cite{honggfuzz} is planned, to get the performance
+technologies from Honggfuzz~\cite{honggfuzz} is planned, to get the performance
 boost on software which runs on Linux, especially that which is closed source
 or not written in either C or C++.
 
@@ -33,7 +33,7 @@ the more common input methods, such as files, \stdin{}, and network data, howeve
 these should also be expanded to cover kernel functions via syscalls, drivers
 via \IOCTLs{}, \IPC{} messages, etc. This will make Killerbeez a fuzzer
 which can handle not only applications on multiple operating systems, but also
-the kernel of multiple operating systems as well.  Currently this is only
+the kernel of multiple operating systems as well.  Currently, this is only
 theoretically possible with Killerbeez, which is not much help to researchers
 in the field. Making it supported without any development or modifications
 will be a big step in helping industry researchers analyze operating system kernels.
@@ -41,16 +41,16 @@ will be a big step in helping industry researchers analyze operating system kern
 The mutation algorithms from several other projects have already been
 integrated with Killerbeez, however it is desirable to have the ability
 to write mutators in Python.  This will allow pulling in mutators from
-projects like BrundleFuzz\cite{brundlefuzz} as well as quickly putting
+projects like BrundleFuzz~\cite{brundlefuzz} as well as quickly putting
 together custom target-specific mutators without needing to learn the Killerbeez
 mutator \API{}, nor even needing a compiler.
 
 In addition to the aforementioned modules on the client side, there are a number
 of algorithms to pull in from academic publications.  This includes the seed
-energy rating and power schedules from AFLFast\cite{aflfast} and
+energy rating and power schedules from AFLFast~\cite{aflfast} and
 AFLGo.\cite{aflgo} FairFuzz presents another seed selection algorithm to bias
 seed files toward code segments which are not often executed.\cite{fairfuzz}
-The algorithm from PerfFuzz\cite{perffuzz} can be incorporated into
+The algorithm from PerfFuzz~\cite{perffuzz} can be incorporated into
 Killerbeez to find algorithmic complexity vulnerabilities. The research on
 using estimators and extrapolators to determine if a fuzzing campaign should
 be stopped, or continue running, can be integrated from Pythia.\cite{pythia}
@@ -68,7 +68,7 @@ inputs which reach code that is unlikely to be hit via mutation.
 
 There are a number of security analysis and fuzzing tools which do not
 fit into mutators, drivers, nor instrumentation modules. This includes input
-generation tools, such as Driller\cite{driller} and Synfuzz\cite{synfuzz}.
+generation tools, such as Driller~\cite{driller} and Synfuzz~\cite{synfuzz}.
 Integrating Driller can be accomplished by simply scheduling \BOINC{} jobs
 which run Driller instead of the fuzzer component. The input to the process
 is still the executable and the code which has been covered thus far, and the
