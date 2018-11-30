@@ -82,7 +82,7 @@ case being a hang.  The next alternative is to patch the target executable
 to exit after parsing. All of these approaches require reverse engineering,
 and will have varied results depending on the details of the target software.
 
-The WMP driver, when used with the DynamoRIO instrumentation, uses the same strategy as WinAFL, where a specific function
+The WMP driver, when used with the DynamoRIO\cite{dynamo} instrumentation, uses the same strategy as WinAFL, where a specific function
 name or offset needs to be specified and the test is ended when that function returns, however
 this is not the only stopping condition. The driver also checks for sound
 playing and assumes that if it was able to decode the file and start playing
