@@ -64,7 +64,8 @@ code that has not yet been reached by mutation.
 
 The \REST{} \API{} is also used for some of the manager's built-in
 functionality. The campaign manager, the component that plans new jobs to
-execute, uses the \REST{} \API{} to gather data and submit the resulting job.
+execute, gathers data using the \REST{} \API{}, analyzes the data to determine the
+next job to create, and then submits the resulting job via the \REST{} \API{}.
 The corpus minimization uses the \REST{} \API{} to obtain execution traces and
 modify the working set of seed values. Accessing data via the \REST{} \API{}
 allows these components to be less coupled with the internals of the manager,
