@@ -269,7 +269,7 @@ library and recompiling is not an option.
 The Intel PT module uses \IPT{} to gather trace information for CPUs which
 support \IPT{}. This requires a kernel component to manage \IPT{}, but
 the tracing itself is done in hardware with a modest performance overhead. The
-current implementation of this instrumentation module only works on Linux, via
+current implementation of this instrumentation module~\cite{killerbeezipt} only works on Linux, via
 the ``perf'' subsystem. Expanding this to support the \IPT{} driver in Windows
 is planned in the future. Regardless of operating system,
 the output of \IPT{} relevant for tracing execution in fuzzing are the \TNT{} and
