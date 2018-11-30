@@ -204,7 +204,7 @@ re-use as possible.  Most of the mutators are shared among all platforms.
 Only the Radamsa mutator, which runs as a separate process, has platform specific code.
 Some of the instrumentation and driver\footnote{
 ``driver'' refers to driver modules, not operating system drivers.}
-modules contain platform specific and sometimes target specific code.
+modules, such as the \IPT{} instrumentation and WMP driver, contain platform specific and sometimes target specific code.
 
 \subsubsection{Driver} \label{Driver Overview}
 Killerbeez offers drivers, which are target-specific wrappers that abstract
