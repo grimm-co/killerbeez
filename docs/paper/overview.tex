@@ -290,7 +290,7 @@ Sometimes instrumentation modules need to interface with kernel drivers, which a
 implemented differently on different operating systems. For instance, the \IPT{}
 instrumentation module uses the perf subsystem on Linux, which is not available
 on macOS or Windows. Other instrumentation technologies, such as Intel's
-Pin,\cite{pin} have a very similar interface across different operating
+Pin~\cite{pin}, have a very similar interface across different operating
 systems, which means more of the code in the instrumentation module can be
 re-used, simply using \#ifdef directives if there are portions which are
 specific to a particular operating system.
