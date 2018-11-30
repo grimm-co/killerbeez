@@ -61,9 +61,9 @@ drivers instead of simply avoiding the problem.
 
 The next issue a driver has to deal with is determining when the target is done
 processing the input.
-Typically, a fuzzer's execution loop involves mutating input, feeding it to a
-target, and then monitoring the target for interesting behavior such as a crash
-or a hang, and if it does not exit after the timeout period, it is considered to
+Typically, a fuzzer mutates the input, feeds it to a
+target, and then monitors the target for interesting behavior such as a crash
+or a hang, and if it does not exit after the timeout period, it considers the target to
 be hung.  This works for command line programs which exit immediately after processing
 the input, but falls apart when dealing with \GUI{} applications.
 Setting a timeout which is too low results in stopping before the
