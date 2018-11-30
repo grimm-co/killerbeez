@@ -142,7 +142,7 @@ environments, such as Windows with code coverage capabilities.
 
 The multipart mutator's development was driven by the network drivers and the desire to have
 the handshake or authentication section of the input not be mutated, as this
-would prevent much of the interesting code from being reached.  The input is
+would prevent much of the target's code from being reached.  The input is
 divided into parts and a mutator is run on each part. For any parts which
 should not be modified, the ``nop'' mutator, which is described below, is
 selected. This allows different mutators to be used on different segments of
@@ -265,7 +265,7 @@ to be changed to obtain a full trace (see section \ref{Tracer} for details on
 this feature). Other options include a list of libraries which should be
 covered by instrumentation. This allows things like tracking code coverage in acrord32.dll
 when fuzzing Adobe Reader.  Tracking code coverage in modules is an important
-feature, because the majority of the interesting code is encapsulated in a
+feature, because the majority of the input parsing code is encapsulated in a
 library and recompiling is not an option.
 
 The Intel PT module uses \IPT{} to gather trace information for CPUs which
