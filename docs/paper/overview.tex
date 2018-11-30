@@ -288,7 +288,7 @@ different than what was seen before.  The \AFL{} instrumentation module, on the
 other hand, would not consider this to be an input which causes the execution of new code.
 The \AFL{} instrumentation module uses a bucketing system that groups executions of the same
 code and considers anything which executes a portion of code 128-255 times to
-be equivalent.
+be equivalent.\cite{aflbucketing}
 
 Sometimes instrumentation modules need to interface with kernel drivers, which are
 implemented differently on different operating systems. For instance, the \IPT{}
