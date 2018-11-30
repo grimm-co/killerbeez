@@ -208,7 +208,7 @@ in the same code coverage.
 The following instrumentation modules have been implemented:
 \begin{itemize}[noitemsep]
 \item \textbf{Debug} - A na\"ive Windows-only instrumentation that determines the
-	result of a round of fuzzing via the Windows Debug \API{}.
+	result of a round of fuzzing via the Windows Debug \API{}.\cite{windebugapi}
 \item \textbf{Return Code} - A Linux-only equivalent to the debug instrumentation that
 	uses the \texttt{waitpid()} system call to determine the result of a fuzz round.
 \item \textbf{DynamoRIO} - An instrumentation that uses the DynamoRIO project\cite{dynamo} to
