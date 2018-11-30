@@ -109,13 +109,25 @@ the tracer. The job type selector module is responsible for choosing which of
 these tools is currently needed most. The modules can use the \REST{} \API{} to
 query any of the metadata recorded in the database to make their decisions.
 
+\subsubsection{Scalability}
 The manager can choose the amount of work done per job by specifying things like the
 number of fuzz iterations. By scheduling larger jobs, the manager can scale up to a very large number
 of clients, allowing a substantial amount of
 work to get done with a minimal amount of coordination and network overhead.
-However, if the manager becomes a bottleneck, multiple
-manager servers could be set up and the \REST{} \API{} interface used to share
-information between them.
+However, if the manager becomes a bottleneck due to the number of workers or
+the number of API requests, several components could be scaled
+out. The \BOINC{} server could be moved to its own machine, or even scaled out
+to a cluster.\cite{boincmultihost} The manager database could also be moved to
+its own machine. The \REST{} \API{} server is stateless, so it could be scaled
+fairly easily to run on multiple machines, and components that interact via the
+\REST{} \API{}, such as input generators and the campaign manager, can also be
+moved to run on their own hardware.
+
+If performance is still a problem even with
+all components scaled up as much as possible, multiple manager servers could be
+set up to run parallel fuzzing campaigns, using the \REST{} \API{} to share
+results between them. In this mode, each manager would act as an input generator
+for the others.
 
 \begin{figure*}[!ht]
 \centering
