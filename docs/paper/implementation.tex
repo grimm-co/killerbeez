@@ -98,9 +98,9 @@ it should work on any media playing application.
 
 \subsection{Mutator} \label{Mutator}
 The mutators from Honggfuzz, Radamsa, AFL, and Ni are leveraged by wrapping the
-code from these projects to conform to the Killerbeez Mutator \API{}. By
+code from these projects to conform to the Killerbeez mutator \API{}. By
 defining an \API{} for the mutators, researchers can modify other
-fuzzers to conform to the Killerbeez \API{} and easily swap in the new mutators.
+fuzzers to conform to the Killerbeez mutator \API{} and easily swap in the new mutators.
 
 The following mutators have been implemented:
 \begin{itemize}[noitemsep]
@@ -127,7 +127,7 @@ The following mutators have been implemented:
 \end{itemize}
 
 As indicated in the list above, several of the mutators were taken from \AFL{}
-and adapted to the Killerbeez \API{}. These have proven to be effective algorithms
+and adapted to the Killerbeez mutator \API{}. These have proven to be effective algorithms
 and were a solid starting point.
 
 Honggfuzz has a different set of mutators, some of which are similar to those
@@ -345,7 +345,7 @@ innovations of different authors.
 \subsection{Tracer} \label{Tracer}
 A tracer is an instrumentation module which captures detailed trace
 information about exactly which basic blocks were executed, along with the
-transitions between them and implements some optional functions in the \API{}
+transitions between them and implements some optional functions in the Killerbeez instrumentation \API{}
 which return this information.  This coverage information is commonly referred
 to as nodes and edges.
 
