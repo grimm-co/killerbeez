@@ -14,7 +14,7 @@ to something like an infinite loop, or executed new portions of code.
 Killerbeez coordinates the entire distributed fuzzing
 campaign. The orchestration tasks are handled by the Killerbeez ``manager,''
 which runs on a central server. After some initial configuration to specify
-targets and strategies, the manager decides what actions to take next.
+targets and strategies, the manager decides what jobs to schedule next.
 It tracks targets available for fuzzing, selects which tools to
 use and how to configure them, manages the corpus of inputs by removing
 less interesting ones, and dispatches jobs to worker nodes to be executed.  It also
