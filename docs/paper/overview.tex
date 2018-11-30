@@ -11,13 +11,17 @@ done processing the input and reporting whether the target crashed, froze due
 to something like an infinite loop, or executed new portions of code.
 
 \subsection{Orchestration}
-All of the orchestration tasks are handled by the manger running on a central
-server.  It decides what mutators will be used on each target,
-handles minimizing interesting inputs, determines if crashes
-and hangs are unique, and identifies inputs that can be dropped because the code they
-reach is already covered by other inputs. A \BOINC{} server is used to transmit
-the work to worker nodes and receive results.  All of this is depicted in
-Figure \ref{fig:Killerbeez-server}.
+Killerbeez coordinates the entire distributed fuzzing
+campaign. The orchestration tasks are handled by the Killerbeez ``manager,''
+which runs on a central server. After some initial configuration to specify
+targets and strategies, the manager decides what actions to take next.
+It tracks targets available for fuzzing, selects which tools to
+use and how to configure them, manages the corpus of inputs by removing
+less interesting ones, and dispatches jobs to worker nodes to be executed.  It also
+provides a \REST{} \API{} that allows a researcher to trigger actions and
+extract results manually, or to integrate an external system that
+does so autonomously. The components of the manager are depicted in Figure
+\ref{fig:Killerbeez-server}.
 
 \begin{figure*}[htb]
 \centering
@@ -26,44 +30,89 @@ Figure \ref{fig:Killerbeez-server}.
 \label{fig:Killerbeez-server}
 \end{figure*}
 
-\subsubsection{Manager} \label{Manager Overview}
-The manager combines all of the server side components.  It is
-primarily a bookkeeper to track which targets are available for fuzzing,
-queue jobs\footnote{``jobs'' is a \BOINC{} term here, referring to a unit of work.} to be served to \BOINC{} clients, process the results to
-determine if code paths are unique, and interface with external components.
+\subsubsection{Work Distribution}
+The most basic role of the manager is to provide an interface for queuing tasks
+to be executed on worker nodes and processing the results. A \BOINC{} server is
+used to transmit the work to nodes and receive results. The manager provides a
+layer on top of \BOINC{} that understands Killerbeez-specific parameters such as
+the mutator and instrumentation to use, making it simple to submit jobs to
+\BOINC{} that run the fuzzer with an appropriate command line. Jobs
+submitted via the manager also automatically set up Killerbeez and the target
+software, so the worker nodes are not required to have any special software
+installed besides the off-the-shelf \BOINC{} client.
+
+When jobs complete, the manager uses the \BOINC{} ``assimilator'' interface to
+collect the results and update the manager's database. The information inserted
+includes not only the direct output of the fuzzer (new inputs that cause new
+paths in the binary to be hit) but metadata about the job as well. This metadata
+could include the average execution time of the binary (to help choose
+parameters that execute faster), the final instrumentation state from fuzzing
+(to help the next job find fewer duplicate paths), and various other statistics.
 
 Because the manager is not responsible for running the target application, it
 does not need to run on the same platform as the target.  It can happily run on Linux and
 serve work to be executed by Windows or macOS machines and collect the
 results.
 
-The manager will enable future enhancements to be made by taking advantage of
+\subsubsection{Integration}
+The manager provides a \REST{} \API{}, which allows clients
+to access and configure seed data, fuzzing targets, and low-level metadata
+produced during fuzzing.
+This will enable future enhancements to be made by taking advantage of
 external tools, such as
 using a test case generator to produce new seed data. Another planned integration
 is to use Driller\cite{driller} to generate program inputs which reach
-code which has not yet been reached by mutation. These integrations are made
-possible by providing a \REST{} \API{} to the manager component, which allows clients
-to access and configure seed data, fuzzing targets, and low-level metadata
-produced during fuzzing.
+code which has not yet been reached by mutation.
 
-The \API{} is also used for some of the manager's built-in functionality. The
-campaign manager, which plans out jobs to be
-executed, consists of pluggable modules to choose the job's type, inputs, and
-parameters. The \API{} is used by these modules to gather the data they need,
-and then submit fuzzing jobs. The corpus
-minimization uses this \REST{} interface to obtain
-execution traces and modify the working set of seed values. This allows components to be
-less coupled with the internals of the manager, enabling them to run as
-standalone processes. Figure
-\ref{fig:Killerbeez-integrations} shows how these tools can interface with the
-manager via the \REST{} \API{}.
+The \REST{} \API{} is also used for some of the manager's built-in
+functionality. The campaign manager, the component that plans new jobs to
+execute, uses the \REST{} \API{} to gather data and submit the resulting job.
+The corpus minimization uses the \REST{} \API{} to obtain execution traces and
+modify the working set of seed values. Accessing data via the \REST{} \API{}
+allows these components to be less coupled with the internals of the manager,
+enabling them to run as standalone processes. Figure
+\ref{fig:Killerbeez-integrations} shows how the \REST{} \API{} enables
+integration with various tools.
 
-The manager can decide how long each job takes by specifying things like the
-number of fuzz iterations, so it should be able to scale up to a very large number
-of clients by ensuring each job takes a long time.  This will allow a substantial amount of
+\subsubsection{Tracing and Corpus Minimization} \label{Corpus Minimization}
+Killerbeez also introduces the idea of obtaining detailed information about
+execution for each input which has a unique code path.  This is typically
+not done by other fuzzers, as obtaining a full trace is much more overhead than
+the lightweight instrumentation that \AFL{} or Honggfuzz use. During
+normal fuzzing, Killerbeez will generally use lightweight methods of tracking
+execution. However, having a full trace is useful when minimizing the seed corpus
+and determining which seeds should be weighted more heavily. This concept has
+been encapsulated in the tracer module.
+
+Each time an input
+is found which hits a new code path, a tracer job can be added via the manager.
+This job will be executed by a \BOINC{} client, just like any other fuzzing job.
+The results will include full trace data, which will be stored in the manager's
+database.  The data can be retrieved via the \REST{} \API{}, enabling a ``corpus
+minimizer'' tool to explore the paths covered by the current input corpus and
+remove inputs that are redundant. More
+information about the tracer and corpus minimizer can be found in section
+\ref{Tracer}.
+
+\subsubsection{Work Generation}
+The manager is also responsible for deciding what work should be performed next.
+The component that does this is called the ``campaign manager,'' and it consists
+of several pluggable modules that work together to generate jobs. For
+jobs that run the killerbeez fuzzer, the seed selector module specifies an
+algorithm for choosing the most interesting input to use as a starting point for
+fuzzing, while the job parameter selector module determines parameters like the
+mutator to use for the job or the instrumentation options. It is also possible
+to integrate tools besides the fuzzer into the job system, such as Driller or
+the tracer. The job type selector module is responsible for choosing which of
+these tools is currently needed most. The modules can use the \REST{} \API{} to
+query any of the metadata recorded in the database to make their decisions.
+
+The manager can choose the amount of work done per job by specifying things like the
+number of fuzz iterations, so by scheduling larger jobs it should be able to scale up to a very large number
+of clients, allowing a substantial amount of
 work to get done with a minimal amount of coordination and network overhead.
 However, if the manager becomes a bottleneck, multiple
-manager servers could be set up and the \REST{} interface used to share
+manager servers could be set up and the \REST{} \API{} interface used to share
 information between them.
 
 \begin{figure*}[htb]
@@ -74,22 +123,7 @@ information between them.
 \end{figure*}
 
 
-Killerbeez also introduces the idea of obtaining detailed information about
-execution for each input which has a unique code path.  This is typically
-not done by other fuzzers, as obtaining a full trace is much more overhead than
-the lightweight instrumentation that \AFL{} or Honggfuzz use. During
-normal fuzzing, Killerbeez will generally use lightweight methods of tracking
-execution. However, having a full trace is useful when minimizing the seed corpus
-and determining which seeds should be weighted more heavily. This concept has
-been encapsulated in the tracer module.
-Each time an input
-is found which hits a new code path, a tracer job can be added via the manager.
-This job will be executed by a \BOINC{} client, just like any other fuzzing job.
-The results will include full trace data, which will be stored in the manager's
-database.  More information about the tracer can be found in section
-\ref{Tracer}.
-
-\subsubsection{Preparation}  \label{Preparation Overview}
+\subsection{Preparation}  \label{Preparation Overview}
 There is a preparation phase of fuzzing workflows which is often overlooked or
 dismissed, that includes setting up the target software and deciding specific
 fuzzing parameters. This occurs before any real fuzzing begins and includes
