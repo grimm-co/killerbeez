@@ -420,7 +420,7 @@ nothing is omitted for the list of modules to instrument.
 
 Code which is non-deterministic causes problems with the algorithm above.
 Tracking down each source of non-determinism and attempting to eliminate it
-would be very tedious task. An example of one source of non-determinism was a
+would be a very tedious task. An example of one source of non-determinism was a
 call to a graphics libraries failing to allocate a surface object. It is
 difficult to know how to remove this type of non-determinism. Every system call
 which fails on a regular basis would have to be analyzed, and a decision made
