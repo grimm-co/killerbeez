@@ -28,7 +28,7 @@
 #define MSAN_ERROR 86
 
 //The amount of time to wait before considering the fork server initialization failed
-#define FORK_SERVER_STARTUP_TIME 5
+#define FORK_SERVER_STARTUP_TIME 10
 
 //Save a fd to the /dev/null, so we don't have to keep opening/closing it
 static int dev_null_fd =  -1;
@@ -79,7 +79,7 @@ static void find_fork_server_library(char * buffer, size_t buffer_len)
  *                              will be handled by each execution of the target
  * @return the process ID of spawned process
  */
-pid_t run_target(int needs_stdin_fd, char *target_path, char **argv,
+static pid_t run_target(int needs_stdin_fd, char *target_path, char **argv,
                 forkserver_t * fs, int use_forkserver_library, int *st_pipe,
                 int *ctl_pipe, int persistence_max_cnt) {
 /*
@@ -237,6 +237,7 @@ pid_t run_target(int needs_stdin_fd, char *target_path, char **argv,
  * @param argv - Arguments to pass to the program
  * @param use_forkserver_library - Whether or not to use LD_PRELOAD/DYLD_INSERT_LIBRARIES to inject the fork server
  * library or not
+ * @param persistence_max_cnt - the maximum number of fuzz iterations a persistence mode process should run
  * @param needs_stdin_fd - whether we should open a library for the stdin of the newly created process
  */
 void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int use_forkserver_library,
@@ -321,7 +322,7 @@ void fork_server_init(forkserver_t * fs, char * target_path, char ** argv, int u
   // If we have a four-byte "hello" message from the server, we're all set.
   // Otherwise, try to figure out what went wrong.
   if (rlen == 4) {
-    DEBUG_MSG("All right - fork server is up.");
+    DEBUG_MSG("All right - fork server (PID %d) is up.", forksrv_pid);
     return;
   }
 

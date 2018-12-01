@@ -1,4 +1,5 @@
 #pragma once
+#include "forkserver_internal.h"
 
 void * return_code_create(char * options, char * state);
 void return_code_cleanup(void * instrumentation_state);
@@ -14,7 +15,11 @@ int return_code_help(char ** help_str);
 
 struct return_code_state
 {
-	pid_t child_handle;
+	int fork_server_setup;
+	int use_fork_server;
+	forkserver_t fs;
+
+	pid_t child_pid;
 
 	int enable_called;
 	int last_status;

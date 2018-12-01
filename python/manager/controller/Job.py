@@ -101,9 +101,11 @@ class JobCtrl(Resource):
         mutator_options = job.lookup_config('mutator', data.mutator)
         instrumentation_options = job.lookup_config('instrumentation', data.instrumentation_type)
         driver_options = job.lookup_config('driver', data.driver)
+        shell_format = job.lookup_config('platform', 'shell_format')
 
         command_line = fuzzer.format_cmdline(
             job.driver, job.instrumentation_type, job.mutator, job.iterations,
+            shell_format,
             driver_options=driver_options,
             instrumentation_options=instrumentation_options,
             mutator_options=mutator_options)
@@ -115,12 +117,15 @@ class JobCtrl(Resource):
         return job, 200
 
 
-    # TODO: A way to update existing jobs via the REST API?
-    def update(self, id, data):
-        job = fuzz_jobs.query.get(id)
+    def update(self, data, id=None, boinc_id=None):
+        query = fuzz_jobs.query
+        if id is not None:
+            query = query.filter_by(job_id=id)
+        if boinc_id is not None:
+            query = query.filter_by(boinc_id=boinc_id)
+        job = query.first()
         if job is None:
-            job = fuzz_jobs(None, None, job_id=id)
-            db.session.add(job)
+            abort(404, err='Unknown job ID')
 
         if data.seed_file is not None:
             job.seed_file = data.seed_file
@@ -171,12 +176,15 @@ class JobCtrl(Resource):
         return self.create(args)
 
     @marshal_with(job_fields)
-    def put(self, id):
+    def put(self, id=None, boinc_id=None):
         """
         Update a job.
         """
+        if id is None and boinc_id is None:
+            abort(400, err='one of id and boinc_id must be provided')
+
         parser = reqparse.RequestParser()
         parser.add_argument("seed_file", type=str)
         parser.add_argument("status", type=str)
         args = parser.parse_args()
-        return self.update(id, args)
+        return self.update(args, id, boinc_id)

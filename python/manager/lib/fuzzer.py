@@ -1,3 +1,8 @@
+import shlex
+
+from lib import errors
+
+
 def _create_state_file(state):
     # TODO: possibly obsolete
     tmpdir = os.path.join(self.outdir, 'tmp')
@@ -7,7 +12,7 @@ def _create_state_file(state):
         return f.name
 
 
-def windows_escape(args):
+def bat_escape(args):
     """Quote a set of arguments for a windows command line.
 
     Double-quote each argument, and backslash-escape any backslashes before
@@ -37,11 +42,18 @@ def windows_escape(args):
     metachars = ['(', ')', '%', '!', '^', '"', '<', '>', '&', '|']
     for char in metachars:
         final_cmdline = final_cmdline.replace(char, '^'+char)
-    return final_cmdline
+    return '%1 {}'.format(final_cmdline)
+
+
+def sh_escape(args):
+    escaped_args = [shlex.quote(arg) for arg in args]
+    # The >&2 redirects stdout to stderr, which will make it show up in the
+    # BOINC UI
+    return '$1 >&2 {}'.format(' '.join(escaped_args))
 
 
 def format_cmdline(
-        driver, instrumentation, mutator, iterations,
+        driver, instrumentation, mutator, iterations, shell_format,
         driver_options=None, instrumentation_options=None,
         mutator_options=None, instrumentation_state=None, mutator_state=None):
     # BOINC takes care of renaming the seed file for us
@@ -60,4 +72,21 @@ def format_cmdline(
     # if mutator_state):
     #     filename = self.create_state_file(mutator_state)
     #     args.extend(["-msf", filename])
-    return windows_escape(args)
+
+    # In order to make this command line work on the target platform, it needs
+    # to be escaped. The shell_format value comes from a config option
+    # platform_opts_shell_format, however it could also be a column of the
+    # target, or we could just choose a format based on the target's platform.
+    # When we are working on automated target adding, we should revisit this to
+    # see what works best.
+    if shell_format == 'sh':
+        return sh_escape(args)
+    elif shell_format == 'bat':
+        return bat_escape(args)
+    else:
+        if shell_format:
+            raise errors.InputError('Unknown shell_format "{}"'.format(shell_format))
+        else:
+            raise errors.InputError(
+                'This target has no shell_format configured. Set the '
+                'platform_opts_shell_format config option.')
