@@ -73,6 +73,14 @@ enabling them to run as standalone processes. Figure
 \ref{fig:Killerbeez-integrations} shows how the \REST{} \API{} enables
 integration with various tools.
 
+\begin{figure*}[!ht]
+\centering
+\includegraphics[width=\textwidth]{KILLERBEEZ_Integrations.png}
+\caption{Killerbeez Integration with External Tools}
+\label{fig:Killerbeez-integrations}
+\end{figure*}
+
+
 \subsubsection{Tracing and Corpus Minimization} \label{Corpus Minimization}
 Killerbeez also introduces the idea of obtaining detailed code coverage information about
 execution for each input which has a unique code path.  This is typically
@@ -128,14 +136,6 @@ all components scaled up as much as possible, multiple manager servers could be
 set up to run parallel fuzzing campaigns, using the \REST{} \API{} to share
 results between them. In this mode, each manager would act as an input generator
 for the others.
-
-\begin{figure*}[!ht]
-\centering
-\includegraphics[width=\textwidth]{KILLERBEEZ_Integrations.png}
-\caption{Killerbeez Integration with External Tools}
-\label{fig:Killerbeez-integrations}
-\end{figure*}
-
 
 \subsection{Preparation}  \label{Preparation Overview}
 There is a preparation step in fuzzing workflows which is often overlooked or
