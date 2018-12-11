@@ -68,8 +68,8 @@ endif ()
 if (UNIX)
   SET(BOINC_WRAPPER ${CMAKE_SOURCE_DIR}/server/boinc/samples/wrapper/wrapper)
   ExternalProject_Add(boinc-wrapper
-    GIT_SUBMODULES server/boinc
     SOURCE_DIR ${CMAKE_SOURCE_DIR}/server/boinc
+    DOWNLOAD_COMMAND cd <SOURCE_DIR> && git submodule update --init .
     BUILD_IN_SOURCE true
     CONFIGURE_COMMAND ./_autosetup
     COMMAND ./configure --disable-server --disable-client --disable-manager --enable-boinczip
