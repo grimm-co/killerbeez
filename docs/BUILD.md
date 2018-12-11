@@ -86,12 +86,19 @@ be found in folders named after the architecture (e.g. x64) and build type
 
 ### Prerequisites
 
-To build Killerbeez on Linux/Mac you will need a compiler (gcc or clang), make, and
-cmake.
+To build Killerbeez on Linux/Mac you will need a compiler (gcc or clang), make,
+and cmake.  To build the AFL instrumentation with gcc, clang, and qemu, there
+are a few extra packages needed.  The dependency lists below will make sure
+you can compile everything to get all the cool features.
 
-For Ubuntu, it's as simple as:
+On Ubuntu:
 ```
-sudo apt install build-essential cmake
+sudo apt install llvm clang libtool-bin build-essential cmake automake bison libglib2.0-dev libc6-dev-i386
+```
+
+On Fedora:
+```
+sudo dnf install llvm clang llvm-devel libtool bison flex glib2-devel glibc-devel.i686
 ```
 
 ### Installation
