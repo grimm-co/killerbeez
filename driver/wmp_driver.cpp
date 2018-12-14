@@ -4,6 +4,7 @@
 #include <utils.h>
 #include <instrumentation.h>
 #include "driver.h"
+#include <wingui.h>
 
 //c headers
 #include <stdio.h>
@@ -176,6 +177,10 @@ int wmp_test_input(void * driver_state, char * input, size_t length)
 			return FUZZ_NONE;
 		
 		if (time(NULL) - start_time > state->timeout)
+			return FUZZ_HANG;
+		
+		// If we're stuck in a modal dialog we're "hung"
+		if (IsProcessInModalDialog(GetProcessId(state->child_handle)))
 			return FUZZ_HANG;
 		
 		Sleep(50);
