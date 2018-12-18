@@ -23,7 +23,7 @@ void __forkserver_init(void)
 {
   int response = 0x41414141;
   char command;
-  int child_pid;
+  int child_pid = -1;
   int target_pipe[2];
 
   // Phone home and tell the parent that we're OK. If parent isn't there,
@@ -76,6 +76,11 @@ void __forkserver_init(void)
         break;
 
       case RUN:
+        //Make sure the target process has started
+        if(child_pid == -1) {
+          response = FORKSERVER_ERROR;
+          break;
+        }
         //Tell the target process to go
         response = 0;
         if(write(target_pipe[1], &response, sizeof(int)) != sizeof(int))
@@ -104,7 +109,7 @@ static int forkserver_cycle_cnt = 0;
 static void forkserver_persistence_init(void)
 {
   int response = 0x41414141;
-  char command, target_command;
+  char command;
   int child_pid = -1;
 
   //Get the maximum number of persistent executions

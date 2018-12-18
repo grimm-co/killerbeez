@@ -74,7 +74,7 @@ class KillerbeezAssimilator(assimilator.Assimilator):
         if file_name_element is None:
             return # TODO: error handling
         seed_file = filename_to_download_path(file_name_element.text)
-        requests.put('{}/job/{}'.format(API_SERVER, job_id),
+        requests.put('{}/boinc_job/{}'.format(API_SERVER, job_id),
                     json={'seed_file': seed_file, 'status': 'completed'})
 
     def _record_result(self, file_path, result_type, job_id):

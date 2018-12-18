@@ -16,6 +16,12 @@ def main():
         json={"platform": "windows_x86_64", "target_executable": "wmp"})
     target_resp.raise_for_status()
     target_id = target_resp.json()['id']
+    # Set up shell format for this target - change value to "sh" for linux
+    requests.post(
+        '%s/config' % PROJECT,
+        json={"target_id": target_id,
+              "name": "platform_opts_shell_format",
+              "value": "bat"}).raise_for_status()
 
     # Create the driver and instrumentation configs
     requests.post(

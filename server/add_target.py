@@ -4,8 +4,8 @@
 # require a bunch of manual work in terms of editing files, and creating
 # a whole directory structure.  The gist of it is this:
 # - Edit project.xml if the platform is new
-# - Edit config.xml to add daemons such as validators and assimulators
-# - Create the follow directory structure:
+# - Edit config.xml to add daemons such as validators and assimilators
+# - Create the following directory structure:
 #     apps/$TARGET_NAME/$VERSION/$PLATFORM
 #   (where $VERSION is currently hard-coded to "1")
 # - The contents of skel/$PLATFORM are then copied to the new app directory
@@ -58,10 +58,10 @@ def create_app_dir(name, platform):
     skel_dir = os.path.join('skel', platform)
     for filename in os.listdir(skel_dir):
         if filename != 'version.xml':
-            name, dot, ext = filename.rpartition('.')
+            name, dot, ext = filename.partition('.')
             new_filename = ''.join((name, '.', app_name, dot, ext))
-            shutil.copyfile(os.path.join(skel_dir, filename),
-                            os.path.join(app_version_dir, new_filename))
+            shutil.copy(os.path.join(skel_dir, filename),
+                        os.path.join(app_version_dir, new_filename))
         else:
             with open(os.path.join(skel_dir, filename)) as template:
                 version_xml = template.read().format(app=app_name)
