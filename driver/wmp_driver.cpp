@@ -180,7 +180,7 @@ int wmp_test_input(void * driver_state, char * input, size_t length)
 			return FUZZ_HANG;
 		
 		// If we're stuck in a modal dialog we're "hung"
-		if (IsProcessInModalDialog(GetProcessId(state->child_handle)))
+		if (IsProcessInModalDialog(GetProcessId(&state->process)))
 			return FUZZ_HANG;
 		
 		Sleep(50);
