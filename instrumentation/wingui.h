@@ -2,4 +2,4 @@
 
 #include <windows.h>
 
-BOOL IsProcessInModalDialog( DWORD dwTargetProcessId );
+extern "C" BOOL IsProcessInModalDialog( DWORD dwTargetProcessId );
