@@ -179,8 +179,8 @@ int wmp_test_input(void * driver_state, char * input, size_t length)
 		if (time(NULL) - start_time > state->timeout)
 			return FUZZ_HANG;
 		
-		// If we're stuck in a modal dialog we're "hung"
-		if (IsProcessInModalDialog(GetProcessId(&state->process)))
+		// If we're stuck in a modal dialog we're "hung". Works for debug, but not dynamorio
+		if (IsProcessInModalDialog(GetProcessId(state->process)))
 			return FUZZ_HANG;
 		
 		Sleep(50);
