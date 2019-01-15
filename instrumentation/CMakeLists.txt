@@ -11,6 +11,7 @@ if (WIN32)
 		${INSTRUMENTATION_SRC}
 		${PROJECT_SOURCE_DIR}/debug_instrumentation.c
 		${PROJECT_SOURCE_DIR}/dynamorio_instrumentation.c
+		${PROJECT_SOURCE_DIR}/wingui.c
 	)
 else ()
 	set(INSTRUMENTATION_SRC
