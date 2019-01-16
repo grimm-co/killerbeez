@@ -24,6 +24,8 @@ data. Coverage data is used to avoid wasting time mutating portions of the input
 that the target does not process. These mutations will be incorporated into
 Killerbeez in the future.  While \AFL{} is a great local fuzzer, it is not
 easily distributed and cannot easily manage the fuzzing of more complex targets.
+\AFL{} does not support applications on Windows, and the \AFL{} fork which does
+support Windows, WinAFL, lacks many of the features of \AFL{}.
 
 Peach Fuzzer\cite{peach} now supports distributed fuzzing, modular mutators, and
 modules for launching apps, is able to do both file and network-based fuzzing,
