@@ -17,7 +17,11 @@ development effort to review the modifications and merge the forks back
 together, manually resolving any conflicts and incompatibilities.  The issue
 of incompatibility is not limited to projects which are modified versions of
 \AFL{}. Mixing and matching features from various tools requires a significant
-amount of effort. Using a tool against a type of software it has never been
+amount of effort. It involves setting up a build environment, which in itself
+can be a challenge, as well as merging together different code bases.  Often
+times the code bases will be written in different programming languages, which
+means they need to be integrated in some way.
+Using a tool against a type of software it has never been
 used against before, such as using a Linux kernel fuzzer against another
 operating system, can find a large number of bugs\cite{anton}.  However, in practice, security
 professionals rarely have the amount of time to invest to get the tools working
