@@ -315,7 +315,7 @@ at all with the latest commit.\cite{winaflcommit} Instead, there is a comment wh
 work in progress. kAFL utilizes a custom packet decoder built specifically to
 allow efficient parsing of the \IPT{} packets and disassembly of the target
 executable.  As such, kAFL's \IPT{} parser is faster than the Intel processor trace
-decoder library, but is slower than the approach taken in Killerbeez which
+decoder library,\cite{harnessingipt} but is slower than the approach taken in Killerbeez which
 refrains from analyzing the target executable.
 
 Finally, we have the \AFL{} instrumentation module, which is based around the
