@@ -1,16 +1,10 @@
 #!/bin/bash
 if [[ "$1" == "kill" ]]; then
 	# Clean out the old
-	rm -fR killerbeez killerbeez-mutators killerbeez-utils build
+	rm -fR killerbeez build
 fi
 
 # Check out the new (if needed)
-if [[ ! -d killerbeez-utils ]]; then
-	git clone https://github.com/grimm-co/killerbeez-utils
-fi
-if [[ ! -d killerbeez-mutators ]]; then
-	git clone https://github.com/grimm-co/killerbeez-mutators
-fi
 if [[ ! -d killerbeez ]]; then
 	git clone https://github.com/grimm-co/killerbeez
 fi
@@ -34,8 +28,9 @@ function test_linux_error {
 	generic_error "$1" "$2" "$err"
 }
 
+cd killerbeez
 # Compile things
-mkdir -p build; cd build; cmake ../killerbeez; make
+mkdir -p build; cd build; cmake ..; make
 
 # Try running the fuzzer and make sure we have some basic functionality
 cd killerbeez

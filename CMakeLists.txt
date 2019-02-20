@@ -1,46 +1,31 @@
 cmake_minimum_required (VERSION 2.8.8)
-project (killerbeez)
-include(ExternalProject)
+project (mutators_repo)
 
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -D_DEBUG")	# for _DEBUG ifdefs in utils.h
-
-if (UNIX)
-	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wfatal-errors") # quit after first error
-endif (UNIX)
-
-if (APPLE)
-	set(CMAKE_MACOSX_RPATH 1) # https://github.com/liballeg/allegro5/issues/532#issuecomment-170338164
-endif (APPLE)
-
-if(NOT CMAKE_BUILD_TYPE)
-	set(CMAKE_BUILD_TYPE Debug) 	# for gcc -g
-	message("WARNING: Building with debug options; performance will be impacted. Try cmake -DCMAKE_BUILD_TYPE=Release ../killerbeez")
-endif()
-
+#SET ( BUILD_DIRECTORY ${CMAKE_SOURCE_DIR}/../build )
 
 if (WIN32)
-	# windows/visual studio build convention eg build/X86/Debug
-	SET ( BUILD_DIRECTORY ${CMAKE_SOURCE_DIR}/../build/${CMAKE_C_COMPILER_ARCHITECTURE_ID}/${CMAKE_BUILD_TYPE} )
-	add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_DEPRECATION_DISABLE -D_CRT_NONSTDC_NO_DEPRECATE)
+	SET( WINDOWS_BUILD_PATH ${BUILD_DIRECTORY}/${CMAKE_C_COMPILER_ARCHITECTURE_ID}/${CMAKE_BUILD_TYPE} )
+	SET( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${WINDOWS_BUILD_PATH}/mutators/ )
+	SET( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${WINDOWS_BUILD_PATH}/mutators/ )
+	SET( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${WINDOWS_BUILD_PATH}/mutators/ )
+	LINK_DIRECTORIES(${WINDOWS_BUILD_PATH}/killerbeez/)
+	add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_DEPRECATION_DISABLE -D_CRT_NONSTDC_NO_DEPRECATE -DUTILS_NO_IMPORT -DJANSSON_NO_IMPORT)
 else (WIN32)
-	SET ( BUILD_DIRECTORY ${CMAKE_BINARY_DIR} )
+	SET( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/mutators/ )
+	SET( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/mutators/ )
+	SET( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/mutators/ )
+	LINK_DIRECTORIES(${CMAKE_BINARY_DIR}/killerbeez/)
 endif (WIN32)
 
-SET( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${BUILD_DIRECTORY}/killerbeez/ )
-SET( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${BUILD_DIRECTORY}/killerbeez/ )
-SET( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${BUILD_DIRECTORY}/killerbeez/ )
-LINK_DIRECTORIES(${BUILD_DIRECTORY}/killerbeez/) # give linker path to utils
-
-# Make linux builds relocatable
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH 1)
-SET(CMAKE_INSTALL_RPATH "$ORIGIN")
-
 # add headers for utils from utils source folder/repo
-include_directories (${CMAKE_SOURCE_DIR}/../killerbeez-utils/jansson/)
-include_directories (${CMAKE_SOURCE_DIR}/../killerbeez-utils/utils/)
+include_directories (jansson/)
+include_directories (utils/)
 
-# compile mutators, which will compile utils
-add_subdirectory(${CMAKE_SOURCE_DIR}/../killerbeez-mutators/ ${CMAKE_BINARY_DIR}/killerbeez-mutators/)
+#add_subdirectory(${CMAKE_SOURCE_DIR}/jansson/ ${CMAKE_BINARY_DIR}/killerbeez-jansson/)
+add_subdirectory(jansson/)
+
+# The general mutator library with the common functionality
+add_subdirectory(mutators)
 
 add_subdirectory(corpus) # test programs
 add_subdirectory(fuzzer) # instantiates & coordinates other parts
@@ -67,31 +52,31 @@ endif ()
 # If on Linux, we can build our own BOINC wrapper
 if (UNIX)
   SET(BOINC_WRAPPER ${CMAKE_SOURCE_DIR}/server/boinc/samples/wrapper/wrapper)
-  ExternalProject_Add(boinc-wrapper
-    SOURCE_DIR ${CMAKE_SOURCE_DIR}/server/boinc
-    DOWNLOAD_COMMAND cd <SOURCE_DIR> && git submodule update --init .
-    BUILD_IN_SOURCE true
-    CONFIGURE_COMMAND ./_autosetup
-    COMMAND ./configure --disable-server --disable-client --disable-manager --enable-boinczip
-    BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
-    COMMAND ${CMAKE_MAKE_PROGRAM} -C samples/wrapper
-    INSTALL_COMMAND ""
-    EXCLUDE_FROM_ALL true
-  )
+#  ExternalProject_Add(boinc-wrapper
+#    SOURCE_DIR ${CMAKE_SOURCE_DIR}/server/boinc
+#    DOWNLOAD_COMMAND cd <SOURCE_DIR> && git submodule update --init .
+#    BUILD_IN_SOURCE true
+#    CONFIGURE_COMMAND ./_autosetup
+#    COMMAND ./configure --disable-server --disable-client --disable-manager --enable-boinczip
+#    BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
+#    COMMAND ${CMAKE_MAKE_PROGRAM} -C samples/wrapper
+#    INSTALL_COMMAND ""
+#    EXCLUDE_FROM_ALL true
+#  )
 endif ()
 install(PROGRAMS ${BOINC_WRAPPER} DESTINATION server/skel)
 
 ### radamsa ###
 set(RADAMSA_URL https://gitlab.com/akihe/radamsa.git)
-ExternalProject_Add(radamsa
-  GIT_REPOSITORY ${RADAMSA_URL}
-  BUILD_IN_SOURCE true
-  CONFIGURE_COMMAND ""
-  BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
-  INSTALL_COMMAND ""
-  EXCLUDE_FROM_ALL true
-)
-ExternalProject_Get_Property(radamsa SOURCE_DIR)
+#ExternalProject_Add(radamsa
+#  GIT_REPOSITORY ${RADAMSA_URL}
+#  BUILD_IN_SOURCE true
+#  CONFIGURE_COMMAND ""
+#  BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
+#  INSTALL_COMMAND ""
+#  EXCLUDE_FROM_ALL true
+#)
+#ExternalProject_Get_Property(radamsa SOURCE_DIR)
 install(DIRECTORY ${SOURCE_DIR}/bin DESTINATION radamsa USE_SOURCE_PERMISSIONS)
 install(FILES ${SOURCE_DIR}/LICENCE DESTINATION radamsa)
 
@@ -108,3 +93,4 @@ include (CPack)
 add_custom_target(release
   ${CMAKE_MAKE_PROGRAM} package)
 add_dependencies(release radamsa boinc-wrapper)
+
