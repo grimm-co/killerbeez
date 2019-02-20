@@ -15,7 +15,7 @@ target_compile_definitions(fuzzer PUBLIC DRIVER_NO_IMPORT)
 target_compile_definitions(fuzzer PUBLIC INSTRUMENTATION_NO_IMPORT)
 target_compile_definitions(fuzzer PUBLIC MUTATOR_NO_IMPORT)
 
-target_link_libraries(fuzzer utils)
+target_link_libraries(fuzzer)
 target_link_libraries(fuzzer jansson)
 if (WIN32)
   target_link_libraries(fuzzer Shlwapi)  # utils needs Shlwapi
