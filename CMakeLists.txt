@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 2.8.8)
-include(ExternalProject)
 project (killerbeez)
+include(ExternalProject)
 
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -D_DEBUG")	# for _DEBUG ifdefs in utils.h
 
