@@ -1,7 +1,7 @@
 #!/bin/bash
 if [[ "$1" == "kill" ]]; then
 	# Clean out the old
-	rm -fR killerbeez build
+	rm -fR killerbeez
 fi
 
 # Check out the new (if needed)
