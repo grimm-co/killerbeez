@@ -8,6 +8,7 @@ source_group("Library Sources" FILES ${NI_SRC})
 
 add_library(ni_mutator SHARED ${NI_SRC}
   $<TARGET_OBJECTS:mutators_object> $<TARGET_OBJECTS:jansson_object>)
+target_link_libraries(ni_mutator utils)
 target_compile_definitions(ni_mutator PUBLIC NI_MUTATOR_EXPORTS)
 target_compile_definitions(ni_mutator PUBLIC MUTATORS_NO_IMPORT)
 target_compile_definitions(ni_mutator PUBLIC UTILS_NO_IMPORT)

@@ -3,6 +3,7 @@ project (killerbeez)
 include(ExternalProject)
 
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -D_DEBUG")	# for _DEBUG ifdefs in utils.h
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 if (UNIX)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wfatal-errors") # quit after first error

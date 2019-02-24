@@ -8,6 +8,7 @@ set(MUTATORS_SRC
 source_group("Library Sources" FILES ${MUTATORS_SRC})
 
 add_library(mutators SHARED ${MUTATORS_SRC} $<TARGET_OBJECTS:jansson_object>)
+target_link_libraries(mutators utils)
 target_compile_definitions(mutators PUBLIC MUTATORS_EXPORTS)
 target_compile_definitions(mutators PUBLIC UTILS_NO_IMPORT)
 target_compile_definitions(mutators PUBLIC JANSSON_NO_IMPORT)

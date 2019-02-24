@@ -8,6 +8,7 @@ source_group("Library Sources" FILES ${BIT_FLIP_SRC})
 
 add_library(bit_flip_mutator SHARED ${BIT_FLIP_SRC}
   $<TARGET_OBJECTS:mutators_object> $<TARGET_OBJECTS:jansson_object>)
+target_link_libraries(bit_flip_mutator utils)
 target_compile_definitions(bit_flip_mutator PUBLIC BF_MUTATOR_EXPORTS)
 target_compile_definitions(bit_flip_mutator PUBLIC MUTATORS_NO_IMPORT)
 target_compile_definitions(bit_flip_mutator PUBLIC UTILS_NO_IMPORT)

@@ -8,6 +8,7 @@ source_group("Library Sources" FILES ${AFL_SRC})
 
 add_library(afl_mutator SHARED ${AFL_SRC}
   $<TARGET_OBJECTS:mutators_object> $<TARGET_OBJECTS:jansson_object>)
+target_link_libraries(afl_mutator utils)
 target_compile_definitions(afl_mutator PUBLIC AFL_MUTATOR_EXPORTS)
 target_compile_definitions(afl_mutator PUBLIC MUTATORS_NO_IMPORT)
 target_compile_definitions(afl_mutator PUBLIC UTILS_NO_IMPORT)

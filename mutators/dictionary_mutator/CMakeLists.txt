@@ -8,6 +8,7 @@ source_group("Library Sources" FILES ${DICTIONARY_SRC})
 
 add_library(dictionary_mutator SHARED ${DICTIONARY_SRC}
   $<TARGET_OBJECTS:mutators_object> $<TARGET_OBJECTS:jansson_object>)
+target_link_libraries(dictionary_mutator utils)
 target_compile_definitions(dictionary_mutator PUBLIC DICTIONARY_MUTATOR_EXPORTS)
 target_compile_definitions(dictionary_mutator PUBLIC MUTATORS_NO_IMPORT)
 target_compile_definitions(dictionary_mutator PUBLIC UTILS_NO_IMPORT)

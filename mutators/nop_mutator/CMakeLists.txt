@@ -8,6 +8,7 @@ source_group("Library Sources" FILES ${NOP_SRC})
 
 add_library(nop_mutator SHARED ${NOP_SRC}
   $<TARGET_OBJECTS:mutators_object> $<TARGET_OBJECTS:jansson_object>)
+target_link_libraries(nop_mutator utils)
 target_compile_definitions(nop_mutator PUBLIC NOP_MUTATOR_EXPORTS)
 target_compile_definitions(nop_mutator PUBLIC MUTATORS_NO_IMPORT)
 target_compile_definitions(nop_mutator PUBLIC UTILS_NO_IMPORT)

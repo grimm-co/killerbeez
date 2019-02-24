@@ -8,6 +8,7 @@ source_group("Library Sources" FILES ${RADAMSA_SRC})
 
 add_library(radamsa_mutator SHARED ${RADAMSA_SRC}
   $<TARGET_OBJECTS:mutators_object> $<TARGET_OBJECTS:jansson_object>)
+target_link_libraries(radamsa_mutator utils)
 target_compile_definitions(radamsa_mutator PUBLIC RADAMSA_MUTATOR_EXPORTS)
 target_compile_definitions(radamsa_mutator PUBLIC MUTATORS_NO_IMPORT)
 target_compile_definitions(radamsa_mutator PUBLIC UTILS_NO_IMPORT)

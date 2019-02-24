@@ -8,6 +8,7 @@ source_group("Library Sources" FILES ${ARITHMETIC_SRC})
 
 add_library(arithmetic_mutator SHARED ${ARITHMETIC_SRC}
   $<TARGET_OBJECTS:mutators_object> $<TARGET_OBJECTS:jansson_object>)
+target_link_libraries(arithmetic_mutator utils)
 target_compile_definitions(arithmetic_mutator PUBLIC ARITHMETIC_MUTATOR_EXPORTS)
 target_compile_definitions(arithmetic_mutator PUBLIC MUTATORS_NO_IMPORT)
 target_compile_definitions(arithmetic_mutator PUBLIC UTILS_NO_IMPORT)

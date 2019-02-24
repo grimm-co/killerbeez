@@ -8,6 +8,7 @@ source_group("Library Sources" FILES ${HAVOC_SRC})
 
 add_library(havoc_mutator SHARED ${HAVOC_SRC}
   $<TARGET_OBJECTS:mutators_object> $<TARGET_OBJECTS:jansson_object>)
+target_link_libraries(havoc_mutator utils)
 target_compile_definitions(havoc_mutator PUBLIC HAVOC_MUTATOR_EXPORTS)
 target_compile_definitions(havoc_mutator PUBLIC MUTATORS_NO_IMPORT)
 target_compile_definitions(havoc_mutator PUBLIC UTILS_NO_IMPORT)

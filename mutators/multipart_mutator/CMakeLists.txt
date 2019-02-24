@@ -8,6 +8,7 @@ source_group("Library Sources" FILES ${MULTIPART_SRC})
 
 add_library(multipart_mutator SHARED ${MULTIPART_SRC}
   $<TARGET_OBJECTS:mutators_object> $<TARGET_OBJECTS:jansson_object>)
+target_link_libraries(multipart_mutator utils)
 target_compile_definitions(multipart_mutator PUBLIC MULTIPART_MUTATOR_EXPORTS)
 target_compile_definitions(multipart_mutator PUBLIC MUTATORS_NO_IMPORT)
 target_compile_definitions(multipart_mutator PUBLIC UTILS_NO_IMPORT)

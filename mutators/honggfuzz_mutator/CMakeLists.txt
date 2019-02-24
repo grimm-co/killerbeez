@@ -8,6 +8,7 @@ source_group("Library Sources" FILES ${HONGGFUZZ_SRC})
 
 add_library(honggfuzz_mutator SHARED ${HONGGFUZZ_SRC}
   $<TARGET_OBJECTS:mutators_object> $<TARGET_OBJECTS:jansson_object>)
+target_link_libraries(honggfuzz_mutator utils)
 target_compile_definitions(honggfuzz_mutator PUBLIC HONGGFUZZ_MUTATOR_EXPORTS)
 target_compile_definitions(honggfuzz_mutator PUBLIC MUTATORS_NO_IMPORT)
 target_compile_definitions(honggfuzz_mutator PUBLIC UTILS_NO_IMPORT)

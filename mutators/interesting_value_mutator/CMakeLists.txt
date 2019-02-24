@@ -8,6 +8,7 @@ source_group("Library Sources" FILES ${INTERESTING_VALUE_SRC})
 
 add_library(interesting_value_mutator SHARED ${INTERESTING_VALUE_SRC}
   $<TARGET_OBJECTS:mutators_object> $<TARGET_OBJECTS:jansson_object>)
+target_link_libraries(interesting_value_mutator utils)
 target_compile_definitions(interesting_value_mutator PUBLIC INTERESTING_VALUE_MUTATOR_EXPORTS)
 target_compile_definitions(interesting_value_mutator PUBLIC MUTATORS_NO_IMPORT)
 target_compile_definitions(interesting_value_mutator PUBLIC UTILS_NO_IMPORT)

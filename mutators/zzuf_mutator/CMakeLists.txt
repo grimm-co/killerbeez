@@ -8,6 +8,7 @@ source_group("Library Sources" FILES ${ZZUF_SRC})
 
 add_library(zzuf_mutator SHARED ${ZZUF_SRC}
   $<TARGET_OBJECTS:mutators_object> $<TARGET_OBJECTS:jansson_object>)
+target_link_libraries(zzuf_mutator utils)
 target_compile_definitions(zzuf_mutator PUBLIC ZZUF_MUTATOR_EXPORTS)
 target_compile_definitions(zzuf_mutator PUBLIC MUTATORS_NO_IMPORT)
 target_compile_definitions(zzuf_mutator PUBLIC UTILS_NO_IMPORT)
