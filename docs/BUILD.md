@@ -103,18 +103,14 @@ sudo dnf install llvm clang llvm-devel libtool bison flex glib2-devel glibc-deve
 
 ### Installation
 
-Clone the killerbeez, killerbeez-mutators and killerbeez-utils repos.
+Clone the killerbeez repo
 
 ```
-WORKDIR=~/killerbeez
-mkdir $WORKDIR
-cd $WORKDIR
 git clone https://github.com/grimm-co/killerbeez.git
-git clone https://github.com/grimm-co/killerbeez-mutators.git
-git clone https://github.com/grimm-co/killerbeez-utils.git
+cd killerbeez
 
 # Make a build directory and compile the code.
-mkdir build; cd build; cmake ../killerbeez; make
+mkdir build; cd build; cmake ..; make
 ```
 
 If everything compiled, the fuzzer and other Killerbeez
