@@ -14,7 +14,7 @@ endif (APPLE)
 
 if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE Debug) 	# for gcc -g
-	message("WARNING: Building with debug options; performance will be impacted. Try cmake -DCMAKE_BUILD_TYPE=Release ../killerbeez")
+	message("WARNING: Building with debug options; performance will be impacted. Try cmake -DCMAKE_BUILD_TYPE=Release ..")
 endif()
 
 
@@ -29,7 +29,6 @@ endif (WIN32)
 SET( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${BUILD_DIRECTORY}/killerbeez/ )
 SET( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${BUILD_DIRECTORY}/killerbeez/ )
 SET( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${BUILD_DIRECTORY}/killerbeez/ )
-LINK_DIRECTORIES(${BUILD_DIRECTORY}/killerbeez/) # give linker path to utils
 
 # Make linux builds relocatable
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH 1)

@@ -111,22 +111,22 @@ function find_llvm_config {
 echo "Running tests - instrumentation - afl - building"
 
 # Build afl-gcc
-make -C ../../killerbeez/afl_progs/
+make -C ../../afl_progs/
 generic_error $? "make failed" "Failed to build afl-gcc"
 
 # Build afl-clang-fast
 LLVM_CONFIG=$(find_llvm_config)
-make -C ../../killerbeez/afl_progs/llvm_mode/ LLVM_CONFIG=$LLVM_CONFIG
+make -C ../../afl_progs/llvm_mode/ LLVM_CONFIG=$LLVM_CONFIG
 generic_error $? "make failed" "Failed to build afl-clang-fast"
 
 # Build afl-qemu-trace
-pushd ../../killerbeez/afl_progs/qemu_mode/
+pushd ../../afl_progs/qemu_mode/
 ./build_qemu_support.sh
 generic_error $? "make failed" "Failed to build afl-qemu-trace"
 popd
 
 # Build afl test programs
-afl_testdir="../../killerbeez/corpus/afl_test/"
+afl_testdir="../../corpus/afl_test/"
 make -C $afl_testdir AFL_PATH=../../afl_progs/
 generic_error $? "make failed" "Failed to build afl test programs"
 
