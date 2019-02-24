@@ -37,7 +37,7 @@ for example `C:\killerbeez`
 ```
 mkdir C:\killerbeez
 set WORKDIR=C:/killerbeez
-:: We'll use forward slashes for minimal escaping, Windows doesn't care
+:: We'll use forward slashes (Windows doesn't care) to avoid escaping backslashes
 ```
 
 4. Build [Radamsa](https://gitlab.com/akihe/radamsa) (optional).
@@ -67,8 +67,6 @@ is not included in the 7.0.0-RC1 release.
     ```
     cd %WORKDIR%
     git clone https://github.com/grimm-co/killerbeez.git
-    git clone https://github.com/grimm-co/killerbeez-mutators.git
-    git clone https://github.com/grimm-co/killerbeez-utils.git
     ```
 
 7. Build Killerbeez
@@ -80,7 +78,7 @@ In it, the compiled executables and libraries from all three projects will
 be found in folders named after the architecture (e.g. x64) and build type
 (e.g. Debug).
   + The fuzzer.exe executable can be found at
-`%WORKDIR%/build/x64/Debug/killerbeez/fuzzer.exe`
+`%WORKDIR%/killerbeez/build/x64/Debug/killerbeez/fuzzer.exe`
 
 ## Linux and Mac
 
