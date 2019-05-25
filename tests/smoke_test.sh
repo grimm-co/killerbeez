@@ -132,7 +132,7 @@ generic_error $? "make failed" "Failed to build afl-qemu-trace"
 popd
 
 # Build afl test programs
-afl_testdir="../../corpus/afl_test/"
+afl_testdir="../../corpus/afl_test"
 make -C $afl_testdir AFL_PATH=../../afl_progs/
 generic_error $? "make failed" "Failed to build afl test programs"
 
@@ -141,7 +141,8 @@ echo "Running tests - instrumentation - afl - testing"
 for test_file in test test32 test-qemu test-fast test-fast-deferred test-fast-persist test-fast-persist-deferred; do
 	expected=2
 	# Unfortunately the persistence mode tests overly report new paths, so we need to adjust the count for them
-	if [ "$test_file" = "test-fast-persist" -o "$test_file" = "test-fast-persist-deferred" ]; then
+	if [ "$test_file" = "test-fast-persist" -o "$test_file" = "test-qemu" \
+             -o "$test_file" = "test-fast-persist-deferred" -o "$test_file" = "test-fast" ]; then
 		expected=3
 	fi
 
@@ -157,12 +158,13 @@ for test_file in test test32 test-qemu test-fast test-fast-deferred test-fast-pe
 		inst_options="$inst_options\"persistence_max_cnt\":5"
 	fi
 	if [ "$test_file" = "test-qemu" ]; then
-		inst_options="$inst_options\"qemu_mode\":1"
+		inst_options="$inst_options\"qemu_mode\":1,\"qemu_path\":\"../../afl_progs/afl-qemu-trace\""
 	fi
 	inst_options="$inst_options}"
 
 	# Run the test and check the number of new paths found
-	output=$(./fuzzer stdin afl bit_flip -n 1000 -sf test0 -d "{\"path\":\"$afl_testdir/$test_file\"}" $inst_options)
+	echo "Running bit_flip with seed file test0 on $afl_testdir/$test_file"
+	output=$(./fuzzer stdin afl bit_flip -n 127 -sf test0 -d "{\"path\":\"$afl_testdir/$test_file\"}" $inst_options)
 	test_linux_error $? "$output" bit_flip "AFL instrumentation with $test_file new path test"
 	no_warnings_no_errors "$output" bit_flip
 	new_path_count=$(string_count "Found new_paths" "$output")
