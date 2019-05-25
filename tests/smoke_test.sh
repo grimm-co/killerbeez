@@ -1,4 +1,10 @@
 #!/bin/bash
+#
+# Run this from the directory above the killerbeez checkout
+#
+# Dependencies:
+# sudo apt install build-essential cmake clang libtool-bin automake bison flex libglib2.0-dev libc6-dev-i386
+
 if [[ "$1" == "kill" ]]; then
 	# Clean out the old
 	rm -fR killerbeez
@@ -156,7 +162,7 @@ for test_file in test test32 test-qemu test-fast test-fast-deferred test-fast-pe
 	inst_options="$inst_options}"
 
 	# Run the test and check the number of new paths found
-	output=$(./fuzzer stdin afl bit_flip -n 10 -sf test0 -d "{\"path\":\"$afl_testdir/$test_file\"}" $inst_options)
+	output=$(./fuzzer stdin afl bit_flip -n 1000 -sf test0 -d "{\"path\":\"$afl_testdir/$test_file\"}" $inst_options)
 	test_linux_error $? "$output" bit_flip "AFL instrumentation with $test_file new path test"
 	no_warnings_no_errors "$output" bit_flip
 	new_path_count=$(string_count "Found new_paths" "$output")
