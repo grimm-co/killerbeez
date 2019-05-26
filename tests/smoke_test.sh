@@ -139,11 +139,13 @@ generic_error $? "make failed" "Failed to build afl test programs"
 # Run the test programs with various different AFL based instrumentations
 echo "Running tests - instrumentation - afl - testing"
 for test_file in test test32 test-qemu test-fast test-fast-deferred test-fast-persist test-fast-persist-deferred; do
+###for test_file in test test32 test-qemu test-fast test-fast-persist test-fast-persist-deferred; do
 	expected=2
 	# Unfortunately the persistence mode tests overly report new paths, so we need to adjust the count for them
-	if [ "$test_file" = "test-fast-persist" -o "$test_file" = "test-qemu" \
-             -o "$test_file" = "test-fast-persist-deferred" -o "$test_file" = "test-fast" ]; then
+	if [ "$test_file" = "test-qemu" -o "$test_file" = "test-fast" -o "$test_file" = "test-fast-deferred" ]; then
 		expected=3
+	elif [ "$test_file" = "test-fast-persist" -o "$test_file" = "test-fast-persist-deferred" ]; then
+		expected=4
 	fi
 
 	# Build the instrumentation options
@@ -169,7 +171,8 @@ for test_file in test test32 test-qemu test-fast test-fast-deferred test-fast-pe
 	no_warnings_no_errors "$output" bit_flip
 	new_path_count=$(string_count "Found new_paths" "$output")
 	test $new_path_count -eq $expected
-	generic_error $? "AFL new paths test failed" "AFL instrumentation with $test_file failed to detect new paths"
+	generic_error $? "AFL new paths test failed" \
+		"AFL instrumentation with $test_file failed to detect new paths (found: $new_path_count expected: $expected)"
 
 	# Run the test again and make sure it finds a crashing input
 	output=$(./fuzzer stdin afl bit_flip -n 100 -sf test1 -d "{\"path\":\"$afl_testdir/$test_file\"}" $inst_options)
