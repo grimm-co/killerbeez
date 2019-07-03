@@ -109,12 +109,16 @@ Clone the killerbeez, killerbeez-mutators and killerbeez-utils repos.
 WORKDIR=~/killerbeez
 mkdir $WORKDIR
 cd $WORKDIR
-git clone https://github.com/grimm-co/killerbeez.git
+# the --recursive is needed to check out submodules
+git clone --recursive https://github.com/grimm-co/killerbeez.git
+# already checked out the repo and need to add the --recursive part?
+# cd $WORKDIR/killerbeez; git submodule update --init --recursive
 git clone https://github.com/grimm-co/killerbeez-mutators.git
 git clone https://github.com/grimm-co/killerbeez-utils.git
 
 # Make a build directory and compile the code.
-mkdir build; cd build; cmake ../killerbeez; make
+mkdir build; cd build; cmake ../killerbeez; make radamsa all
+# radamsa isn't in "all" by default because of Windows
 ```
 
 If everything compiled, the fuzzer and other Killerbeez
