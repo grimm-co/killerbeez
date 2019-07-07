@@ -24,7 +24,7 @@
 #elif defined(__cplusplus)
 #define UTILS_API extern "C" __declspec(dllimport)
 #else
-#define UTILS_API __declspec(dllimport)
+#define UTILS_API
 #endif
 #else //_WIN32
 #define UTILS_API
