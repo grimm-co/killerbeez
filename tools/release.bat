@@ -38,11 +38,13 @@ call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary
 
 call :compile Killerbeez || exit /b 1
 
-set oldpath=%path%
-set path=C:\cygwin\bin\;%oldpath%
-make -C radamsa clean || exit /b 1
-make -C radamsa || exit /b 1
-set path=%oldpath%
+if exist C:\cygwin\bin (
+  set oldpath=%path%
+  set path=C:\cygwin\bin\;%oldpath%
+  make -C radamsa clean || exit /b 1
+  make -C radamsa || exit /b 1
+  set path=%oldpath%
+)
 
 call :package X86
 
@@ -50,11 +52,13 @@ call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary
 
 call :compile Killerbeez || exit /b 1
 
-set oldpath=%path%
-set path=C:\cygwin64\bin\;%oldpath%
-make -C radamsa clean || exit /b 1
-make -C radamsa || exit /b 1
-set path=%oldpath%
+if exist C:\cygwin64\bin (
+  set oldpath=%path%
+  set path=C:\cygwin64\bin\;%oldpath%
+  make -C radamsa clean || exit /b 1
+  make -C radamsa || exit /b 1
+  set path=%oldpath%
+)
 
 call :package x64
 
