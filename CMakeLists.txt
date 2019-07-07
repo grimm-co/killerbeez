@@ -21,7 +21,7 @@ endif()
 
 if (WIN32)
 	# windows/visual studio build convention eg build/X86/Debug
-	SET ( BUILD_DIRECTORY ${CMAKE_SOURCE_DIR}/../build/${CMAKE_C_COMPILER_ARCHITECTURE_ID}/${CMAKE_BUILD_TYPE} )
+	SET ( BUILD_DIRECTORY ${CMAKE_SOURCE_DIR}/build/${CMAKE_C_COMPILER_ARCHITECTURE_ID}/${CMAKE_BUILD_TYPE} )
 	add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_DEPRECATION_DISABLE -D_CRT_NONSTDC_NO_DEPRECATE)
 else (WIN32)
 	SET ( BUILD_DIRECTORY ${CMAKE_BINARY_DIR} )
@@ -104,7 +104,7 @@ SET(CPACK_GENERATOR "ZIP")
 SET(CPACK_PACKAGE_FILE_NAME "killerbeez-${CMAKE_SYSTEM_NAME}")
 SET(CPACK_SOURCE_GENERATOR "ZIP")
 SET(CPACK_SOURCE_IGNORE_FILES "/build/;/server/boinc/")
-SET(CPACK_SOURCE_INSTALLED_DIRECTORIES "${CMAKE_SOURCE_DIR};killerbeez;${CMAKE_SOURCE_DIR}/../killerbeez-mutators;killerbeez-mutators;${CMAKE_SOURCE_DIR}/../killerbeez-utils;killerbeez-utils")
+SET(CPACK_SOURCE_INSTALLED_DIRECTORIES "${CMAKE_SOURCE_DIR};killerbeez")
 include (CPack)
 
 # Special `release` target to ensure boinc-wrapper is built before package
