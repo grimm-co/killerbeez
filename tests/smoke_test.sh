@@ -12,7 +12,7 @@ fi
 
 # Check out the new (if needed)
 if [[ ! -d killerbeez ]]; then
-	git clone https://github.com/grimm-co/killerbeez
+	git clone --recursive https://github.com/grimm-co/killerbeez
 fi
 
 function generic_error {
