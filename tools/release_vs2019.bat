@@ -1,7 +1,5 @@
 REM Meant to be run by CI from the root directory of one of the repos
-REM Usage: cd Killerbeez; tools\release
-REM      : cd killerbeez-mutators; ..\Killerbeez\tools\release
-REM      : cd killerbeez-utils; ..\Killerbeez\tools\release
+REM Usage: cd killerbeez; tools\release
 
 if "%RADAMSA_URL%" == "" (
   set RADAMSA_URL=https://gitlab.com/akihe/radamsa.git
@@ -12,9 +10,6 @@ if "%DYNAMORIO_URL%" == "" (
 if "%CI_PROJECT_DIR%" == "" (
   set CI_PROJECT_DIR=%cd%
 )
-
-REM Change to the root of the KILLERBEEZ hierarchy
-pushd ..
 
 rmdir /s /q build
 
@@ -34,30 +29,31 @@ if not exist dynamorio (
   del dynamorio.zip
 )
 
-call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x86
-
-call :compile Killerbeez || exit /b 1
+call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" x86
+call :compile || exit /b 1
 
 if exist C:\cygwin\bin (
-  set oldpath=%path%
-  set path=C:\cygwin\bin\;%oldpath%
+  set "oldpath=%path%"
+  set "path=C:\cygwin\bin\;%oldpath%"
   make -C radamsa clean || exit /b 1
   make -C radamsa || exit /b 1
-  set path=%oldpath%
+  set "path=%oldpath%"
+  set "oldpath=%path%"
 )
 
 call :package X86
 
-call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
+call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
 
-call :compile Killerbeez || exit /b 1
+call :compile || exit /b 1
 
 if exist C:\cygwin64\bin (
-  set oldpath=%path%
-  set path=C:\cygwin64\bin\;%oldpath%
+  set "oldpath=%path%"
+  set "path=C:\cygwin64\bin\;%oldpath%"
   make -C radamsa clean || exit /b 1
   make -C radamsa || exit /b 1
-  set path=%oldpath%
+  set "path=%oldpath%"
+  set "oldpath=%path%"
 )
 
 call :package x64
@@ -70,9 +66,9 @@ rmdir /s /q cmaketmp
 mkdir cmaketmp
 cd cmaketmp
 REM Make Ninja build files
-"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -G "Ninja" -DCMAKE_CXX_COMPILER="cl.exe"  -DCMAKE_C_COMPILER="cl.exe"  -DCMAKE_BUILD_TYPE="Release" -DCMAKE_MAKE_PROGRAM="C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe" "..\%1" || exit /b 1
+"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -G "Ninja" -DCMAKE_CXX_COMPILER="cl.exe"  -DCMAKE_C_COMPILER="cl.exe"  -DCMAKE_BUILD_TYPE="Release" -DCMAKE_MAKE_PROGRAM="C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe" ".." || exit /b 1
 REM Run Ninja to build
-"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe" || exit /b 1
+"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe" || exit /b 1
 cd ..
 rmdir /s /q cmaketmp
 exit /b 0
@@ -94,10 +90,16 @@ mkdir %distdir%\radamsa
 xcopy /s /i radamsa\bin %distdir%\radamsa\bin
 xcopy radamsa\LICENCE %distdir%\radamsa
 if "%platform%" == "x64" (
-  xcopy C:\cygwin64\bin\cygwin1.dll %distdir%\radamsa\bin
+  if exist C:\cygwin64\bin\cygwin1.dll (
+    xcopy C:\cygwin64\bin\cygwin1.dll %distdir%\radamsa\bin
+  )
 ) else (
-  xcopy C:\cygwin\bin\cygwin1.dll %distdir%\radamsa\bin
-  xcopy C:\cygwin\bin\cyggcc_s-1.dll %distdir%\radamsa\bin
+  if exist C:\cygwin\bin\cygwin1.dll (
+    xcopy C:\cygwin\bin\cygwin1.dll %distdir%\radamsa\bin
+  )
+  if exist C:\cygwin\bin\cyggcc_s-1.dll (
+    xcopy C:\cygwin\bin\cyggcc_s-1.dll %distdir%\radamsa\bin
+  )
 )
 
 mkdir %distdir%\dynamorio
