@@ -79,7 +79,6 @@ if (UNIX)
     BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
     COMMAND ${CMAKE_MAKE_PROGRAM} -C samples/wrapper
     INSTALL_COMMAND ""
-    EXCLUDE_FROM_ALL true
   )
 endif ()
 install(PROGRAMS ${BOINC_WRAPPER} DESTINATION server/skel)

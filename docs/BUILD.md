@@ -104,11 +104,13 @@ sudo dnf install llvm clang llvm-devel libtool bison flex glib2-devel glibc-deve
 Clone the killerbeez repo
 
 ```
-git clone https://github.com/grimm-co/killerbeez.git
+# the --recursive is needed to check out submodules
+git clone --recursive https://github.com/grimm-co/killerbeez.git
 cd killerbeez
 
 # Make a build directory and compile the code.
-mkdir build; cd build; cmake ..; make
+mkdir build; cd build; cmake ..; make radamsa all
+# radamsa isn't in "all" by default because of Windows
 ```
 
 If everything compiled, the fuzzer and other Killerbeez
