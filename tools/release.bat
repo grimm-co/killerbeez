@@ -1,5 +1,5 @@
 REM Meant to be run by CI from the root directory of one of the repos
-REM Usage: cd Killerbeez; tools\release
+REM Usage: cd killerbeez; tools\release
 
 if "%RADAMSA_URL%" == "" (
   set RADAMSA_URL=https://gitlab.com/akihe/radamsa.git
@@ -29,8 +29,12 @@ if not exist dynamorio (
   del dynamorio.zip
 )
 
+REM On some systems, vcvarsall.bat will change your working directory
+REM To work around this infuriating bug, pushd and popd are used
+pushd .
 call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x86
-call :compile Killerbeez || exit /b 1
+popd
+call :compile || exit /b 1
 
 if exist C:\cygwin\bin (
   set "oldpath=%path%"
@@ -43,8 +47,10 @@ if exist C:\cygwin\bin (
 
 call :package X86
 
+pushd .
 call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
-call :compile Killerbeez || exit /b 1
+popd
+call :compile || exit /b 1
 
 if exist C:\cygwin64\bin (
   set "oldpath=%path%"
@@ -89,10 +95,16 @@ mkdir %distdir%\radamsa
 xcopy /s /i radamsa\bin %distdir%\radamsa\bin
 xcopy radamsa\LICENCE %distdir%\radamsa
 if "%platform%" == "x64" (
-  xcopy C:\cygwin64\bin\cygwin1.dll %distdir%\radamsa\bin
+  if exist C:\cygwin64\bin\cygwin1.dll (
+    xcopy C:\cygwin64\bin\cygwin1.dll %distdir%\radamsa\bin
+  )
 ) else (
-  xcopy C:\cygwin\bin\cygwin1.dll %distdir%\radamsa\bin
-  xcopy C:\cygwin\bin\cyggcc_s-1.dll %distdir%\radamsa\bin
+  if exist C:\cygwin\bin\cygwin1.dll (
+    xcopy C:\cygwin\bin\cygwin1.dll %distdir%\radamsa\bin
+  )
+  if exist C:\cygwin\bin\cyggcc_s-1.dll (
+    xcopy C:\cygwin\bin\cyggcc_s-1.dll %distdir%\radamsa\bin
+  )
 )
 
 mkdir %distdir%\dynamorio

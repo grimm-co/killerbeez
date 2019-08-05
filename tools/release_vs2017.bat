@@ -71,12 +71,9 @@ rmdir /s /q cmaketmp
 mkdir cmaketmp
 cd cmaketmp
 REM Make Ninja build files
-echo "About to call cmake"
 "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -G "Ninja" -DCMAKE_CXX_COMPILER="cl.exe"  -DCMAKE_C_COMPILER="cl.exe"  -DCMAKE_BUILD_TYPE="Release" -DCMAKE_MAKE_PROGRAM="C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe" ".." || exit /b 1
 REM Run Ninja to build
-echo "About to call make"
 "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe" || exit /b 1
-echo "Done calling make"
 cd ..
 rmdir /s /q cmaketmp
 exit /b 0
