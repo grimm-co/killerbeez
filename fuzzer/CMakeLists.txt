@@ -7,7 +7,8 @@ include_directories (${CMAKE_SOURCE_DIR}/mutator/)
 include_directories (${CMAKE_SOURCE_DIR}/utils/)
 
 add_library(utils ${CMAKE_SOURCE_DIR}/utils/utils.c ${CMAKE_SOURCE_DIR}/utils/mutator_factory.c)
-# Utils requires -lpthread
+# Utils requires -ldl and -lpthread
+target_link_libraries(utils dl)
 find_package(Threads REQUIRED)
 if(THREADS_HAVE_PTHREAD_ARG)
   set_property(TARGET utils PROPERTY COMPILE_OPTIONS "-pthread")
