@@ -37,8 +37,12 @@ popd
 call :compile || exit /b 1
 
 if exist C:\cygwin\bin (
+  set "oldpath=%path%"
+  set "path=C:\cygwin\bin\;%oldpath%"
   make -C radamsa clean || exit /b 1
   make -C radamsa || exit /b 1
+  set "path=%oldpath%"
+  set "oldpath=%path%"
 )
 
 call :package X86
@@ -49,8 +53,12 @@ popd
 call :compile || exit /b 1
 
 if exist C:\cygwin64\bin (
+  set "oldpath=%path%"
+  set "path=C:\cygwin64\bin\;%oldpath%"
   make -C radamsa clean || exit /b 1
   make -C radamsa || exit /b 1
+  set "path=%oldpath%"
+  set "oldpath=%path%"
 )
 
 call :package x64
