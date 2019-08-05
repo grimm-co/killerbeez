@@ -44,7 +44,6 @@ if exist C:\cygwin\bin (
 call :package X86
 
 call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
-
 call :compile || exit /b 1
 
 if exist C:\cygwin64\bin (

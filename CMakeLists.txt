@@ -68,7 +68,7 @@ if (WIN32)
   SET(BOINC_WRAPPER C:/killerbeez/wrapper_26014_windows_x86_64.exe)
 endif ()
 # If on Linux, we can build our own BOINC wrapper
-if (UNIX)
+if (UNIX AND (NOT APPLE))
   SET(BOINC_WRAPPER ${CMAKE_SOURCE_DIR}/server/boinc/samples/wrapper/wrapper)
   ExternalProject_Add(boinc-wrapper
     SOURCE_DIR ${CMAKE_SOURCE_DIR}/server/boinc
@@ -109,5 +109,13 @@ include (CPack)
 # Special `release` target to ensure boinc-wrapper is built before package
 add_custom_target(release
   ${CMAKE_MAKE_PROGRAM} package)
-add_dependencies(release radamsa boinc-wrapper)
-
+if (UNIX)
+  if (APPLE)
+    # macOS can't build the boinc wrapper right now, maybe we can patch
+    # things up in the future to make this possible, but for now we're
+    # just not building it.
+    add_dependencies(release radamsa)
+  else ()
+    add_dependencies(release radamsa boinc-wrapper)
+  endif ()
+endif ()
