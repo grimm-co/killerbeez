@@ -1,0 +1,15 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+Vagrant.configure("2") do |config|
+  config.vm.box = "generic/fedora30"
+  hostname = "kb-fedora-30"
+
+  # Settings for Virtualbox
+  config.vm.provider "virtualbox" do |vb|
+     vb.linked_clone = true
+     vb.name = hostname
+  end
+
+  config.vm.provision "shell", path: "dependencies.sh", name: "dependencies"
+  config.vm.provision "shell", path: "setup.sh", privileged: false
+end
