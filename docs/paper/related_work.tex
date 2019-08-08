@@ -5,12 +5,17 @@ and so forth.
 Google's OSS-Fuzz\cite{ossfuzz} addresses scalability by running many fuzzers
 in parallel, as well as re-using existing code by leveraging tools like
 Honggfuzz to handle the actual fuzzing. The core fuzzing component of OSS-Fuzz,
-CluserFuzz, is unpublished and therefore unavailable to anyone outside of
-Google.  Another difference is that OSS-Fuzz requires source code for the
-target software, and also requires that tests be written to integrate it
+CluserFuzz, was unpublished and therefore unavailable to anyone outside of
+Google for the first eight years.  On February 7, 2019, ClusterFuzz was released
+under the Apache Licence (v2).\cite{clusterfuzzrelease}  Differences which still
+remain between OSS-Fuzz and Killerbeez include OSS-Fuzz requiring source code for the
+target software, and requiring that tests be written to integrate it
 into the overall system. This adds efficiency, as the test cases can eliminate
 code like GUI libraries, which is not the real target of the fuzzing, however
-it is unable to test closed source software.
+it is unable to test closed source software.  Had Clusterfuzz been open source
+in 2017, the authors likely would have attempted to extend OSS-Fuzz to also be
+able to fuzz closed source software and run on computers the user controls
+instead of using Google's cloud service.
 
 \AFL{}\cite{afl} is an open source fuzzer that uses coverage data and genetic
 algorithms to automatically discover interesting test cases in a target.  \AFL{}
