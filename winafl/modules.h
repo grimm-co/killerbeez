@@ -41,8 +41,8 @@ Copied from the DyanmoRIO project, http://dynamorio.org/
 #ifndef CLIENTS_COMMON_MODULES_H_
 #define CLIENTS_COMMON_MODULES_H_
 
-#include "dr_api.h"
-#include "drvector.h"
+#include <dr_api.h>
+#include <drvector.h>
 
 #define NUM_GLOBAL_MODULE_CACHE 8
 

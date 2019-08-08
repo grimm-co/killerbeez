@@ -11,13 +11,30 @@ if (WIN32)
 		${INSTRUMENTATION_SRC}
 		${PROJECT_SOURCE_DIR}/debug_instrumentation.c
 		${PROJECT_SOURCE_DIR}/dynamorio_instrumentation.c
+		${PROJECT_SOURCE_DIR}/wingui.c
 	)
-else (WIN32)
+else ()
 	set(INSTRUMENTATION_SRC
 		${INSTRUMENTATION_SRC}
 		${PROJECT_SOURCE_DIR}/return_code_instrumentation.c
+		${PROJECT_SOURCE_DIR}/afl_instrumentation.c
 	)
-endif (WIN32)
+
+	if (NOT APPLE)
+		set(INSTRUMENTATION_SRC
+			${INSTRUMENTATION_SRC}
+			${PROJECT_SOURCE_DIR}/linux_ipt_instrumentation.c
+		)
+
+		set(FORKSERVER_SRC
+			${PROJECT_SOURCE_DIR}/forkserver.c
+			${PROJECT_SOURCE_DIR}/forkserver_hooking.c
+		)
+
+		add_library(forkserver SHARED ${FORKSERVER_SRC})
+		target_link_libraries(forkserver dl)
+	endif ()
+endif ()
 
 source_group("Library Sources" FILES ${INSTRUMENTATION_SRC})
 

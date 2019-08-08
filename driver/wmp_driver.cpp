@@ -4,6 +4,7 @@
 #include <utils.h>
 #include <instrumentation.h>
 #include "driver.h"
+#include <wingui.h>
 
 //c headers
 #include <stdio.h>
@@ -144,7 +145,8 @@ int wmp_test_input(void * driver_state, char * input, size_t length)
 	write_buffer_to_file(state->test_filename, input, length);
 
 	//Start the process and give it our input
-	state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0);
+	if(state->instrumentation->enable(state->instrumentation_state, &state->process, state->cmd_line, NULL, 0))
+		return FUZZ_ERROR;
 
 	time_t start_time = time(NULL);
 	int tmp_result = FUZZ_ERROR;
@@ -175,6 +177,10 @@ int wmp_test_input(void * driver_state, char * input, size_t length)
 			return FUZZ_NONE;
 		
 		if (time(NULL) - start_time > state->timeout)
+			return FUZZ_HANG;
+		
+		// If we're stuck in a modal dialog we're "hung". Works for debug, but not dynamorio
+		if (IsProcessInModalDialog(GetProcessId(state->process)))
 			return FUZZ_HANG;
 		
 		Sleep(50);
@@ -263,19 +269,25 @@ done:
 /**
  * This function returns help text for this driver.  This help text will describe the driver and any options
  * that can be passed to wmp_create.
- * @return - a newly allocated string containing the help text.
+ * @param help_str - A pointer that will be updated to point to the new help string.
+ * @return 0 on success and -1 on failure
  */
-char * wmp_help(void)
+int wmp_help(char ** help_str)
 {
-	return strdup(
-		"wmp - Windows Media Player driver (Fuzzes wmplayer.exe)\n"
-		"Options:\n"
-		"\textension             The file extension of the input files to wmplayer.exe\n"
-		"\tpath                  The path to the wmplayer.exe\n"
-		"\tratio                 The ratio of mutation buffer size to input size when given a mutator\n"
-		"\ttimeout               The maximum number of seconds to wait for the target process to finish\n"
-		"\n"
+	*help_str = strdup(
+"wmp - Windows Media Player driver (Fuzzes wmplayer.exe)\n"
+"Optional Arguments:\n"
+"  extension             The file extension of the input files to\n"
+"                          wmplayer.exe\n"
+"  path                  The path to the wmplayer.exe\n"
+"  ratio                 The ratio of mutation buffer size to input size\n"
+"                          when given a mutator\n"
+"  timeout               The maximum number of seconds to wait for the\n"
+"                          target process to finish\n"
+"\n"
 	);
+	if (*help_str == NULL)
+		return -1;
+	return 0;
 }
-
 

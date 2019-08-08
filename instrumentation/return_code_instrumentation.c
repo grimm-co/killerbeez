@@ -1,11 +1,13 @@
 // Linux-only return code instrumentation.
 
-#include <string.h>    // memset
-#include <sys/types.h> // kill
 #include <signal.h>    // kill
+#include <string.h>    // memset
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "instrumentation.h"
 #include "return_code_instrumentation.h"
+#include "forkserver_internal.h"
 
 #include <utils.h>
 #include <jansson_helper.h>
@@ -23,10 +25,15 @@
  */
 static void destroy_target_process(return_code_state_t * state)
 {
-	if (state->child_handle) {
-		state->last_status = get_process_status(state->child_handle);
-		kill(state->child_handle, SIGKILL);
-		state->child_handle = 0;
+	if(state->child_pid && state->child_pid != -1) {
+		if(!state->use_fork_server)
+			state->last_status = get_process_status(state->child_pid);
+
+		kill(state->child_pid, SIGKILL);
+		state->child_pid = 0;
+
+		if(state->use_fork_server)
+			state->last_status = fork_server_get_status(&state->fs, 1);
 	}
 }
 
@@ -40,17 +47,80 @@ static void destroy_target_process(return_code_state_t * state)
  */
 static int create_target_process(return_code_state_t * state, char* cmd_line, char * stdin_input, size_t stdin_length)
 {
+	int i;
+	char ** argv;
+	char * target_path;
+
 	state->last_status = FUZZ_RUNNING;
 	state->process_reaped = 0;
 
-	//Create the child process
-	if (start_process_and_write_to_stdin(cmd_line, stdin_input, stdin_length, &state->child_handle)) {
-		state->child_handle = 0;
-		ERROR_MSG("Failed to create process with command line: %s\n", cmd_line);
-		return -1;
+	if(state->use_fork_server) {
+		if(!state->fork_server_setup) {
+			if(split_command_line(cmd_line, &target_path, &argv))
+				return -1;
+
+			//Start the fork server
+			fork_server_init(&state->fs, target_path, argv, 1, 0, stdin_length != 0);
+			state->fork_server_setup = 1;
+
+			//Free the split up command line
+			for(i = 0; argv[i]; i++)
+				free(argv[i]);
+			free(argv);
+			free(target_path);
+		}
+
+		if(state->fs.target_stdin != -1) {
+			//Take care of the stdin input, write over the file, then truncate it accordingly
+			lseek(state->fs.target_stdin, 0, SEEK_SET);
+			if(stdin_input != NULL && stdin_length != 0) {
+				if(write(state->fs.target_stdin, stdin_input, stdin_length) != stdin_length)
+					FATAL_MSG("Short write to target's stdin file");
+			}
+			if(ftruncate(state->fs.target_stdin, stdin_length))
+				FATAL_MSG("ftruncate() failed");
+			lseek(state->fs.target_stdin, 0, SEEK_SET);
+		}
+
+		//Start the new child and tell it to go
+		state->child_pid = fork_server_fork_run(&state->fs);
+		if(state->child_pid < 0) {
+			ERROR_MSG("Fork server failed to fork a new child\n");
+			return -1;
+		}
+
+	} else {
+		if (start_process_and_write_to_stdin(cmd_line, stdin_input, stdin_length, &state->child_pid)) {
+			state->child_pid = 0;
+			ERROR_MSG("Failed to create process with command line: %s\n", cmd_line);
+			return -1;
+		}
 	}
 
 	return 0;
+}
+
+/**
+ * This function creates a return_code_state_t object based on the given options.
+ * @param options - A JSON string of the options to set in the new
+ *                  return_code_state_t. See the help function for more information on
+ *                  the specific options available.
+ * @return the return_code_state_t generated from the options in the JSON options
+ *         string, or NULL on failure
+ */
+static return_code_state_t * setup_options(char *options) {
+	return_code_state_t * state;
+
+	state = malloc(sizeof(return_code_state_t));
+	if(!state)
+		return NULL;
+	memset(state, 0, sizeof(return_code_state_t));
+	state->use_fork_server = 1;  // default to use the fork server
+
+	if(options) {
+		PARSE_OPTION_INT(state, options, use_fork_server, "use_fork_server", return_code_cleanup);
+	}
+	return state;
 }
 
 ////////////////////////////////////////////////////////////////
@@ -65,12 +135,9 @@ static int create_target_process(return_code_state_t * state, char* cmd_line, ch
  */
 void * return_code_create(char * options, char * state)
 {
-	// Allocate and initialize return_code state object.
-	return_code_state_t * return_code_state;
-	return_code_state = malloc(sizeof(return_code_state_t));
+	return_code_state_t * return_code_state = setup_options(options);
 	if (!return_code_state)
 		return NULL;
-	memset(return_code_state, 0, sizeof(return_code_state_t));
 
 	if (state && return_code_set_state(return_code_state, state))
 	{
@@ -149,12 +216,8 @@ int return_code_set_state(void * instrumentation_state, char * state)
 	if (!state)
 		return 1;
 
-	//If a child process is running when the state is being set
-	destroy_target_process(current_state); //kill it so we don't orphan it
-
 	GET_INT(temp_int, state, current_state->last_status, "last_status", result);
-
-	return 0; //No state to set, so just return success
+	return 0;
 }
 
 /**
@@ -169,11 +232,12 @@ int return_code_set_state(void * instrumentation_state, char * state)
 int return_code_enable(void * instrumentation_state, pid_t * process, char * cmd_line, char * input, size_t input_length)
 {
 	return_code_state_t * state = (return_code_state_t *)instrumentation_state;
-	if(state->child_handle)
+	if(state->child_pid)
 		destroy_target_process(state);
 	if (create_target_process(state, cmd_line, input, input_length))
 		return -1;
-	*process = state->child_handle;
+	state->enable_called = 1;
+	*process = state->child_pid;
 	return 0;
 }
 
@@ -185,6 +249,9 @@ int return_code_enable(void * instrumentation_state, pid_t * process, char * cmd
  */
 int return_code_is_new_path(void * instrumentation_state)
 {
+	return_code_state_t * state = (return_code_state_t *)instrumentation_state;
+	if(!state->enable_called)
+		return -1;
 	return 0; //We don't gather instrumentation data, so we can't ever tell if we hit a new path.
 }
 
@@ -198,6 +265,8 @@ int return_code_is_new_path(void * instrumentation_state)
 int return_code_get_fuzz_result(void * instrumentation_state)
 {
 	return_code_state_t * state = (return_code_state_t *)instrumentation_state;
+	if(!state->enable_called)
+		return -1;
 	return state->last_status;
 }
 
@@ -210,45 +279,68 @@ int return_code_get_fuzz_result(void * instrumentation_state)
  */
 int return_code_is_process_done(void * instrumentation_state)
 {
+	int status;
 	return_code_state_t * state = (return_code_state_t *)instrumentation_state;
 
-	if (state->process_reaped == 1) 
+	if(!state->enable_called)
+		return -1;
+
+	if (state->process_reaped == 1)
 	{
 		return state->last_status;
 	}
 	else
 	{
-		int fuzz_result = get_process_status(state->child_handle);
+		if(state->use_fork_server) {
+			status = fork_server_get_status(&state->fs, 0);
+			//it's still alive or an error occurred and we can't tell
+			if(status < 0 || status == FORKSERVER_NO_RESULTS_READY)
+				return 0;
 
-		// expects 2, 1, 0, or -1
-		if (fuzz_result == FUZZ_RUNNING) // it's aliiiiive
-			// don't set last_status here, because hangs are handled by the timeout in the driver.
-			return 0;
-		else if (fuzz_result == FUZZ_CRASH || fuzz_result == FUZZ_NONE) // crash or clean exit
-		{
-			state->last_status = fuzz_result;
+			if(WIFSIGNALED(status) && WTERMSIG(status) != SIGKILL)
+				state->last_status = FUZZ_CRASH;
+			else
+				state->last_status = FUZZ_NONE;
+
 			state->process_reaped = 1;
 			return 1;
-		}
-		else // get_process_status returned an error
-		{
-			state->last_status = fuzz_result;
-			return -1;
+		} else {
+			int fuzz_result = get_process_status(state->child_pid);
+
+			// expects 2, 1, 0, or -1
+			if (fuzz_result == FUZZ_RUNNING) // it's aliiiiive
+				// don't set last_status here, because hangs are handled by the timeout in the driver.
+				return 0;
+			else if (fuzz_result == FUZZ_CRASH || fuzz_result == FUZZ_NONE) // crash or clean exit
+			{
+				state->last_status = fuzz_result;
+				state->process_reaped = 1;
+				return 1;
+			}
+			else // get_process_status returned an error
+			{
+				state->last_status = fuzz_result;
+				return -1;
+			}
 		}
 	}
 }
 
 /**
-* This function returns help text for this instrumentation.  This help text will describe the instrumentation and any options
-* that can be passed to return_code_create.
-* @return - a newly allocated string containing the help text.
-*/
-char * return_code_help(void)
+ * This function returns help text for this instrumentation.  This help text will describe the instrumentation and any options
+ * that can be passed to return_code_create.
+ * @param help_str - A pointer that will be updated to point to the new help string.
+ * @return 0 on success and -1 on failure
+ */
+int return_code_help(char ** help_str)
 {
-	return strdup(
-		"return_code - Linux return_code \"instrumentation\"\n"
+	*help_str = strdup(
+		"return_code - Linux/Mac return_code \"instrumentation\"\n"
 		"Options:\n"
-		"\tnone\n"
+		"  use_fork_server      Whether to inject the fork server library; 1=yes, 0=no (default=1)\n"
 		"\n"
 	);
+	if (*help_str == NULL)
+		return -1;
+	return 0;
 }

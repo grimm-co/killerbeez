@@ -1,12 +1,64 @@
 release:
   script:
-    - C:\killerbeez\release.bat
+    - call tools\update_repos.bat
+    - call tools\release.bat
   tags:
     - windows
   only:
     - web
-    - triggers
   artifacts:
     paths:
       - release\killerbeez-*.zip
     expire_in: 1 week
+
+release-linux:
+  script:
+    - git config --global http.sslCAInfo "${CI_SERVER_TLS_CA_FILE}"
+    - pushd ..
+    - for url in "${KILLERBEEZ_MUTATORS_URL}" "${KILLERBEEZ_UTILS_URL}"; do
+    - git clone "${url}"
+    - done
+    - for repo in killerbeez-mutators killerbeez-utils; do
+    - cd $repo
+    - git checkout $CI_COMMIT_REF_NAME || true
+    - cd ..
+    - done
+    - popd
+    - mkdir build
+    - cd build
+    - cmake ..
+    - make release
+  image: killerbeez-builder:latest
+  variables:
+    GIT_STRATEGY: clone
+    GIT_SUBMODULE_STRATEGY: normal
+  tags:
+    - linux
+  only:
+    - web
+  artifacts:
+    paths:
+      - build/killerbeez-*.zip
+    expire_in: 1 week
+
+# TODO: figure out why this is failing, and remove the . to re-enable it
+.smoketest-linux:
+  script:
+    - git config --global http.sslCAInfo "${CI_SERVER_TLS_CA_FILE}"
+    - cd ..
+    - for url in "${KILLERBEEZ_MUTATORS_URL}" "${KILLERBEEZ_UTILS_URL}"; do
+    - git clone "${url}"
+    - done
+    - for repo in killerbeez-mutators killerbeez-utils; do
+    - cd $repo
+    - git checkout $CI_COMMIT_REF_NAME || true
+    - cd ..
+    - done
+    - killerbeez/tests/smoke_test.sh
+  image: killerbeez-builder:latest
+  variables:
+    GIT_STRATEGY: clone
+  tags:
+    - linux
+  only:
+    - web

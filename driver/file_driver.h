@@ -9,7 +9,7 @@ void file_cleanup(void * driver_state);
 int file_test_input(void * driver_state, char * buffer, size_t length);
 int file_test_next_input(void * driver_state);
 char * file_get_last_input(void * driver_state, int * length);
-char * file_help(void);
+int file_help(char ** help_str);
 
 struct file_state
 {

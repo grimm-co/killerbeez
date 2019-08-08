@@ -585,6 +585,7 @@ static BOOL connect_to_pipe(HANDLE pipe, char * pipe_name, DWORD timeout)
 
 	if (!success) {
 		ERROR_MSG("Did not receive connection from DynamoRIO child process on pipe %s, GLE=%d.", pipe_name, GetLastError());
+		ERROR_MSG("Try increasing the instrumentation timeout option (currently set to %lu).", timeout);
 	}
 
 	CloseHandle(overlap.hEvent);
@@ -765,6 +766,9 @@ int dynamorio_is_process_done(void * instrumentation_state)
 {
 	dynamorio_state_t * state = (dynamorio_state_t *)instrumentation_state;
 	DWORD num_bytes_available;
+
+	if (!state->enable_called)
+		return -1;
 
 	if (!PeekNamedPipe(state->pipe_handle, NULL, 0, NULL, &num_bytes_available, NULL))
 		return -1;
@@ -1084,7 +1088,7 @@ static dynamorio_state_t * setup_options(char * options)
 	//Verify winafl.dll exists
 	snprintf(buffer, sizeof(buffer) - 1, "%s\\winafl.dll", state->winafl_dir);
 	if (access(buffer, 0))
-		FATAL_MSG("Failed to find the winafl.dll in %s.  Use the winafl_dir option to modify the directory to look for winafl.dll", state->winafl_dir);
+		FATAL_MSG("Failed to find the winafl.dll in %s. Use the winafl_dir option to modify the directory to look for winafl.dll, and ensure that you have matching bitness (bin32 vs 64) between winafl.dll and the fuzz target.", state->winafl_dir);
 
 	//printf("Modules (%zu):\n", state->num_modules);
 	for (i = 0; i < state->num_modules; i++)
@@ -1405,6 +1409,7 @@ int dynamorio_enable(void * instrumentation_state, HANDLE * process, char * cmd_
 	//Tell the child instrumentation to go
 	WriteFile(state->pipe_handle, "F", 1, &num_written, NULL);
 	state->analyzed_last_round = 0;
+	state->enable_called = 1;
 
 	return 0;
 }
@@ -1496,6 +1501,8 @@ static int has_new_coverage_per_module(dynamorio_state_t * state)
 int dynamorio_is_new_path(void * instrumentation_state)
 {
 	dynamorio_state_t * state = (dynamorio_state_t *)instrumentation_state;
+	if (!state->enable_called)
+		return -1;
 	return finish_fuzz_round(state);
 }
 
@@ -1508,6 +1515,8 @@ int dynamorio_is_new_path(void * instrumentation_state)
 int dynamorio_get_fuzz_result(void * instrumentation_state)
 {
 	dynamorio_state_t * state = (dynamorio_state_t *)instrumentation_state;
+	if (!state->enable_called)
+		return -1;
 	if (finish_fuzz_round(state) < 0)
 		return -1;
 	return state->last_process_status;
@@ -1535,6 +1544,8 @@ int dynamorio_get_module_info(void * instrumentation_state, int index, int * is_
 	target_module_t * target_module;
 
 	if (info || is_new) {
+		if (!state->enable_called)
+			return -1;
 		if (finish_fuzz_round(state) < 0)
 			return -1;
 	}
@@ -1573,6 +1584,9 @@ instrumentation_edges_t * dynamorio_get_edges(void * instrumentation_state, int 
 	dynamorio_state_t * state = (dynamorio_state_t *)instrumentation_state;
 	target_module_t * target_module;
 
+	if (!state->enable_called)
+		return -1;
+
 	if (!state->edges) //If they didn't ask for edges ahead of time, we don't have them
 		return NULL;
 
@@ -1594,26 +1608,40 @@ instrumentation_edges_t * dynamorio_get_edges(void * instrumentation_state, int 
 /**
  * This function returns help text for this instrumentation.  This help text will describe the instrumentation and any options
  * that can be passed to dynamorio_create.
- * @return - a newly allocated string containing the help text.
+ * @param help_str - A pointer that will be updated to point to the new help string.
+ * @return 0 on success and -1 on failure
  */
-char * dynamorio_help(void)
+int dynamorio_help(char ** help_str)
 {
-	return strdup(
-		"dynamorio - DynamoRIO instrumentation (based heavily on winafl)\n"
-		"Options:\n"
-		"\tdynamorio_dir         Set the directory with DynamoRIO binaries in it\n"
-		"\twinafl_dir            Set the directory with winafl.dll in it\n"
-		"\ttarget_path           The path to the target program to fuzz\n"
-		"\tdump_map_dir          Set the directory to dump the instrumentation bitmap to, for debugging purposes\n"
-		"\tignore_bytes_dir      Set the directory to load ignore bit files from when per_module_coverage is set (of the form $ignore_bits_dir\\$dll_name.dll.dat).\n"
-		"\tignore_bytes_file     Set the file to load ignore bit files from when per_module_coverage is not set.\n"
-		"\ttimeout               The number of milliseconds to wait when communicating with the instrumentation in the target process\n"
-		"\tclient_params         Parameters to pass to the winafl.dll DynamoRIO tool (Do not specify per_module_coverage, fuzz_iterations, or coverage_modules here)\n"
-		"\tfuzz_iterations       Maximum number of iterations for the target function to run before restarting the target process\n"
-		"\tcoverage_modules      An array of modules that should be instrumented to record coverage information\n"
-		"\tper_module_coverage   Whether coverage should be tracked in one bitmap (0), or in a separate bitmap for each module (1)\n"
-		"\n"
+	*help_str = strdup(
+"dynamorio - DynamoRIO instrumentation (based heavily on winafl)\n"
+"Options:\n"
+"  dynamorio_dir         Set the directory with DynamoRIO binaries in it\n"
+"  winafl_dir            Set the directory with winafl.dll in it\n"
+"  target_path           The path to the target program to fuzz\n"
+"  dump_map_dir          Set the directory to dump the instrumentation bitmap\n"
+"                          to, for debugging purposes\n"
+"  ignore_bytes_dir      Set the directory to load ignore bit files from when\n"
+"                          per_module_coverage is set (of the form\n"
+"                          $ignore_bits_dir\\$dll_name.dll.dat).\n"
+"  ignore_bytes_file     Set the file to load ignore bit files from when\n"
+"                          per_module_coverage is not set.\n"
+"  timeout               The number of milliseconds to wait when communicating\n"
+"                          with the instrumentation in the target process\n"
+"  client_params         Parameters to pass to the winafl.dll DynamoRIO tool\n"
+"                          (Do not specify per_module_coverage,\n"
+"                          fuzz_iterations, or coverage_modules here)\n"
+"  fuzz_iterations       Maximum number of iterations for the target function\n"
+"                          to run before restarting the target process\n"
+"  coverage_modules      An array of modules that should be instrumented to\n"
+"                          record coverage information\n"
+"  per_module_coverage   Whether coverage should be tracked in one bitmap (0),\n"
+"                          or in a separate bitmap for each module (1)\n"
+"\n"
 	);
+	if (*help_str == NULL)
+		return -1;
+	return 0;
 }
 
 /**

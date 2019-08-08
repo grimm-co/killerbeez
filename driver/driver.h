@@ -6,8 +6,8 @@
 #include <sys/types.h> // pid_t
 #endif
 
-#include "global_types.h"
-#include "instrumentation.h"
+#include <global_types.h>
+#include <instrumentation.h>
 
 #ifdef DRIVER_EXPORTS
 #define DRIVER_API __declspec(dllexport)
@@ -41,3 +41,8 @@ FUNC_PREFIX int generic_wait_for_process_completion(pid_t process, int timeout, 
 FUNC_PREFIX int generic_test_next_input(void * state, mutator_t * mutator, void * mutator_state, char * buffer, size_t buffer_length,
 	int(*test_input_func)(void * driver_state, char * buffer, size_t length), int * mutate_last_size);
 FUNC_PREFIX int setup_mutate_buffer(double ratio, size_t input_length, char ** buffer, size_t * length);
+#ifdef _WIN32
+FUNC_PREFIX int send_tcp_input(SOCKET * sock, char * buffer, size_t length);
+#else
+FUNC_PREFIX int send_tcp_input(int * sock, char * buffer, size_t length);
+#endif

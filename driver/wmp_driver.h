@@ -15,7 +15,7 @@ FUNC_PREFIX void wmp_cleanup(void * driver_state);
 FUNC_PREFIX int wmp_test_input(void * driver_state, char * buffer, size_t length);
 FUNC_PREFIX int wmp_test_next_input(void * driver_state);
 FUNC_PREFIX char * wmp_get_last_input(void * driver_state, int * length);
-FUNC_PREFIX char * wmp_help(void);
+FUNC_PREFIX int wmp_help(char ** help_str);
 
 struct wmp_state
 {

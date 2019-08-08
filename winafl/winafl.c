@@ -22,22 +22,24 @@
    project.
 */
 
-#include "dr_api.h"
-#include "drmgr.h"
-#include "drx.h"
-#include "drreg.h"
-#include "drwrap.h"
-#include "drsyms.h"
+#include <fcntl.h>
+#include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <dr_api.h>
+#include <drmgr.h>
+#include <drx.h>
+#include <drreg.h>
+#include <drwrap.h>
+#include <drsyms.h>
+#include <drtable.h>
+#include <hashtable.h>
+
 #include "modules.h"
 #include "utils.h"
-#include "hashtable.h"
-#include "drtable.h"
-#include "limits.h"
-#include "winafl_config.h"
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <fcntl.h>
+#include <winafl_config.h>
 
 
 #define NOTIFY(level, fmt, ...) do {          \

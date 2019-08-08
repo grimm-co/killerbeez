@@ -6,15 +6,6 @@ REM      : cd killerbeez-utils; ..\Killerbeez\tools\release
 if "%RADAMSA_URL%" == "" (
   set RADAMSA_URL=https://gitlab.com/akihe/radamsa.git
 )
-if "%KILLERBEEZ_URL%" == "" (
-  set KILLERBEEZ_URL=https://github.com/grimm-co/Killerbeez.git
-)
-if "%KILLERBEEZ_UTILS_URL%" == "" (
-  set KILLERBEEZ_UTILS_URL=https://github.com/grimm-co/killerbeez-utils.git
-)
-if "%KILLERBEEZ_MUTATORS_URL%" == "" (
-  set KILLERBEEZ_MUTATORS_URL=https://github.com/grimm-co/killerbeez-mutators.git
-)
 if "%DYNAMORIO_URL%" == "" (
   set DYNAMORIO_URL=https://storage.googleapis.com/chromium-dynamorio/builds/DynamoRIO-Windows-6.2.17295-0xa77808f.zip
 )
@@ -27,10 +18,15 @@ pushd ..
 
 rmdir /s /q build
 
-call :update %RADAMSA_URL% || exit /b 1
-call :update %KILLERBEEZ_URL% || exit /b 1
-call :update %KILLERBEEZ_UTILS_URL% || exit /b 1
-call :update %KILLERBEEZ_MUTATORS_URL% || exit /b 1
+if not exist radamsa (
+  git clone %RADAMSA_URL% || exit /b 1
+) else (
+  cd radamsa
+  git checkout master || exit /b 1
+  git pull || exit /b 1
+  cd ..
+)
+
 if not exist dynamorio (
   powershell.exe -nologo -noprofile -command "& { Add-Type -A 'System.IO.Compression.FileSystem'; $wc = New-Object System.Net.WebClient; $wc.DownloadFile('%DYNAMORIO_URL%', '.\dynamorio.zip'); [IO.Compression.Zipfile]::ExtractToDirectory('.\dynamorio.zip', '.\dynamorio-unzip'); }"
   move dynamorio-unzip\DynamoRIO* dynamorio
@@ -65,34 +61,6 @@ call :package x64
 popd
 exit /b 0
 
-:update
-set repourl=%1
-for %%d in ("%repourl%") do set repopath=%%~nd
-
-if "%repopath%" == "%CI_PROJECT_NAME%" (
-  exit /b 0
-)
-
-if exist %repopath% (
-  cd "%repopath%"
-  git fetch || exit /b 1
-) else (
-  git clone "%repourl%" || exit /b 1
-  cd "%repopath%"
-)
-
-if not "%CI_COMMIT_REF_NAME%" == "" (
-  echo Checking out origin/%CI_COMMIT_REF_NAME%
-  git checkout origin/%CI_COMMIT_REF_NAME%
-  if ERRORLEVEL 1 (
-    git checkout master
-    git pull
-  )
-)
-
-cd ..
-exit /b 0
-
 :compile
 rmdir /s /q cmaketmp
 mkdir cmaketmp
@@ -116,6 +84,7 @@ xcopy /s /exclude:%~dp0\release_excludes.txt build\%platform%\Release\* %distdir
 if "%platform%" == "x64" (
   xcopy /s /exclude:%~dp0\release_excludes.txt build\X86\Release\killerbeez\bin32\* %distdir%\killerbeez\bin32\
 )
+xcopy /s /i killerbeez\docs %distdir%\docs
 
 mkdir %distdir%\radamsa
 xcopy /s /i radamsa\bin %distdir%\radamsa\bin
@@ -135,6 +104,16 @@ xcopy /s /i dynamorio\lib64 %distdir%\dynamorio\lib64
 xcopy /s /i dynamorio\ext %distdir%\dynamorio\ext
 xcopy dynamorio\License.txt %distdir%\dynamorio
 xcopy dynamorio\ACKNOWLEDGEMENTS %distdir%\dynamorio
+
+if "%platform%" == "x64" (
+  mkdir %distdir%\server\skel\windows_x86_64
+  REM Include wrapper binary, stored in C:\killerbeez on the runner
+  xcopy C:\killerbeez\wrapper_26014_windows_x86_64.exe %distdir%\server\skel\windows_x86_64
+  REM Include license files from the BOINC repo
+  xcopy killerbeez\server\boinc\COPYING %distdir%\server\skel\windows_x86_64
+  xcopy killerbeez\server\boinc\COPYING.LESSER %distdir%\server\skel\windows_x86_64
+  xcopy killerbeez\server\boinc\README.md %distdir%\server\skel\windows_x86_64
+)
 
 set releasezip=%CI_PROJECT_DIR%\release\%relname%.zip
 echo Creating %releasezip%

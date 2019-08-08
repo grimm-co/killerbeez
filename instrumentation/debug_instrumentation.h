@@ -23,7 +23,7 @@ int debug_enable(void * instrumentation_state, pid_t * process, char * cmd_line,
 int debug_is_new_path(void * instrumentation_state);
 int debug_get_fuzz_result(void * instrumentation_state);
 int debug_is_process_done(void * instrumentation_state);
-char * debug_help(void);
+int debug_help(char ** help_str);
 
 typedef struct
 {
@@ -58,6 +58,7 @@ struct debug_state
 	int finished_last_run;
 	int last_status;
 	int last_child_hung;
+	int enable_called;
 
 	//This struct is used to pass arguments to the debugging thread.  It
 	//should only be accessed while in the create_thread_process function,

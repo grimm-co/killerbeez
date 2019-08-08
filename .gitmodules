@@ -1,0 +1,3 @@
+[submodule "server/boinc"]
+	path = server/boinc
+	url = https://github.com/BOINC/boinc.git
