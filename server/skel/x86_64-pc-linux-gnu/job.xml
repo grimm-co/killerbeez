@@ -1,0 +1,18 @@
+<job_desc>
+    <task>
+      <application>unpack_killerbeez.sh</application>
+      <command_line>boinc_resolve(killerbeez.zip) $PROJECT_DIR</command_line>
+    </task>
+    <task>
+      <application>/bin/bash</application>
+      <command_line>boinc_resolve(cmdline.sh) $PROJECT_DIR/killerbeez-Linux/killerbeez/fuzzer</command_line>
+    </task>
+    <task>
+      <application>flatten_results.sh</application>
+    </task>
+    <zip_output>
+      <zipfilename>results.zip</zipfilename>
+      <filename>killerbeez_result_.*</filename>
+      <filename>README.txt</filename>
+    </zip_output>
+</job_desc>

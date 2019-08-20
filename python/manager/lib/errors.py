@@ -6,3 +6,6 @@ class InternalError(Error):
 
 class BoincError(Error):
     """Error interacting with BOINC"""
+
+class InputError(Error):
+    """Error from invalid input"""

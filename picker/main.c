@@ -273,7 +273,7 @@ int main(int argc, char ** argv)
 				{
 					if (module_infos[prev_pos + i] != module_infos[cur_pos + i])
 					{
-						if (!ignore_bytes[i])
+						if (ignore_bytes[i])
 							total_ignore_count++;
 						ignore_bytes[i] = 0x00;
 						ignore_count++;

@@ -62,7 +62,7 @@ REM Paste this into cmd.exe.
 REM Assuming you: set WORKDIR=C:/killerbeez
 REM Note: if using backslashes, they need to be escaped to be proper JSON.
 
-cd %WORKDIR%/build/x64/Debug/killerbeez
+cd %WORKDIR%/killerbeez/build/x64/Debug/killerbeez
 fuzzer.exe file debug bit_flip -n 9 ^
 	-sf "%WORKDIR%/killerbeez/corpus/test/inputs/close.txt" ^
 	-d "{\"path\":\"%WORKDIR%/killerbeez/corpus/test/test.exe\",\"arguments\":\"@@\"}"
@@ -97,7 +97,7 @@ as reference but it is best to verify the entry point of your binary.
 | 12.0.17134      | 0x1F20 |
 
 ```
-fuzzer.exe wmp dynamorio nop -n 3 -sf "C:\Users\<user>\Desktop\test.mp4" -d "{\"timeout\":20}" -i "{\"timeout\":5000,\"coverage_modules\":[\"wmp.DLL\"],\"target_path\":\"C:\\Program Files (x86)\\Windows Media Player\\wmplayer.exe\"}"
+fuzzer.exe wmp dynamorio nop -n 3 -sf "C:\Users\user\Desktop\test.mp4" -d "{\"timeout\":20}" -i "{\"timeout\":5000,\"coverage_modules\":[\"wmp.DLL\"],\"target_path\":\"C:\\Program Files (x86)\\Windows Media Player\\wmplayer.exe\"}"
 ```
 You may need to modify these parameters to match your environment.  In
 order to speed up fuzzing, it may be useful to enable persistence mode.
