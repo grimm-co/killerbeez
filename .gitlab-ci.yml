@@ -14,16 +14,6 @@ release:
 release-linux:
   script:
     - git config --global http.sslCAInfo "${CI_SERVER_TLS_CA_FILE}"
-    - pushd ..
-    - for url in "${KILLERBEEZ_MUTATORS_URL}" "${KILLERBEEZ_UTILS_URL}"; do
-    - git clone "${url}"
-    - done
-    - for repo in killerbeez-mutators killerbeez-utils; do
-    - cd $repo
-    - git checkout $CI_COMMIT_REF_NAME || true
-    - cd ..
-    - done
-    - popd
     - mkdir build
     - cd build
     - cmake ..
@@ -46,14 +36,6 @@ release-linux:
   script:
     - git config --global http.sslCAInfo "${CI_SERVER_TLS_CA_FILE}"
     - cd ..
-    - for url in "${KILLERBEEZ_MUTATORS_URL}" "${KILLERBEEZ_UTILS_URL}"; do
-    - git clone "${url}"
-    - done
-    - for repo in killerbeez-mutators killerbeez-utils; do
-    - cd $repo
-    - git checkout $CI_COMMIT_REF_NAME || true
-    - cd ..
-    - done
     - killerbeez/tests/smoke_test.sh
   image: killerbeez-builder:latest
   variables:
