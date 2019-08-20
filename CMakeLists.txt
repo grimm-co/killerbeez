@@ -3,6 +3,7 @@ project (killerbeez)
 include(ExternalProject)
 
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -D_DEBUG")	# for _DEBUG ifdefs in utils.h
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 if (UNIX)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wfatal-errors") # quit after first error
@@ -14,13 +15,13 @@ endif (APPLE)
 
 if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE Debug) 	# for gcc -g
-	message("WARNING: Building with debug options; performance will be impacted. Try cmake -DCMAKE_BUILD_TYPE=Release ../killerbeez")
+	message("WARNING: Building with debug options; performance will be impacted. Try cmake -DCMAKE_BUILD_TYPE=Release ..")
 endif()
 
 
 if (WIN32)
 	# windows/visual studio build convention eg build/X86/Debug
-	SET ( BUILD_DIRECTORY ${CMAKE_SOURCE_DIR}/../build/${CMAKE_C_COMPILER_ARCHITECTURE_ID}/${CMAKE_BUILD_TYPE} )
+	SET ( BUILD_DIRECTORY ${CMAKE_SOURCE_DIR}/build/${CMAKE_C_COMPILER_ARCHITECTURE_ID}/${CMAKE_BUILD_TYPE} )
 	add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_DEPRECATION_DISABLE -D_CRT_NONSTDC_NO_DEPRECATE)
 else (WIN32)
 	SET ( BUILD_DIRECTORY ${CMAKE_BINARY_DIR} )
@@ -29,18 +30,20 @@ endif (WIN32)
 SET( CMAKE_RUNTIME_OUTPUT_DIRECTORY ${BUILD_DIRECTORY}/killerbeez/ )
 SET( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${BUILD_DIRECTORY}/killerbeez/ )
 SET( CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${BUILD_DIRECTORY}/killerbeez/ )
-LINK_DIRECTORIES(${BUILD_DIRECTORY}/killerbeez/) # give linker path to utils
 
 # Make linux builds relocatable
 SET(CMAKE_BUILD_WITH_INSTALL_RPATH 1)
 SET(CMAKE_INSTALL_RPATH "$ORIGIN")
 
 # add headers for utils from utils source folder/repo
-include_directories (${CMAKE_SOURCE_DIR}/../killerbeez-utils/jansson/)
-include_directories (${CMAKE_SOURCE_DIR}/../killerbeez-utils/utils/)
+include_directories (jansson/)
+include_directories (utils/)
 
-# compile mutators, which will compile utils
-add_subdirectory(${CMAKE_SOURCE_DIR}/../killerbeez-mutators/ ${CMAKE_BINARY_DIR}/killerbeez-mutators/)
+#add_subdirectory(${CMAKE_SOURCE_DIR}/jansson/ ${CMAKE_BINARY_DIR}/killerbeez-jansson/)
+add_subdirectory(jansson/)
+
+# The general mutator library with the common functionality
+add_subdirectory(mutators)
 
 add_subdirectory(corpus) # test programs
 add_subdirectory(fuzzer) # instantiates & coordinates other parts
@@ -65,7 +68,7 @@ if (WIN32)
   SET(BOINC_WRAPPER C:/killerbeez/wrapper_26014_windows_x86_64.exe)
 endif ()
 # If on Linux, we can build our own BOINC wrapper
-if (UNIX)
+if (UNIX AND (NOT APPLE))
   SET(BOINC_WRAPPER ${CMAKE_SOURCE_DIR}/server/boinc/samples/wrapper/wrapper)
   ExternalProject_Add(boinc-wrapper
     SOURCE_DIR ${CMAKE_SOURCE_DIR}/server/boinc
@@ -100,10 +103,19 @@ SET(CPACK_GENERATOR "ZIP")
 SET(CPACK_PACKAGE_FILE_NAME "killerbeez-${CMAKE_SYSTEM_NAME}")
 SET(CPACK_SOURCE_GENERATOR "ZIP")
 SET(CPACK_SOURCE_IGNORE_FILES "/build/;/server/boinc/")
-SET(CPACK_SOURCE_INSTALLED_DIRECTORIES "${CMAKE_SOURCE_DIR};killerbeez;${CMAKE_SOURCE_DIR}/../killerbeez-mutators;killerbeez-mutators;${CMAKE_SOURCE_DIR}/../killerbeez-utils;killerbeez-utils")
+SET(CPACK_SOURCE_INSTALLED_DIRECTORIES "${CMAKE_SOURCE_DIR};killerbeez")
 include (CPack)
 
 # Special `release` target to ensure boinc-wrapper is built before package
 add_custom_target(release
   ${CMAKE_MAKE_PROGRAM} package)
-add_dependencies(release radamsa boinc-wrapper)
+if (UNIX)
+  if (APPLE)
+    # macOS can't build the boinc wrapper right now, maybe we can patch
+    # things up in the future to make this possible, but for now we're
+    # just not building it.
+    add_dependencies(release radamsa)
+  else ()
+    add_dependencies(release radamsa boinc-wrapper)
+  endif ()
+endif ()

@@ -1,18 +1,18 @@
 #!/bin/bash
+#
+# Run this from the directory above the killerbeez checkout
+#
+# Dependencies:
+# sudo apt install build-essential cmake clang libtool-bin automake bison flex libglib2.0-dev libc6-dev-i386
+
 if [[ "$1" == "kill" ]]; then
 	# Clean out the old
-	rm -fR killerbeez killerbeez-mutators killerbeez-utils build
+	rm -fR killerbeez
 fi
 
 # Check out the new (if needed)
-if [[ ! -d killerbeez-utils ]]; then
-	git clone https://github.com/grimm-co/killerbeez-utils
-fi
-if [[ ! -d killerbeez-mutators ]]; then
-	git clone https://github.com/grimm-co/killerbeez-mutators
-fi
 if [[ ! -d killerbeez ]]; then
-	git clone https://github.com/grimm-co/killerbeez
+	git clone --recursive https://github.com/grimm-co/killerbeez
 fi
 
 function generic_error {
@@ -34,8 +34,9 @@ function test_linux_error {
 	generic_error "$1" "$2" "$err"
 }
 
+cd killerbeez
 # Compile things
-mkdir -p build; cd build; cmake ../killerbeez; make
+mkdir -p build; cd build; cmake ..; make
 
 # Try running the fuzzer and make sure we have some basic functionality
 cd killerbeez
@@ -116,32 +117,35 @@ function find_llvm_config {
 echo "Running tests - instrumentation - afl - building"
 
 # Build afl-gcc
-make -C ../../killerbeez/afl_progs/
+make -C ../../afl_progs/
 generic_error $? "make failed" "Failed to build afl-gcc"
 
 # Build afl-clang-fast
 LLVM_CONFIG=$(find_llvm_config)
-make -C ../../killerbeez/afl_progs/llvm_mode/ LLVM_CONFIG=$LLVM_CONFIG
+make -C ../../afl_progs/llvm_mode/ LLVM_CONFIG=$LLVM_CONFIG
 generic_error $? "make failed" "Failed to build afl-clang-fast"
 
 # Build afl-qemu-trace
-pushd ../../killerbeez/afl_progs/qemu_mode/
+pushd ../../afl_progs/qemu_mode/
 ./build_qemu_support.sh
 generic_error $? "make failed" "Failed to build afl-qemu-trace"
 popd
 
 # Build afl test programs
-afl_testdir="../../killerbeez/corpus/afl_test/"
+afl_testdir="../../corpus/afl_test"
 make -C $afl_testdir AFL_PATH=../../afl_progs/
 generic_error $? "make failed" "Failed to build afl test programs"
 
 # Run the test programs with various different AFL based instrumentations
 echo "Running tests - instrumentation - afl - testing"
 for test_file in test test32 test-qemu test-fast test-fast-deferred test-fast-persist test-fast-persist-deferred; do
+###for test_file in test test32 test-qemu test-fast test-fast-persist test-fast-persist-deferred; do
 	expected=2
 	# Unfortunately the persistence mode tests overly report new paths, so we need to adjust the count for them
-	if [ "$test_file" = "test-fast-persist" -o "$test_file" = "test-fast-persist-deferred" ]; then
+	if [ "$test_file" = "test-qemu" -o "$test_file" = "test-fast" -o "$test_file" = "test-fast-deferred" ]; then
 		expected=3
+	elif [ "$test_file" = "test-fast-persist" -o "$test_file" = "test-fast-persist-deferred" ]; then
+		expected=4
 	fi
 
 	# Build the instrumentation options
@@ -156,17 +160,19 @@ for test_file in test test32 test-qemu test-fast test-fast-deferred test-fast-pe
 		inst_options="$inst_options\"persistence_max_cnt\":5"
 	fi
 	if [ "$test_file" = "test-qemu" ]; then
-		inst_options="$inst_options\"qemu_mode\":1"
+		inst_options="$inst_options\"qemu_mode\":1,\"qemu_path\":\"../../afl_progs/afl-qemu-trace\""
 	fi
 	inst_options="$inst_options}"
 
 	# Run the test and check the number of new paths found
-	output=$(./fuzzer stdin afl bit_flip -n 10 -sf test0 -d "{\"path\":\"$afl_testdir/$test_file\"}" $inst_options)
+	echo "Running bit_flip with seed file test0 on $afl_testdir/$test_file"
+	output=$(./fuzzer stdin afl bit_flip -n 127 -sf test0 -d "{\"path\":\"$afl_testdir/$test_file\"}" $inst_options)
 	test_linux_error $? "$output" bit_flip "AFL instrumentation with $test_file new path test"
 	no_warnings_no_errors "$output" bit_flip
 	new_path_count=$(string_count "Found new_paths" "$output")
 	test $new_path_count -eq $expected
-	generic_error $? "AFL new paths test failed" "AFL instrumentation with $test_file failed to detect new paths"
+	generic_error $? "AFL new paths test failed" \
+		"AFL instrumentation with $test_file failed to detect new paths (found: $new_path_count expected: $expected)"
 
 	# Run the test again and make sure it finds a crashing input
 	output=$(./fuzzer stdin afl bit_flip -n 100 -sf test1 -d "{\"path\":\"$afl_testdir/$test_file\"}" $inst_options)

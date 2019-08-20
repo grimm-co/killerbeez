@@ -29,23 +29,31 @@ if not exist dynamorio (
   del dynamorio.zip
 )
 
-REM On some systems, vcvarsall.bat will change your working directory
-REM To work around this infuriating bug, pushd and popd are used
-pushd .
-call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x86
-popd
+call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" x86
 call :compile || exit /b 1
 
-call :buildradamsa C:\cygwin\bin
+if exist C:\cygwin\bin (
+  set "oldpath=%path%"
+  set "path=C:\cygwin\bin\;%oldpath%"
+  make -C radamsa clean || exit /b 1
+  make -C radamsa || exit /b 1
+  set "path=%oldpath%"
+  set "oldpath=%path%"
+)
 
 call :package X86
 
-pushd .
-call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
-popd
+call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
 call :compile || exit /b 1
 
-call :buildradamsa C:\cygwin64\bin
+if exist C:\cygwin64\bin (
+  set "oldpath=%path%"
+  set "path=C:\cygwin64\bin\;%oldpath%"
+  make -C radamsa clean || exit /b 1
+  make -C radamsa || exit /b 1
+  set "path=%oldpath%"
+  set "oldpath=%path%"
+)
 
 call :package x64
 
@@ -57,9 +65,9 @@ rmdir /s /q cmaketmp
 mkdir cmaketmp
 cd cmaketmp
 REM Make Ninja build files
-"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -G "Ninja" -DCMAKE_CXX_COMPILER="cl.exe"  -DCMAKE_C_COMPILER="cl.exe"  -DCMAKE_BUILD_TYPE="Release" -DCMAKE_MAKE_PROGRAM="C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe" ".." || exit /b 1
+"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -G "Ninja" -DCMAKE_CXX_COMPILER="cl.exe"  -DCMAKE_C_COMPILER="cl.exe"  -DCMAKE_BUILD_TYPE="Release" -DCMAKE_MAKE_PROGRAM="C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe" ".." || exit /b 1
 REM Run Ninja to build
-"C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe" || exit /b 1
+"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja\ninja.exe" || exit /b 1
 cd ..
 rmdir /s /q cmaketmp
 exit /b 0
@@ -117,40 +125,5 @@ echo Creating %releasezip%
 mkdir "%CI_PROJECT_DIR%\release"
 del "%releasezip%"
 powershell.exe -nologo -noprofile -command "& { Add-Type -A 'System.IO.Compression.FileSystem'; [IO.Compression.Zipfile]::CreateFromDirectory('%distdir%', '%releasezip%', [IO.Compression.CompressionLevel]::Optimal, 1); }"
-
-exit /b 0
-
-:buildradamsa
-rem The argument is the path to the cygwin binary
-rem If the path doesn't exist, we just bail without
-rem building radamsa.
-rem
-rem Fun fact: If the set command is used inside the if statement
-rem it will not set oldpath, despite all logic.
-rem To hack around this, the if statement was inverted and the
-rem set commands were unconditional, where they work just fine.
-rem To test this yourself, try this:
-rem
-rem if exist C:\windows (
-rem    echo "oldpath=%oldpath"
-rem    set "oldpath=%path%"
-rem    echo "oldpath=%oldpath%"
-rem )
-rem
-rem Want to see something even more amazing?  Paste in that exact
-rem same text again and watch it work just fine!  Isn't Windows cool?
-rem
-echo "Checking for %1"
-if not exist %1 (
-  echo "Cygwin not found, skipping radamsa build: %1"
-  exit /b 0
-)
-echo "Building radamsa with %1"
-
-set "oldpath=%path%"
-set "path=%1;%oldpath%"
-make -C radamsa clean || exit /b 1
-make -C radamsa || exit /b 1
-set "path=%oldpath%"
 
 exit /b 0
