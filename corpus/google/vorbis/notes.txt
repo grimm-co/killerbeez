@@ -1,0 +1,13 @@
+See https://github.com/google/fuzzer-test-suite/tree/master/vorbis-2017-12-11
+for more information.
+
+Fuzzing benchmark for Vorbis. Contains CVE-2018-5146 (pwn2own 2018), a buffer
+overflow. Reproducer provided (crash-e86e0482b8d66f924e50e62f5d7cc36a0acb03a7). 
+A second buffer overflow is also present. Reproducer provided
+(crash-8c5dea6410b0fb0b21ff968a9966a0bd7956405f). This bug no longer reproduces
+after the fix for CVE-2018-5146. Also contains a null-dereference. Reproducer
+provided (crash-23c2d78e497bf4aebe5859e3092657cb0af4c299). This bug also no
+longer reproduces after the fix for CVE-2018-5146.
+
+In the included decode_fuzzer.exe, the main function is at offset 0x1363
+(0x401363 address).
