@@ -31,7 +31,7 @@ void usage(char * program_name)
 		"\t -i instrumentation_options    Set the options for the instrumentation\n"
 		"\t -ib ignore_bytes_dir          The directory to write the list of bytes in the instrumentation to ignore\n"
 		"\t -l logging_options            Set the options for logging\n"
-		"\t -n num_iterations             The number of iterations to run per file [5 per file]\n"
+		"\t -n num_iterations             The number of iterations to run per file [default 10 per file]\n"
 		"\n",
 		program_name
 	);
@@ -57,7 +57,7 @@ int main(int argc, char ** argv)
 		*seed_directory = NULL, *seed_buffer = NULL, * module_name = NULL, *logging_options = NULL,
 		*instrumentation_name = NULL, *instrumentation_options = NULL, *ignore_bytes_dir = NULL;
 	void * instrumentation_state = NULL;
-	int seed_length = 0, file_count, index, new_path, cur_index;
+	int seed_length = 0, file_count, module_index, new_path, cur_index;
 	int iteration = 0;
 	WIN32_FIND_DATA fdFile;
 	HANDLE file_handle;
@@ -183,11 +183,11 @@ int main(int argc, char ** argv)
 		{
 			driver->test_input(driver->state, seed_buffer, seed_length);
 
-			index = 0;
-			while (!instrumentation->get_module_info(instrumentation_state, index, &new_path, &module_name, &info, &info_size))
+			module_index = 0;
+			while (!instrumentation->get_module_info(instrumentation_state, module_index, &new_path, &module_name, &info, &info_size))
 			{
-				cur_index = index;
-				index++;
+				cur_index = module_index;
+				module_index++;
 
 				if (module_info_size == -1)
 					module_info_size = info_size;
@@ -196,14 +196,18 @@ int main(int argc, char ** argv)
 				if (!info)
 					FATAL_MSG("Instrumentation data unavailable from the %s instrumentation.\n", instrumentation_name);
 
-				if (num_modules < index)
+				if (num_modules < module_index)
 				{
-					module_names = (char **)realloc(module_names, index * sizeof(char *));
+					//module_infos is a dynamically allocated array that holds all of the instrumentation data for each of the
+					//instrumented modules.  While it is declared/used as a char *, it can be thought of as a 4-dimension array:
+					//char module_infos[NUM_MODULES_TRACED][NUM_FILES_TRACED][NUM_ITERATIONS_PER_FILE][MODULE_INFO_SIZE];
+
+					module_names = (char **)realloc(module_names, module_index * sizeof(char *));
 					module_names[cur_index] = module_name;
-					module_results = (int *)realloc(module_results, index * sizeof(int *));
+					module_results = (int *)realloc(module_results, module_index * sizeof(int *));
 					module_results[cur_index] = INITIAL_STATE;
-					module_infos = (char *)realloc(module_infos, index * num_files * num_iterations * module_info_size);
-					num_modules = index;
+					module_infos = (char *)realloc(module_infos, module_index * num_files * num_iterations * module_info_size);
+					num_modules = module_index;
 				}
 
 				int pos = ((cur_index * num_files * num_iterations) + (file_count * num_iterations) + iteration) * module_info_size;
@@ -231,10 +235,22 @@ int main(int argc, char ** argv)
 	// Compare the runs and calculate ignore bytes ///////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	//In the next portion, we have the variables:
+	//module_index     = the module index (since you can use the picker on many different modules at once).
+	//num_files        = the number of files being tested
+	//num_iterations   = the number of times each file was traced
+	//file_count       = the iterator over the files for a specific module
+	//iteration        = the iterator over the individual traces for a specific file
+	//module_info_size = the size of the instrumentation data from the traced module (a constant value, that doesn't change per file/module/iteration)
+	//cur_pos          = an index into module_infos to the instrumentation data for the $iteration trace of the $file_count file
+	//prev_pos         = an index into module_infos to the instrumentation data for the ($iteration-1) trace of the $file_count file
+
+
+
 	ignore_bytes = (char *)malloc(module_info_size);
-	for (index = 0; index < num_modules; index++)
+	for (module_index = 0; module_index < num_modules; module_index++)
 	{
-		if (module_results[index] != NEW_PATH_ON_SAME_FILE)
+		if (module_results[module_index] != NEW_PATH_ON_SAME_FILE)
 			continue;
 
 		memset(ignore_bytes, 0xff, module_info_size);
@@ -244,8 +260,14 @@ int main(int argc, char ** argv)
 			for (iteration = 1; iteration < num_iterations; iteration++)
 			{
 				int ignore_count = 0;
-				int prev_pos = ((index * num_files * num_iterations) + (file_count * num_iterations) + iteration - 1) * module_info_size;
-				int cur_pos = ((index * num_files * num_iterations) + (file_count * num_iterations) + iteration) * module_info_size;
+
+				//The calculations for cur_pos and prev_pos are done as such:
+				//index * num_files * num_iterations = skip over the modules we've already checked
+				//file_count * num_iterations = skip over the files we've already checked for this module
+				//iteration = skip to the iteration that we're currently checking (prev_pos uses iteration - 1, since it's jumping to the previous iteration's instrumentation data)
+				//and then it's all multiplied by the module_info_size since each one of the instrumentation data records that we're skipping is that many bytes large
+				int prev_pos = ((module_index * num_files * num_iterations) + (file_count * num_iterations) + iteration - 1) * module_info_size;
+				int cur_pos = ((module_index * num_files * num_iterations) + (file_count * num_iterations) + iteration) * module_info_size;
 
 				for (i = 0; i < module_info_size; i++)
 				{
@@ -257,14 +279,14 @@ int main(int argc, char ** argv)
 						ignore_count++;
 					}
 				}
-				DEBUG_MSG("Module %s File %s iteration (%d/%d) ignore count %d total ignore count %d", module_names[index], filenames[file_count], iteration - 1, iteration, ignore_count, total_ignore_count);
+				DEBUG_MSG("Module %s File %s iteration (%d/%d) ignore count %d total ignore count %d", module_names[module_index], filenames[file_count], iteration - 1, iteration, ignore_count, total_ignore_count);
 			}
 		}
 
 		if (ignore_bytes_dir)
 		{
 			memset(filename, 0, sizeof(filename));
-			snprintf(filename, sizeof(filename) - 1, "%s\\%s.dat", ignore_bytes_dir, module_names[index]);
+			snprintf(filename, sizeof(filename) - 1, "%s\\%s.dat", ignore_bytes_dir, module_names[module_index]);
 
 /*
 			//Swap the byte ordering here, so we don't have to in the hashing function later
@@ -287,8 +309,8 @@ int main(int argc, char ** argv)
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	CRITICAL_MSG("Results:");
-	for (index = 0; index < num_modules; index++)
-		CRITICAL_MSG("Module %s had %s", module_names[index], module_results_descriptions[module_results[index]]);
+	for (module_index = 0; module_index < num_modules; module_index++)
+		CRITICAL_MSG("Module %s had %s", module_names[module_index], module_results_descriptions[module_results[module_index]]);
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Cleanup ///////////////////////////////////////////////////////////////////////////////////////////
