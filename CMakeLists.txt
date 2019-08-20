@@ -39,7 +39,21 @@ SET(CMAKE_INSTALL_RPATH "$ORIGIN")
 include_directories (jansson/)
 include_directories (utils/)
 
-#add_subdirectory(${CMAKE_SOURCE_DIR}/jansson/ ${CMAKE_BINARY_DIR}/killerbeez-jansson/)
+# IWYU. Pass -DNO_IWYU=1 to disable, -DNO_IWYU= to re-enable (or regenerate cache)
+if (UNIX AND NOT NO_IWYU)
+	find_program(iwyu_path NAMES include-what-you-use iwyu)
+	if(NOT iwyu_path)
+		# can be installed with sudo apt install iwyu -y
+		message(STATUS "Could not find include-what-you-use, continuing without it")
+	else()
+		message(STATUS "Found include-what-you-use, displaying its suggestions")
+		set(CMAKE_C_INCLUDE_WHAT_YOU_USE ${iwyu_path})
+		set(CMAKE_CXX_INCLUDE_WHAT_YOU_USE ${iwyu_path})
+	endif()
+else()
+	message(STATUS "include-what-you-use disabled")
+endif()
+
 add_subdirectory(jansson/)
 
 # The general mutator library with the common functionality
