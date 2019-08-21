@@ -139,12 +139,15 @@ generic_error $? "make failed" "Failed to build afl test programs"
 # Run the test programs with various different AFL based instrumentations
 echo "Running tests - instrumentation - afl - testing"
 for test_file in test test32 test-qemu test-fast test-fast-deferred test-fast-persist test-fast-persist-deferred; do
-###for test_file in test test32 test-qemu test-fast test-fast-persist test-fast-persist-deferred; do
-	expected=2
+	# Note: in Debian 9 (stretch), there appears to be a bug in the code coverage
+	# of afl-gcc which only detects 2 paths instead of 3 (paths: AA, BA, AB).  Running
+	# the program manually confirms that there are 3 code paths which are hit, it's
+	# just that the instrumentation only picks up 2 of them. The version info on gcc
+	# on that Debian system is: gcc (Debian 6.3.0-18+deb9u1) 6.3.0 20170516
+	# The same target and compiler code, running on Fedora 29 and gcc 8.3.1 work fine.
+	expected=3
 	# Unfortunately the persistence mode tests overly report new paths, so we need to adjust the count for them
-	if [ "$test_file" = "test-qemu" -o "$test_file" = "test-fast" -o "$test_file" = "test-fast-deferred" ]; then
-		expected=3
-	elif [ "$test_file" = "test-fast-persist" -o "$test_file" = "test-fast-persist-deferred" ]; then
+	if [ "$test_file" = "test-fast-persist" -o "$test_file" = "test-fast-persist-deferred" ]; then
 		expected=4
 	fi
 
