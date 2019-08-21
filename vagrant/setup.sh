@@ -2,7 +2,7 @@
 BRANCH="$1"
 
 # Check out the code
-git clone https://github.com/grimm-co/killerbeez
+git clone --recursive https://github.com/grimm-co/killerbeez
 
 # Test a specific branch if necessary
 if [[ "$BRANCH" != "" ]]; then
