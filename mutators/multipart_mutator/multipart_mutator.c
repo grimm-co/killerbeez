@@ -110,11 +110,15 @@ static int setup_mutators(multipart_state_t * multipart_state, char * mutator_op
 	char **inputs = NULL, **options = NULL, **states = NULL, *option, *state;
 	int num_options, num_states, all_use_same_options, all_use_same_states;
 	size_t * input_lengths;
+	DEBUG_MSG("Setting up mutators");
 
-	if (decode_mem_array(mutator_inputs, &inputs, &input_lengths, &inputs_count))
+	if (decode_mem_array(mutator_inputs, &inputs, &input_lengths, &inputs_count)) {
+		FATAL_MSG("Error parsing input data, is it in multipart format?");
 		return 1;
+	}
 
 	if (!inputs_count) { //No inputs were found
+		ERROR_MSG("No inputs found");
 		free_mutator_arrays(inputs, input_lengths, inputs_count, NULL, 0, NULL, 0);
 		return 1;
 	}
@@ -143,6 +147,7 @@ static int setup_mutators(multipart_state_t * multipart_state, char * mutator_op
 
 	for (i = 0; i < inputs_count; i++)
 	{
+		DEBUG_MSG("Setting up mutator %d", i);
 		//Create the mutator and get its state
 		multipart_state->mutators[i] = mutator_factory_directory(multipart_state->mutator_directory, multipart_state->mutator_names[i]);
 		if (multipart_state->mutators[i]) {
@@ -311,6 +316,7 @@ static multipart_state_t * setup_options(char * options, char * input, size_t in
  */
 MULTIPART_MUTATOR_API void * FUNCNAME(create)(char * options, char * state, char * input, size_t input_length)
 {
+	DEBUG_MSG("Creating multipart mutator");
 	multipart_state_t * new_state;
 	new_state = setup_options(options, input, input_length);
 	if (!new_state)
