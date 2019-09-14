@@ -255,16 +255,24 @@ static int finish_fuzz_round(afl_state_t *state) {
 		state->fuzz_results_set = 1;
 
 	} else if(WIFSIGNALED(state->last_status)) {
-		// process was terminated by a signal, we don't really care which one...
-		state->last_fuzz_result = FUZZ_CRASH;
+		// process was terminated by a signal.  We look for signals which
+		// indicate non-crashing conditions (e.g. SIGPIPE)
+		if(WTERMSIG(state->last_status) == SIGPIPE) {
+			state->last_is_new_path = has_new_bits(state->virgin_bits, state->trace_bits);
+			state->last_fuzz_result = FUZZ_NONE;  // we'll say the process exited normally
+			DEBUG_MSG("Process exited due to SIGPIPE, has_new_bits = %d", state->last_is_new_path);
+			state->fuzz_results_set = 1;
+		} else {
+			state->last_fuzz_result = FUZZ_CRASH;
 #ifdef __x86_64__
-		simplify_trace((uint64_t*)state->trace_bits);
+			simplify_trace((uint64_t*)state->trace_bits);
 #else
-		simplify_trace((uint32_t*)state->trace_bits);
+			simplify_trace((uint32_t*)state->trace_bits);
 #endif /* ^__x86_64__ */
-		state->last_is_new_path = has_new_bits(state->virgin_crash, state->trace_bits);
-		DEBUG_MSG("Process crashed, has_new_bits = %d", state->last_is_new_path);
-		state->fuzz_results_set = 1;
+			state->last_is_new_path = has_new_bits(state->virgin_crash, state->trace_bits);
+			DEBUG_MSG("Process crashed, has_new_bits = %d", state->last_is_new_path);
+			state->fuzz_results_set = 1;
+		}
 	} else {
 		// if it didn't exit normally, nor get interrupted by a signal...
 		// I'm not sure what happened!
