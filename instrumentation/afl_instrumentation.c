@@ -335,7 +335,7 @@ int afl_help(char **help_str) {
 		"  persistence_max_cnt  The number of executions to run in one process while\n"
 		"                         fuzzing in persistence mode (default=1)\n"
 		"  qemu_mode            Whether to use qemu mode; 1=yes, 0=no (default=0)\n"
-		"  qemu_path            The path to afl-qemu-trace\n"
+		"  qemu_path            The path to afl-qemu-trace (including executable name)\n"
 		"  deferred_startup     Whether to use deferred startup mode; 1=yes, 0=no (default=0)\n"
 		"\n"
 	);
