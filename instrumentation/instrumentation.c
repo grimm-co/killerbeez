@@ -108,6 +108,7 @@ static pid_t run_target(int needs_stdin_fd, char *target_path, char **argv,
   child_pid = fork();
   if(child_pid < 0) FATAL_MSG("fork() failed");
 
+  DEBUG_MSG("Fork succeeded, child pid: %d", child_pid);
   if(!child_pid) {
     struct rlimit r;
 
@@ -128,6 +129,7 @@ static pid_t run_target(int needs_stdin_fd, char *target_path, char **argv,
       // maps - so we should be getting good protection against OOM bugs.
       setrlimit(RLIMIT_DATA, &r); // Ignore errors
 #endif // ^RLIMIT_AS
+      DEBUG_MSG("Set memory limits");
     }
 
     // Dumping cores is slow and can lead to anomalies if SIGKILL is delivered
@@ -149,28 +151,35 @@ static pid_t run_target(int needs_stdin_fd, char *target_path, char **argv,
     } else {
       dup2(dev_null_fd, 0);
     }
+    DEBUG_MSG("About to send stdout to /dev/null");
     if(dup2(dev_null_fd, 1) < 0)
       WARNING_MSG("Sending stdout to /dev/null failed! errno=%d", errno);
+    DEBUG_MSG("About to send stderr to /dev/null");
     if(dup2(dev_null_fd, 2) < 0)
       WARNING_MSG("Sending stderr to /dev/null failed! errno=%d", errno);
+    DEBUG_MSG("Child is still alive and well!");
 
     // The forkserver requires setting up some control pipes for interaction
     // between the fuzzer and forkserver (which lives in the target process)
     if(fs) {
+      DEBUG_MSG("Setting up pipes for forkserver...");
       // Set up control and status pipes, close the unneeded original fds.
       if(dup2(ctl_pipe[0], FUZZER_TO_FORKSRV) < 0)
         FATAL_MSG("dup2() failed");
       if(dup2(st_pipe[1], FORKSRV_TO_FUZZER) < 0)
         FATAL_MSG("dup2() failed");
+      DEBUG_MSG("Forkserver pipes set up");
 
       close(ctl_pipe[0]);
       close(ctl_pipe[1]);
       close(st_pipe[0]);
       close(st_pipe[1]);
+      DEBUG_MSG("Extra pipes closed");
     }
 
     /* On Linux, would be faster to use O_CLOEXEC. Maybe TODO. */
     close(dev_null_fd);
+    DEBUG_MSG("Setting up pipes is complete...");
 
     // If we are using a forksrv, we might need to inject it dynamically if it
     // is not already in the executable.  We also want to make sure we set the
@@ -221,6 +230,7 @@ static pid_t run_target(int needs_stdin_fd, char *target_path, char **argv,
                              "msan_track_origins=0", 0);
     }
 
+    DEBUG_MSG("Setup done, about to execv: %s", target_path);
     execv(target_path, argv);
     // The only time execv() returns is if it failed
     FATAL_MSG("Target executable failed to execute (execv())");

@@ -6,7 +6,6 @@
 #include <instrumentation_factory.h>
 #include <utils.h>
 
-
 #ifdef _WIN32
 #include <io.h>
 #include <Shlwapi.h>
@@ -16,7 +15,6 @@
 #include <libgen.h>     // dirname
 #include <unistd.h>     // access, F_OK, W_OK
 #include <sys/stat.h>   // mkdir
-#include <sys/types.h>
 #include <errno.h>      // output directory creation
 #endif
 

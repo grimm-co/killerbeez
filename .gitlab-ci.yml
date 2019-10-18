@@ -10,3 +10,37 @@ release:
     paths:
       - release\killerbeez-*.zip
     expire_in: 1 week
+
+release-linux:
+  script:
+    - git config --global http.sslCAInfo "${CI_SERVER_TLS_CA_FILE}"
+    - mkdir build
+    - cd build
+    - cmake ..
+    - make release
+  image: killerbeez-builder:latest
+  variables:
+    GIT_STRATEGY: clone
+    GIT_SUBMODULE_STRATEGY: normal
+  tags:
+    - linux
+  only:
+    - web
+  artifacts:
+    paths:
+      - build/killerbeez-*.zip
+    expire_in: 1 week
+
+# TODO: figure out why this is failing, and remove the . to re-enable it
+.smoketest-linux:
+  script:
+    - git config --global http.sslCAInfo "${CI_SERVER_TLS_CA_FILE}"
+    - cd ..
+    - killerbeez/tests/smoke_test.sh
+  image: killerbeez-builder:latest
+  variables:
+    GIT_STRATEGY: clone
+  tags:
+    - linux
+  only:
+    - web

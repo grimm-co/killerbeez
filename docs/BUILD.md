@@ -37,7 +37,7 @@ for example `C:\killerbeez`
 ```
 mkdir C:\killerbeez
 set WORKDIR=C:/killerbeez
-:: We'll use forward slashes for minimal escaping, Windows doesn't care
+:: We'll use forward slashes (Windows doesn't care) to avoid escaping backslashes
 ```
 
 4. Build [Radamsa](https://gitlab.com/akihe/radamsa) (optional).
@@ -67,8 +67,6 @@ is not included in the 7.0.0-RC1 release.
     ```
     cd %WORKDIR%
     git clone https://github.com/grimm-co/killerbeez.git
-    git clone https://github.com/grimm-co/killerbeez-mutators.git
-    git clone https://github.com/grimm-co/killerbeez-utils.git
     ```
 
 7. Build Killerbeez
@@ -80,34 +78,74 @@ In it, the compiled executables and libraries from all three projects will
 be found in folders named after the architecture (e.g. x64) and build type
 (e.g. Debug).
   + The fuzzer.exe executable can be found at
-`%WORKDIR%/build/x64/Debug/killerbeez/fuzzer.exe`
+`%WORKDIR%/killerbeez/build/x64/Debug/killerbeez/fuzzer.exe`
 
 ## Linux and Mac
 
 ### Prerequisites
 
-To build Killerbeez on Linux/Mac you will need a compiler (gcc or clang), make, and
-cmake.
+To build Killerbeez on Linux/Mac you will need a compiler (gcc or clang), make,
+and cmake.  To build the AFL instrumentation with gcc, clang, and qemu, there
+are a few extra packages needed.  The dependency lists below will make sure
+you can compile everything to get all the cool features.
 
-For Ubuntu, it's as simple as:
+macOS (brew)
 ```
-sudo apt install build-essential cmake
+brew install autoconf automake libtool gcc cmake pkg-config
 ```
+
+Debian 9 (stretch) / Ubuntu 18.04 (bionic) / Ubuntu 16.04 (xenial):
+```
+sudo apt install llvm clang libtool-bin build-essential cmake automake bison flex libglib2.0-dev libc6-dev-i386 libpixman-1-dev
+```
+
+Ubuntu 14.04 (trusty)
+```
+sudo apt install llvm clang libtool build-essential cmake automake bison flex libglib2.0-dev libc6-dev-i386 git
+```
+
+Fedora (tested on 29 and 30):
+```
+sudo dnf install llvm clang llvm-devel libtool libstdc++-static cmake bison flex glib2-devel glibc-devel.i686 zlib-devel
+```
+
+Notes:
+Ubuntu 12.04 (precise) doesn't have a recent enough version of CMake (it
+has 2.8.7, but 2.8.8 needed) in the repositories.  It should work if you compile
+CMake 2.8.8 or later yourself, but it is not a tested distribution.
+
+Debian 8 (jessie) fails to build/install due to what looks like a bug in
+CMake, though we did not take the time to figure out the specific error.
+
+Debian 10 (buster) and Ubuntu 18.04 both have versions of clang which do not
+currently work with the version of the llvm instrumentation from AFL.  This
+will be fixed when we replace the standard AFL programs with the ones from
+AFL++.
+
+On macOS (at least on 10.13.4 (High Sierra)), Apple has reportedly removed the
+ability to load dylibs using relative paths.[1]  There are reports that SIP
+needs to be disabled[2] to fix this, however setting DYLD_LIBRARY_PATH to
+point to the location of the .dylib files (usually $REPOROOT/build/killerbeez)
+was sufficient in our tests.  For now, just set this environment variable if
+there are errors about RPATH or loading .dylibs.  In the long run, we'll be
+investigating what other projects have done[3] to work around this issue.
+
+[1] https://github.com/tensorflow/tensorflow/issues/6729#issuecomment-272583349
+[2] https://github.com/BVLC/caffe/issues/3227
+[3] https://github.com/alexgkendall/caffe-segnet/pull/68/commits/f282c0f784e95460d55e18d68933f2ef66bd3b47
 
 ### Installation
 
-Clone the killerbeez, killerbeez-mutators and killerbeez-utils repos.
+Clone the killerbeez repo
 
 ```
-WORKDIR=~/killerbeez
-mkdir $WORKDIR
-cd $WORKDIR
-git clone https://github.com/grimm-co/killerbeez.git
-git clone https://github.com/grimm-co/killerbeez-mutators.git
-git clone https://github.com/grimm-co/killerbeez-utils.git
+# the --recursive is needed to check out submodules
+git clone --recursive https://github.com/grimm-co/killerbeez.git
+cd killerbeez
 
 # Make a build directory and compile the code.
-mkdir build; cd build; cmake ../killerbeez; make
+mkdir build; cd build; cmake ..; make radamsa all
+# radamsa isn't in "all" by default because of Windows
 ```
 
 If everything compiled, the fuzzer and other Killerbeez
