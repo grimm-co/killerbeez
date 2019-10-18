@@ -1,0 +1,72 @@
+There are projects which have addressed some of the aspects covered by Killerbeez
+such as platform independence, distributed fuzzing, leveraging existing tools,
+and so forth.
+
+Google's OSS-Fuzz\cite{ossfuzz} addresses scalability by running many fuzzers
+in parallel, as well as re-using existing code by leveraging tools like
+Honggfuzz to handle the actual fuzzing. The core fuzzing component of OSS-Fuzz,
+CluserFuzz, was unpublished and therefore unavailable to anyone outside of
+Google for the first eight years.  On February 7, 2019, ClusterFuzz was released
+under the Apache Licence (v2).\cite{clusterfuzzrelease}  Differences which still
+remain between OSS-Fuzz and Killerbeez include OSS-Fuzz requiring source code for the
+target software, and requiring that tests be written to integrate it
+into the overall system. This adds efficiency, as the test cases can eliminate
+code like GUI libraries, which is not the real target of the fuzzing, however
+it is unable to test closed source software.  Had Clusterfuzz been open source
+in 2017, the authors likely would have attempted to extend OSS-Fuzz to also be
+able to fuzz closed source software and run on computers the user controls
+instead of using Google's cloud service.
+
+\AFL{}\cite{afl} is an open source fuzzer that uses coverage data and genetic
+algorithms to automatically discover interesting test cases in a target.  \AFL{}
+was designed to be practical; it has a low overhead, is easy to use, and works
+against real-world software. As such, \AFL{} has become one of the most popular
+fuzzers and many research projects investigate how to improve \AFL{}. Killerbeez
+borrows many features from \AFL{}, such as the compiler and QEMU
+instrumentations. While Killerbeez has also borrowed \AFL{}'s mutation strategy,
+it does not currently include \AFL{}'s mutations which mutate based on coverage
+data. Coverage data is used to avoid wasting time mutating portions of the input
+that the target does not process. These mutations will be incorporated into
+Killerbeez in the future.  While \AFL{} is a great local fuzzer, it is not
+easily distributed and cannot easily manage the fuzzing of more complex targets.
+\AFL{} does not support applications on Windows, and the \AFL{} fork which does
+support Windows, WinAFL, lacks many of the features of \AFL{}.
+
+Peach Fuzzer\cite{peach} now supports distributed fuzzing, modular mutators, and
+modules for launching apps, is able to do both file and network-based fuzzing,
+and does work on closed source applications.  However, the distributed aspect
+is only available in the proprietary version of the fuzzer; it does not exist
+in the community edition, which is open source. There is also no feedback loop
+for code coverage in either edition.  Instead, the input format needs to be
+manually described in XML files, as does the model for the program state. To
+alleviate this problem, the company behind Peach Fuzzer is willing to sell
+access to the definitions they have created.
+
+Honggfuzz\cite{honggfuzz} is an open source fuzzer which runs on Windows, Linux,
+macOS, Android, FreeBSD and NetBSD, all using a single code base. It can handle
+closed source applications, long-running applications such as servers, and will
+automatically use multiple CPU cores to do fuzzing in parallel. Modularity is
+achieved by allowing an external program to do the mutation of inputs. While
+Honggfuzz scales nicely on a single machine, it does not have any built in
+mechanism to utilize multiple machines.  Using Honggfuzz in a larger framework
+such as OSS-Fuzz takes care of this limitation.  In fact, Honggfuzz is a fuzzer
+which will be likely integrated into Killerbeez in the future, as described in
+section \ref{Future Work}. Honggfuzz has more types of instrumentation than any
+other fuzzer, including Killerbeez at the time of writing, however none of
+these work on Windows. The \BTS{} and \IPT{} instrumentations are only for
+Linux, as is the hardware-based counters instrumentation which tracks the
+number of instructions and branches which were executed. There is also compile time
+instrumentation, but this is only helpful in the case where source code is
+available, and it can be compiled by GCC or LLVM.  It is possible to compile
+some C/C++ code for windows using LLVM, but anything which requires Microsoft
+Visual Studio to be compiled will not have any instrumentation.  Supporting
+Windows does not seem to be a priority for Honggfuzz, as it cannot be compiled
+natively, but only via Cygwin.
+
+Honggfuzz is a great tool, which is why a modified version of it was created
+which can use all of the Killerbeez modules.\cite{honggfuzzgrimm} Section
+\ref{Future Work} describes the Linux instrumentation technologies from
+Honggfuzz planned for integration with Killerbeez.
+If it is feasible to add the ability to use
+Killerbeez instrumentation modules, that is another contribution which will be
+made to the Honggfuzz project.

@@ -1,0 +1,40 @@
+There are a huge number of fuzzing tools\cite{afl,aflosx,winafl,peach22,syzkaller,ossfuzz,driller,radamsa,ni,zzuf,synfuzz,brundlefuzz,honggfuzz,kafl,vuzzer,boofuzz} which are publicly available, many of
+which are very useful on real-world binaries.
+However, each tool
+typically only handles one very specific use case or contains other real-world limitations, and most are not designed to scale
+out.  For instance, there are a number of fuzzers targeting kernel system calls\cite{syzkaller,trinity,kafl,osxfuzz}, others for
+fuzzing \IOCTLs{}\cite{ioctlfuzzer,ioctlbf}, and others for fuzzing userland Linux targets that only effectively work with
+command line programs written in C-like languages\cite{afl}.  Some only function with
+source code, only work on 32-bit Linux\cite{vuzzer}, or require users to manually specify
+the data format which the target is
+expecting.\cite{peach,boofuzz}  Finally, there is a category of tools which work amazingly well
+on tiny example programs but do not work on production software due to bugs or lack of
+support for features such as multithreading.\cite{grimmdriller,angrissues}
+
+Lack of compatibility with production software is typically not viewed as an issue in academic work, as the problem to address can be
+scoped based on the tools that are available; one may assume that the problem can
+be solved in other situations, but leave the proof for future work.  The researchers
+are typically correct in their assumption, however practitioners need tools
+that work in practice, not theoretical solutions.
+
+In industry, the situation is dictated by the target software,
+and there is often not a choice as to the implementation's programming language,
+whether source code is available, what operating system it runs
+on, or which CPU architectures it supports. This leaves the security
+professional to choose between the limited set of tools that can handle the specific requirements of their target, many of which will
+turn out to be mutually exclusive. This lack of available tools also creates a new problem, as a common
+response to this dilemma is to put together a custom tool which meets their
+needs, and to do so in the shortest amount of time possible.  Furthermore,
+this results in the same code being re-written for different platforms, or
+sometimes for the same platform, simply because the security professional was
+unaware of existing implementations.  The adapted tool will likely
+contain some of the same bugs and limitations that were in the initial
+version of the existing tool, which may or may not get fixed before it is
+abandoned.
+
+In short, while the state of security research is advancing rapidly, the
+tools to bring their benefits to life are sorely lacking.  Though there are some
+fuzzing projects which come close, such as OSS-Fuzz,\cite{ossfuzz} there
+are not any fuzzing tools which are freely available, work on closed source applications,
+are easily extendable,
+can be run in a distributed manner, and run against Windows, Linux, and macOS applications.

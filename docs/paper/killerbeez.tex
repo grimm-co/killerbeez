@@ -1,0 +1,93 @@
+\documentclass[twocolumn]{article}
+\input{packages}
+
+\title{Killerbeez: Fuzzing Framework to Bring Together the State of the Art}
+\author{Adam Nichols, Ian Bridges, Benjamin Lipton, Jeff Stewart, Tomas Tillery \\
+GRIMM\\
+\{adam,ian,ben,jeffball,tomas\}@grimm-co.com}
+\date{Published: 04 DEC 2018}
+
+% TODO: Make sure we are consistent with our capitalization.  E.g. if we're
+%       going to make Driver a proper noun so it is clear that we're talking
+%       about it in our domain specific definition, we need to do so
+%       consistently.  If not, we need to consistently spell it with a lower
+%       case "d"
+% TODO: We should be saying seed inputs, not seed files.
+% TODO: We should be saying executable instead of binary.
+% TODO: Maybe it's be better to refer to the target software instead of target
+%       application. Saying "application" is confusing when using Killerbeez to
+%       do kernel fuzzing; software covered both cases
+% TODO: Remove most/all instances of first person voice (we, us, our, etc.)
+% TODO: Ensure all acronyms we use are expanded on first use
+\def\AFL{\renewcommand\AFL{AFL}American Fuzzy Lop (AFL)}
+\def\COM{\renewcommand\COM{COM}Common Object Model (COM)}
+\def\BOINC{\renewcommand\BOINC{BOINC}Berkeley Open Infrastructure for Network Computing (BOINC)}
+\def\BTS{\renewcommand\BTS{BTS}Branch Trace Store (BTS)}
+\def\GUI{\renewcommand\GUI{GUI}Graphical User Interface (GUI)}
+\def\IOCTLs{\renewcommand\IOCTLs{IOCTLs}Input/Output Controls (IOCTLs)}
+\def\IPC{\renewcommand\IPC{IPC}Interprocess Comunication (IPC)}
+\def\IPT{\renewcommand\IPT{IPT}Intel Processor Trace (IPT)}
+\def\stdin{\renewcommand\stdin{stdin}standard input (stdin)}
+\def\TNT{\renewcommand\TNT{TNT}Taken Not Taken (TNT)}
+\def\TIP{\renewcommand\TIP{TIP}Target IP (TIP)}
+\def\IP{\renewcommand\IP{IP}Instruction Pointer (IP)}
+\def\API{% Whether we use API or APIs first, we want to redefine both
+\renewcommand\API{API}%
+\renewcommand\APIs{APIs}%
+Application Programming Interface (API)%
+}
+\def\APIs{% It would look silly to spell out API and APIs both
+\renewcommand\API{API}%
+\renewcommand\APIs{APIs}%
+Application Programming Interfaces (APIs)%
+}
+\def\REST{\renewcommand\REST{REST}Representational State Transfer (REST)}
+\def\POSIX{\renewcommand\POSIX{POSIX}Portable Operating System Interface (POSIX)}
+
+\begin{document}
+% Heading for the first page has the title, author(s) and date
+\maketitle
+
+
+\input{abstract}
+
+\section{Introduction} \label{Introduction}
+\input{introduction}
+
+\section{Background} \label{Background}
+\input{background}
+
+% The overview describes what components exist (driver, mutator, manager, etc.)
+% and why. Examples are provided as needed, but just enough to cover the
+% concepts.
+\section{Killerbeez Overview} \label{Killerbeez Overview}
+\input{overview}
+
+% The implementation goes over each component in detail to showcase what we
+% have available so far.
+\section{Implementation} \label{Implementation}
+\input{implementation}
+
+%\section{Evaluation} \label{Evaluation}
+
+\section{Related Work} \label{Related Work}
+\input{related_work}
+
+% This is where we cover planned expansions, both in terms of additional things
+% to pull in, such as grammars which generate test files, Driller style
+% integration of symbolic execution, and additional modules for the existing
+% components (drivers, instrumentation, etc.).
+\section{Future Work} \label{Future Work}
+\input{future_work}
+
+\section{Conclusion} \label{Conclusion}
+\input{conclusion}
+
+\section{Acknowledgments} \label{Acknowledgments}
+\input{acknowledgments}
+
+\section{References} \label{References}
+\renewcommand{\section}[2]{}  % Removes the title thebibliography wants to add
+\input{references}
+
+\end{document}
