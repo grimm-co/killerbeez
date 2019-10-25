@@ -22,6 +22,7 @@ They can be added with the Visual Studio Installer.
       1. Desktop development with C++
       2. Linux development with C++
       3. Visual C++ tools for CMake
+      4. Git for Windows
 
 2. Install [Cygwin](https://cygwin.com/install.html) (only required for
 the radamsa mutator).
@@ -31,14 +32,14 @@ installed.
   + Add the Cygwin `bin/` (e.g. `C:\cygwin64\bin`) to your PATH environment
 variable.
 
-3. Create a working directory to store all of the Killerbeez components,
-for example `C:\killerbeez`
+3. Download the Killerbeez source code
 
-```
-mkdir C:\killerbeez
-set WORKDIR=C:/killerbeez
-:: We'll use forward slashes (Windows doesn't care) to avoid escaping backslashes
-```
+    ```
+    set WORKDIR=C:/
+    :: We'll use forward slashes (Windows doesn't care) to avoid escaping backslashes
+    cd %WORKDIR%
+    git clone https://github.com/grimm-co/killerbeez.git
+    ```
 
 4. Build [Radamsa](https://gitlab.com/akihe/radamsa) (optional).
   + Clone the Radamsa repository into %WORKDIR% from a Cygwin terminal and
@@ -56,20 +57,13 @@ available](https://console.cloud.google.com/storage/browser/chromium-dynamorio/b
 A direct link to the latest build as of 3/14/18 can be found
 [here](https://storage.googleapis.com/chromium-dynamorio/builds/DynamoRIO-Windows-6.2.17295-0xa77808f.zip).
   + Download the zip file and extract it so that the main directory (the
-one containing bin32/ and bin64/ directories) is `%WORKDIR%/dynamorio`
+one containing bin32/ and bin64/ directories) is `%WORKDIR%/killerbeez/dynamorio`
   + *Note:* The reason we have to use the latest build is that [commit
 c575ad](https://github.com/DynamoRIO/dynamorio/commit/c575ad16f8943eb6946e8c875eb248d948390537)
 is needed to support binaries built with VS 2017 on Windows 10. This commit
 is not included in the 7.0.0-RC1 release.
 
-6. Download the Killerbeez source code
-
-    ```
-    cd %WORKDIR%
-    git clone https://github.com/grimm-co/killerbeez.git
-    ```
-
-7. Build Killerbeez
+6. Build Killerbeez
   + Open the repository `killerbeez` within Visual Studio (File -> Open ->
 CMake..) and build it using (CMake -> Build All).  This should build the
 fuzzer and its dependencies from the other repos.  If successful, you'll
