@@ -41,6 +41,6 @@ if (NOT APPLE)
 add_subdirectory(radamsa_mutator)
 endif (NOT APPLE)
 
-# The mutator test program
+# The mutator test program, uncomment to build
 #add_subdirectory(mutator_tester)
 
