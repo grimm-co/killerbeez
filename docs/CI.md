@@ -22,8 +22,8 @@ creating CI runners that test the build on a number of platforms.
     * `CI_SERVER_TLS_CA_FILE` - If your GitLab server's certificate is signed
       by a private CA, place the CA certificate in the `vagrant/ci_runner`
       directory and set this variable. The certificate will be copied to
-      `/vagrant` in the VM, so if your certificate is named `ca.crt`, set
-      `CI_SERVER_TLS_CA_FILE=/vagrant/ca.crt`.
+      `/killerbeez` in the VM, so if your certificate is named
+      `ca.crt`, set `CI_SERVER_TLS_CA_FILE=/killerbeez/ca.crt`.
     * Any other settings that gitlab-runner accepts as environment variables.
       See `gitlab-runner register -h` for more options.
 * `vagrant up`
