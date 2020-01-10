@@ -1,0 +1,112 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# The following platforms are listed as having supported packages in the
+# gitlab-runner documentation
+# (https://docs.gitlab.com/runner/install/linux-repository.html). Thus we can
+# build runners for these platforms just by starting from the appropriate box
+# and installing the package.
+LINUX_BOXES = [
+    ["ubuntu", "16.04", "ubuntu/xenial64"],
+    ["ubuntu", "18.04", "ubuntu/bionic64"],
+
+    ["fedora", "29", "generic/fedora29"],
+
+    ["debian", "8", "debian/jessie64"],
+    ["debian", "9", "debian/stretch64"],
+]
+
+# The following platforms do not have supported gitlab-runner packages
+# according to the webpage, so we build on them using the docker executor
+# instead.
+DOCKER_IMAGES = [
+    ["ubuntu", "14.04", "ubuntu:14.04"],
+    ["ubuntu", "19.04", "ubuntu:19.04"],
+    ["fedora", "30", "fedora:30"],
+    ["debian", "10", "debian:10"],
+]
+
+WINDOWS_BOXES = [
+  ["10", "x64", "Windows10x64en-noup"],
+]
+
+Vagrant.configure("2") do |config|
+    LINUX_BOXES.each do |(distro, version, boxname)|
+        hostname = "kb-#{distro}-#{version}"
+        config.vm.define hostname do |config|
+            config.vm.box = boxname
+            config.vm.hostname = hostname.gsub(".", "-")
+
+            # Settings for Virtualbox
+            config.vm.provider "virtualbox" do |vb|
+                vb.linked_clone = true
+            end
+
+            config.vm.provision "shell", inline: "mkdir -p /killerbeez; chown vagrant:vagrant /killerbeez"
+            config.vm.provision "file", source: ".", destination: "/killerbeez"
+            config.vm.provision "shell", path: "../dependencies.sh", name: "dependencies"
+            config.vm.provision "shell", path: "runner.sh", privileged: false
+        end
+    end
+
+    # Creates a VM for each of the docker platforms, containing a runner that
+    # defaults to the configured docker image. Thus we can tag these runners
+    # with the ${distro}-${version} like the above ones, and they will
+    # work the same way from the perspective of the .gitlab-ci.yml file. Under
+    # the hood they will run the configured script in a docker container of the
+    # configured OS rather than on the host filesystem, though.
+    DOCKER_IMAGES.each do |(distro, version, docker_image)|
+        hostname = "kb-docker-#{distro}-#{version}"
+        config.vm.define hostname do |config|
+            config.vm.box = "ubuntu/bionic64"
+            config.vm.hostname = hostname.gsub(".", "-")
+
+             # Settings for Virtualbox
+            config.vm.provider "virtualbox" do |vb|
+                vb.linked_clone = true
+            end
+
+            config.vm.provision "shell", inline: "mkdir -p /killerbeez; chown vagrant:vagrant /killerbeez"
+            config.vm.provision "file", source: ".", destination: "/killerbeez"
+            config.vm.provision "file", source: "../dependencies.sh", destination: "/killerbeez/dependencies.sh"
+            config.vm.provision "docker" do |d|
+                d.build_image "/killerbeez",
+                    args: "-t kb-#{distro}-#{version} --build-arg SOURCE_IMG=#{docker_image}"
+                d.run "gitlab-runner", image: "gitlab/gitlab-runner",
+                    args: "-v /srv/gitlab-runner/config:/etc/gitlab-runner \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        -v /killerbeez:/killerbeez"
+            end
+            config.vm.provision "shell", path: "register_docker_runner.sh", privileged: false, args: [distro, version]
+        end
+    end
+
+    WINDOWS_BOXES.each do |(version, bitness, boxname)|
+        hostname = "kb-windows-#{version}-#{bitness}"
+        config.vm.define hostname do | config|
+            config.vm.box = boxname
+            config.vm.hostname = hostname.gsub(".", "-")
+
+             # Settings for Virtualbox
+            config.vm.provider "virtualbox" do |vb|
+                vb.linked_clone = true
+            end
+
+            config.vm.communicator = "winrm"
+            config.vm.guest = :windows
+            config.windows.halt_timeout = 15
+
+            # RDP port for debugging
+            config.vm.network :forwarded_port, guest: 3389, host: 3389, auto_correct: true
+
+            config.vm.provision "file", source: ".", destination: "C:\\killerbeez"
+            config.vm.provision "file", source: "../../tools/release.bat",
+                destination: "C:\\killerbeez\\release.bat"
+            config.vm.provision "file", source: "../../tools/release_excludes.txt",
+                destination: "C:\\killerbeez\\release_excludes.txt"
+            config.vm.provision "shell", path: "../../tools/setup_build_env.ps1",
+                args: ["-build-env", "C:\\killerbeez"]
+            config.vm.provision "shell", path: "runner.ps1", args: ["-version", version, "-bitness", bitness]
+        end
+    end
+end

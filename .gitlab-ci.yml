@@ -1,6 +1,9 @@
+stages:
+  - test
+  - release
+
 release:
   script:
-    - call tools\update_repos.bat
     - call tools\release.bat
   tags:
     - windows
@@ -10,10 +13,10 @@ release:
     paths:
       - release\killerbeez-*.zip
     expire_in: 1 week
+  stage: release
 
 release-linux:
   script:
-    - git config --global http.sslCAInfo "${CI_SERVER_TLS_CA_FILE}"
     - mkdir build
     - cd build
     - cmake ..
@@ -21,26 +24,74 @@ release-linux:
   image: killerbeez-builder:latest
   variables:
     GIT_STRATEGY: clone
-    GIT_SUBMODULE_STRATEGY: normal
+    GIT_SUBMODULE_STRATEGY: recursive
   tags:
-    - linux
+    - ubuntu-16.04
   only:
     - web
   artifacts:
     paths:
       - build/killerbeez-*.zip
     expire_in: 1 week
+  stage: release
 
-# TODO: figure out why this is failing, and remove the . to re-enable it
-.smoketest-linux:
+# Smoke tests on all platforms
+.smoketest-linux: &smoketest-linux
   script:
-    - git config --global http.sslCAInfo "${CI_SERVER_TLS_CA_FILE}"
     - cd ..
     - killerbeez/tests/smoke_test.sh
-  image: killerbeez-builder:latest
   variables:
     GIT_STRATEGY: clone
-  tags:
-    - linux
+    GIT_SUBMODULE_STRATEGY: recursive
   only:
     - web
+  stage: test
+  # The build is broken on most of the platforms
+  allow_failure: true
+
+smoketest-ubuntu-14.04:
+  <<: *smoketest-linux
+  tags:
+    - ubuntu-14.04
+
+smoketest-ubuntu-16.04:
+  <<: *smoketest-linux
+  tags:
+    - ubuntu-16.04
+  # This platform is supposed to be working
+  allow_failure: false
+
+smoketest-ubuntu-18.04:
+  <<: *smoketest-linux
+  tags:
+    - ubuntu-18.04
+
+smoketest-ubuntu-19.04:
+  <<: *smoketest-linux
+  tags:
+    - ubuntu-19.04
+
+smoketest-fedora-29:
+  <<: *smoketest-linux
+  tags:
+    - fedora-29
+
+smoketest-fedora-30:
+  <<: *smoketest-linux
+  tags:
+    - fedora-30
+
+smoketest-debian-8:
+  <<: *smoketest-linux
+  tags:
+    - debian-8
+
+smoketest-debian-9:
+  <<: *smoketest-linux
+  tags:
+    - debian-9
+
+smoketest-debian-10:
+  <<: *smoketest-linux
+  tags:
+    - debian-10

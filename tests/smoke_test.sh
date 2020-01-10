@@ -36,7 +36,8 @@ function test_linux_error {
 
 cd killerbeez
 # Compile things
-mkdir -p build; cd build; cmake ..; make
+mkdir -p build; cd build
+cmake .. && make || exit 1
 
 # Try running the fuzzer and make sure we have some basic functionality
 cd killerbeez

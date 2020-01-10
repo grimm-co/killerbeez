@@ -1,4 +1,5 @@
 param($build_env = $PSScriptRoot, $cygwin_mirror = "http://mirrors.kernel.org/sourceware/cygwin/")
+Set-PSDebug -Trace 1
 pushd $build_env
 
 $ErrorActionPreference = "Stop"
@@ -8,6 +9,7 @@ if ($env:DNS_SERVER) {
   netsh interface ip set dns Ethernet static $env:DNS_SERVER
 }
 
+[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
 $wc = New-Object System.Net.WebClient
 
 if (!(Test-Path "C:\Gitlab-Runner\gitlab-runner-windows-amd64.exe")) {
@@ -45,10 +47,5 @@ if ($ret.ExitCode) {
 echo "Visual Studio install complete"
 
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-
-certutil -addstore "Root" $build_env\ca.crt
-foreach ($url in -split $env:CA_URLS) {
-  git config --system http."$url".sslCAinfo $build_env\ca.crt
-}
 
 popd

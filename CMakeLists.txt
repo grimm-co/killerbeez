@@ -86,7 +86,7 @@ if (UNIX AND (NOT APPLE))
   SET(BOINC_WRAPPER ${CMAKE_SOURCE_DIR}/server/boinc/samples/wrapper/wrapper)
   ExternalProject_Add(boinc-wrapper
     SOURCE_DIR ${CMAKE_SOURCE_DIR}/server/boinc
-    DOWNLOAD_COMMAND cd <SOURCE_DIR> && git submodule update --init .
+    DOWNLOAD_COMMAND cd ${CMAKE_SOURCE_DIR} && git submodule update --init server/boinc
     BUILD_IN_SOURCE true
     CONFIGURE_COMMAND ./_autosetup
     COMMAND ./configure --disable-server --disable-client --disable-manager --enable-boinczip
@@ -101,6 +101,7 @@ install(PROGRAMS ${BOINC_WRAPPER} DESTINATION server/skel)
 set(RADAMSA_URL https://gitlab.com/akihe/radamsa.git)
 ExternalProject_Add(radamsa
   GIT_REPOSITORY ${RADAMSA_URL}
+  GIT_TAG develop
   BUILD_IN_SOURCE true
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ${CMAKE_MAKE_PROGRAM}
