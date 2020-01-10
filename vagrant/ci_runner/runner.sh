@@ -38,7 +38,7 @@ fi
 RUNNER_NAME=kb-${distro}-${version}
 RUNNER_TAG_LIST=${distro},${distro}-${version}
 
-gitlab-runner list |& grep -qF "$RUNNER_NAME"
+sudo gitlab-runner list |& grep -qF "$RUNNER_NAME"
 
 if [[ $? -eq 0 ]]; then
     echo "$RUNNER_NAME already registered, skipping registration"
