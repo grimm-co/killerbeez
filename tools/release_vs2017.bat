@@ -75,7 +75,7 @@ xcopy /s /exclude:%~dp0\release_excludes.txt build\%platform%\Release\* %distdir
 if "%platform%" == "x64" (
   xcopy /s /exclude:%~dp0\release_excludes.txt build\X86\Release\killerbeez\bin32\* %distdir%\killerbeez\bin32\
 )
-xcopy /s /i killerbeez\docs %distdir%\docs
+xcopy /s /i docs %distdir%\docs
 
 mkdir %distdir%\radamsa
 xcopy /s /i radamsa\bin %distdir%\radamsa\bin
@@ -107,9 +107,9 @@ if "%platform%" == "x64" (
   REM Include wrapper binary, stored in C:\killerbeez on the runner
   xcopy C:\killerbeez\wrapper_26014_windows_x86_64.exe %distdir%\server\skel\windows_x86_64
   REM Include license files from the BOINC repo
-  xcopy killerbeez\server\boinc\COPYING %distdir%\server\skel\windows_x86_64
-  xcopy killerbeez\server\boinc\COPYING.LESSER %distdir%\server\skel\windows_x86_64
-  xcopy killerbeez\server\boinc\README.md %distdir%\server\skel\windows_x86_64
+  xcopy server\boinc\COPYING %distdir%\server\skel\windows_x86_64
+  xcopy server\boinc\COPYING.LESSER %distdir%\server\skel\windows_x86_64
+  xcopy server\boinc\README.md %distdir%\server\skel\windows_x86_64
 )
 
 set releasezip=%CI_PROJECT_DIR%\release\%relname%.zip
