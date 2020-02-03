@@ -1,4 +1,4 @@
-param($build_env = $PSScriptRoot, $cygwin_mirror = "http://mirrors.kernel.org/sourceware/cygwin/")
+param($build_env = $PSScriptRoot, $cygwin_mirror = "http://mirrors.kernel.org/sourceware/cygwin/", $vs_version = "2019")
 Set-PSDebug -Trace 1
 pushd $build_env
 
@@ -33,12 +33,22 @@ if ($ret.ExitCode) {
 
 # Install Visual Studio
 echo "Beginning Visual Studio install"
-$url = "https://aka.ms/vs/15/release/vs_community.exe"
-$wc.DownloadFile($url, "$build_env\installers\vs_community.exe")
-if (Test-Path "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat") {
-  $ret = Start-Process "$build_env\installers\vs_community.exe" -ArgumentList "update","--passive" -Wait -PassThru
+if ($vs_version -eq "2017") {
+    $url = "https://aka.ms/vs/15/release/vs_community.exe"
+    $vs_exe = "$build_env\installers\vs_community.exe"
+    $example_file = "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat"
+    $extra_args = @()
 } else {
-  $ret = Start-Process "$build_env\installers\vs_community.exe" -ArgumentList "--add","Microsoft.VisualStudio.Component.VC.Tools.x86.x64","--add","Microsoft.VisualStudio.Component.VC.CMake.Project","--add","Microsoft.VisualStudio.Component.Git","--passive","--norestart" -Wait -PassThru
+    $url = "https://aka.ms/vs/16/release/vs_community.exe"
+    $vs_exe = "$build_env\installers\vs_community.exe"
+    $example_file = "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat"
+    $extra_args = "--add","Microsoft.VisualStudio.Component.Windows10SDK.18362"
+}
+$wc.DownloadFile($url, $vs_exe)
+if (Test-Path $example_file) {
+  $ret = Start-Process $vs_exe -ArgumentList "update","--passive" -Wait -PassThru
+} else {
+  $ret = Start-Process $vs_exe -ArgumentList ("--add","Microsoft.VisualStudio.Component.VC.Tools.x86.x64","--add","Microsoft.VisualStudio.Component.VC.CMake.Project","--add","Microsoft.VisualStudio.Component.Git","--passive","--norestart" + $extra_args) -Wait -PassThru
 }
 
 if ($ret.ExitCode) {

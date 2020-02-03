@@ -2,11 +2,32 @@ stages:
   - test
   - release
 
-release:
+build-windows-vs2017:
   script:
-    - call tools\release.bat
+    - call tools\release_vs2017.bat
+  variables:
+    GIT_STRATEGY: clone
+    GIT_SUBMODULE_STRATEGY: recursive
   tags:
     - windows
+    - vs2017
+  only:
+    - web
+  artifacts:
+    paths:
+      - release\killerbeez-*.zip
+    expire_in: 1 week
+  stage: release
+
+build-windows-vs2019:
+  script:
+    - call tools\release_vs2019.bat
+  variables:
+    GIT_STRATEGY: clone
+    GIT_SUBMODULE_STRATEGY: recursive
+  tags:
+    - windows
+    - vs2019
   only:
     - web
   artifacts:

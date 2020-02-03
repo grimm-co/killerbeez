@@ -27,7 +27,8 @@ DOCKER_IMAGES = [
 ]
 
 WINDOWS_BOXES = [
-  ["10", "x64", "Windows10x64en-noup"],
+  ["10", "x64", "2017", "Windows10x64en-noup"],
+  ["10", "x64", "2019", "Windows10x64en-noup"],
 ]
 
 Vagrant.configure("2") do |config|
@@ -81,8 +82,8 @@ Vagrant.configure("2") do |config|
         end
     end
 
-    WINDOWS_BOXES.each do |(version, bitness, boxname)|
-        hostname = "kb-windows-#{version}-#{bitness}"
+    WINDOWS_BOXES.each do |(version, bitness, vs_version, boxname)|
+        hostname = "kb-windows-#{version}-#{bitness}-vs#{vs_version}"
         config.vm.define hostname do | config|
             config.vm.box = boxname
             config.vm.hostname = hostname.gsub(".", "-")
@@ -100,13 +101,10 @@ Vagrant.configure("2") do |config|
             config.vm.network :forwarded_port, guest: 3389, host: 3389, auto_correct: true
 
             config.vm.provision "file", source: ".", destination: "C:\\killerbeez"
-            config.vm.provision "file", source: "../../tools/release.bat",
-                destination: "C:\\killerbeez\\release.bat"
-            config.vm.provision "file", source: "../../tools/release_excludes.txt",
-                destination: "C:\\killerbeez\\release_excludes.txt"
             config.vm.provision "shell", path: "../../tools/setup_build_env.ps1",
-                args: ["-build-env", "C:\\killerbeez"]
-            config.vm.provision "shell", path: "runner.ps1", args: ["-version", version, "-bitness", bitness]
+                args: ["-build_env", "C:\\killerbeez", "-vs_version", vs_version]
+            config.vm.provision "shell", path: "runner.ps1",
+		args: ["-version", version, "-bitness", bitness, "-vs_version", vs_version]
         end
     end
 end
