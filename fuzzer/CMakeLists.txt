@@ -11,6 +11,10 @@ add_library(utils ${CMAKE_SOURCE_DIR}/utils/utils.c ${CMAKE_SOURCE_DIR}/utils/mu
 if (UNIX)
   target_link_libraries(utils dl)
 endif (UNIX)
+if (WIN32)
+  add_library(xgetopt ${CMAKE_SOURCE_DIR}/utils/XGetopt.c)
+endif (WIN32)
+
 find_package(Threads REQUIRED)
 if(THREADS_HAVE_PTHREAD_ARG)
   set_property(TARGET utils PROPERTY COMPILE_OPTIONS "-pthread")
@@ -39,4 +43,5 @@ if (WIN32)
   target_link_libraries(fuzzer Shlwapi)  # utils needs Shlwapi
   target_link_libraries(fuzzer ws2_32)   # network driver needs ws2_32
   target_link_libraries(fuzzer iphlpapi) # network driver needs iphlpapi
+  target_link_libraries(fuzzer xgetopt) # CLI parsing
 endif (WIN32)

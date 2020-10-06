@@ -11,6 +11,7 @@
 #include <Shlwapi.h>
 #define F_OK 00     // for checking if a file is open/writable
 #define W_OK 02
+#include "XGetopt.h"
 #else
 #include <libgen.h>     // dirname
 #include <unistd.h>     // access, F_OK, W_OK, getopt
@@ -176,7 +177,7 @@ int main(int argc, char ** argv)
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Parse Arguments ///////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	while ((c = getopt(argc, argv, "d:h::i:j:k:l:m:n:o:p:r:s:t:u:")) != -1)
+	while ((c = getopt(argc, argv, "d:h:i:j:k:l:m:n:o:p:r:s:t:u:")) != -1)
 	{
 		switch (c)
 		{
