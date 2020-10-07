@@ -44,10 +44,8 @@ void usage(char * program_name, char * mutator_directory)
 "  -hl                            Get help text about logging\n"
 "  -hm                            Get help text about mutators\n"
 "  -i instrumentation_options     JSON filename with options for the instrumentation\n"
-"  -j instrumentation_state_file  Set the file containing that the\n"
-"                                   instrumentation state should dump to\n"
-"  -k instrumentation_state_file  Set the file containing that the\n"
-"                                   instrumentation state should load from\n"
+"  -j instrumentation_state_file  Set the file that the instrumentation state should dump to\n"
+"  -k instrumentation_state_file  Set the file that the instrumentation state should load from\n"
 "  -l logging_options             JSON filename with options for logging\n"
 "  -m mutator_options             JSON filename with options for the mutator\n"
 "  -n num_iterations              Limit the number of iterations to run\n"
@@ -59,10 +57,8 @@ void usage(char * program_name, char * mutator_directory)
 "                                   specific mutators)\n"
 "  -r mutator_state               Set the state that the mutator should load\n"
 "  -s seed                        The seed file to use\n"
-"  -t mutator_state_file          Set the file containing that the mutator\n"
-"                                   state should dump to\n"
-"  -u mutator_state_file          Set the file containing that the mutator\n"
-"                                   state should load from\n"
+"  -t mutator_state_file          Set the file that the mutator state should dump to\n"
+"  -u mutator_state_file          Set the file that the mutator state should load from\n"
 "\n\n",
 		program_name
 	);
