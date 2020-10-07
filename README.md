@@ -63,7 +63,7 @@ REM Assuming you: set WORKDIR=C:/killerbeez
 REM Note: if using backslashes, they need to be escaped to be proper JSON.
 
 cd %WORKDIR%/killerbeez/build/x64/Debug/killerbeez
-echo "{\"path\":\"%WORKDIR%/killerbeez/corpus/test/test.exe\",\"arguments\":\"@@\"}" > driver.json
+echo {"path":"%WORKDIR%/killerbeez/corpus/test/test.exe","arguments":"@@"} > driver.json
 fuzzer.exe -n 9 -s "%WORKDIR%/killerbeez/corpus/test/inputs/close.txt" ^
 	-d driver.json file debug bit_flip
 ```
