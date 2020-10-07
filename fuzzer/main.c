@@ -39,7 +39,6 @@ void usage(char * program_name, char * mutator_directory)
 "\n"
 "Options:\n"
 "  -d driver_options              JSON filename with options for the driver\n"
-"  -h                             Get usage text\n"
 "  -hd                            Get help text about drivers\n"
 "  -hi                            Get help text about instrumentation\n"
 "  -hl                            Get help text about logging\n"
