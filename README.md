@@ -78,7 +78,7 @@ Wed Aug  8 18:27:09 2018 - INFO     - Ran 9 iterations in 1 seconds
 ##### Fuzzing Windows Media Player
 Download a small video file you would like to use as a seed file (e.g.
 `youtube-dl --format mp4 --output test.mp4 your-favorite-video`).
-Be sure to replace the seed file argument `-sf` with the path to the video file
+Be sure to replace the seed file argument `-s` with the path to the video file
 you just downloaded. 
 
 Note that because `wmplayer.exe` is a 32-bit executable you'll either need
