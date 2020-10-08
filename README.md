@@ -97,8 +97,8 @@ as reference but it is best to verify the entry point of your binary.
 | 12.0.17134      | 0x1F20 |
 
 ```
-echo "{\"timeout\":20}" > driver.json
-echo "{\"timeout\":5000,\"coverage_modules\":[\"wmp.DLL\"],\"target_path\":\"C:\\Program Files (x86)\\Windows Media Player\\wmplayer.exe\"}" > instrumentation.json
+echo {"timeout":20} > driver.json
+echo {"timeout":5000,"coverage_modules":["wmp.DLL"],"target_path":"C:\\Program Files (x86)\\Windows Media Player\\wmplayer.exe"} > instrumentation.json
 fuzzer.exe -n 3 -s "C:\Users\user\Desktop\test.mp4" -d driver.json -i instrumentation.json wmp dynamorio nop
 ```
 You may need to modify these parameters to match your environment.  In
