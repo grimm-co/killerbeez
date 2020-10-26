@@ -49,9 +49,9 @@
 //       getopt -- parse command line options
 //
 //  SYNOPSIS
-//       int getopt(int argc, TCHAR *argv[], TCHAR *optstring)
+//       int getopt(int argc, char *argv[], char *optstring)
 //
-//       extern TCHAR *optarg;
+//       extern char *optarg;
 //       extern int optind;
 //
 //  DESCRIPTION
@@ -104,7 +104,7 @@
 //           encountered, instead of -1 as the latest standard requires.
 //
 //  EXAMPLE
-//       BOOL CMyApp::ProcessCommandLine(int argc, TCHAR *argv[])
+//       BOOL CMyApp::ProcessCommandLine(int argc, char *argv[])
 //       {
 //           int c;
 //
@@ -152,12 +152,12 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-TCHAR	*optarg;		// global argument pointer
+char	*optarg;		// global argument pointer
 int		optind = 0; 	// global argv index
 
-int getopt(int argc, TCHAR *argv[], TCHAR *optstring)
+int getopt(int argc, char *argv[], char *optstring)
 {
-	static TCHAR *next = NULL;
+	static char *next = NULL;
 	if (optind == 0)
 		next = NULL;
 
@@ -190,8 +190,8 @@ int getopt(int argc, TCHAR *argv[], TCHAR *optstring)
 		optind++;
 	}
 
-	TCHAR c = *next++;
-	TCHAR *cp = _tcschr(optstring, c);
+	char c = *next++;
+	char *cp = _tcschr(optstring, c);
 
 	if (cp == NULL || c == _T(':'))
 		return _T('?');
