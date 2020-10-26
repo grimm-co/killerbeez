@@ -35,7 +35,7 @@ void usage(char * program_name, char * mutator_directory)
 	printf(
 "\n"
 "Usage: %s\n"
-"         driver_name instrumentation_name mutator_name [options]\n"
+"         [options] driver_name instrumentation_name mutator_name\n"
 "\n"
 "Options:\n"
 "  -d driver_options              JSON filename with options for the driver\n"
