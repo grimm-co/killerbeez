@@ -63,7 +63,7 @@ test_linux_error $? "$output" "honggfuzz" "non-crashing"
 # Ensure that it can also find crashes, given a reasonable seed
 echo "ABC@" > test1
 echo "Running expected crashing test"
-output=`./fuzzer file return_code honggfuzz -n 300 -s test1 -d driver.json`
+output=`./fuzzer -n 300 -s test1 -d driver.json file return_code honggfuzz`
 test_linux_error $? "$output" "honggfuzz" "crashing"
 echo "$output" | grep CRITICAL &> /dev/null
 test_linux_error $? "$output" "honggfuzz" "non-crashing"
@@ -242,15 +242,14 @@ for mutator in ni bit_flip nop interesting_value havoc arithmetic afl zzuf; do
 done
 
 # TODO: add tests for multipart, radamsa, dictionary, and splice
-#output=`./fuzzer file return_code splice -n 30 -s test0 \
-#	-d '{"path":"corpus/test-linux","arguments":"@@"}'`
+#echo '{"path":"corpus/test-linux","arguments":"@@"}' > driver.json
+#output=`./fuzzer -n 30 -s test0 -d driver.json file return_code splice`
 #test_linux_error $? "$output" splice "basic test"
 #no_warnings_no_errors "$output" splice
 
 # Want to test the no_warnings_no_errors function?  Uncomment
 # the blog below to try a made-up mutator
-#output=`./fuzzer file return_code thisdoesnotexist -n 30 -s test0 \
-#	-d '{"path":"corpus/test-linux","arguments":"@@"}'`
+#output=`./fuzzer -n 30 -s test0 -d driver.json file return_code doesnotexist`
 #test_linux_error $? "$output" thisdoesnotexist "basic test"
 #no_warnings_no_errors "$output" thisdoesnotexist
 
