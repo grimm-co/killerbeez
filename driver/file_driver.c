@@ -48,6 +48,10 @@ static file_state_t * setup_options(char * options)
 
 	if (!state->path || !file_exists(state->path) || state->input_ratio <= 0)
 	{
+		if(!state->path)
+		{
+			FATAL_MSG("Failed to load file driver: path to executable missing");
+		}
 		file_cleanup(state);
 		return NULL;
 	}
@@ -57,7 +61,7 @@ static file_state_t * setup_options(char * options)
 		if(!state->arguments || !strstr(state->arguments, "@@")) {
 			ERROR_MSG("Test filename not specified and the target program's arguments do not include the test filename "
 				"symbol (\"@@\"). The target program will not be able to receive the mutated input data.");
-			ERROR_MSG("Use the \"argument\" or \"filename\" options to pass the mutated input to the target program");
+			ERROR_MSG("Use the \"arguments\" or \"filename\" options to pass the mutated input to the target program");
 			file_cleanup(state);
 			return NULL;
 		}
@@ -123,7 +127,13 @@ void * file_create(char * options, instrumentation_t * instrumentation, void * i
 
 	//This driver requires at least the path to the program to run. Make sure we either have both a mutator and state
 	if (!options || !strlen(options) || (mutator && !mutator_state) || (!mutator && mutator_state)) //or neither
+	{
+		if (!options)
+		{
+			FATAL_MSG("Options are required for the file driver");
+		}
 		return NULL;
+	}
 
 	state = setup_options(options);
 	if (!state)

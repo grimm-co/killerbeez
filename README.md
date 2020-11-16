@@ -63,9 +63,9 @@ REM Assuming you: set WORKDIR=C:/killerbeez
 REM Note: if using backslashes, they need to be escaped to be proper JSON.
 
 cd %WORKDIR%/killerbeez/build/x64/Debug/killerbeez
-fuzzer.exe file debug bit_flip -n 9 ^
-	-sf "%WORKDIR%/killerbeez/corpus/test/inputs/close.txt" ^
-	-d "{\"path\":\"%WORKDIR%/killerbeez/corpus/test/test.exe\",\"arguments\":\"@@\"}"
+echo {"path":"%WORKDIR%/killerbeez/corpus/test/test.exe","arguments":"@@"} > driver.json
+fuzzer.exe -n 9 -s "%WORKDIR%/killerbeez/corpus/test/inputs/close.txt" ^
+	-d driver.json file debug bit_flip
 ```
 
 Successful output should look like
@@ -78,7 +78,7 @@ Wed Aug  8 18:27:09 2018 - INFO     - Ran 9 iterations in 1 seconds
 ##### Fuzzing Windows Media Player
 Download a small video file you would like to use as a seed file (e.g.
 `youtube-dl --format mp4 --output test.mp4 your-favorite-video`).
-Be sure to replace the seed file argument `-sf` with the path to the video file
+Be sure to replace the seed file argument `-s` with the path to the video file
 you just downloaded. 
 
 Note that because `wmplayer.exe` is a 32-bit executable you'll either need
@@ -97,7 +97,9 @@ as reference but it is best to verify the entry point of your binary.
 | 12.0.17134      | 0x1F20 |
 
 ```
-fuzzer.exe wmp dynamorio nop -n 3 -sf "C:\Users\user\Desktop\test.mp4" -d "{\"timeout\":20}" -i "{\"timeout\":5000,\"coverage_modules\":[\"wmp.DLL\"],\"target_path\":\"C:\\Program Files (x86)\\Windows Media Player\\wmplayer.exe\"}"
+echo {"timeout":20} > driver.json
+echo {"timeout":5000,"coverage_modules":["wmp.DLL"],"target_path":"C:\\Program Files (x86)\\Windows Media Player\\wmplayer.exe"} > instrumentation.json
+fuzzer.exe -n 3 -s "C:\Users\user\Desktop\test.mp4" -d driver.json -i instrumentation.json wmp dynamorio nop
 ```
 You may need to modify these parameters to match your environment.  In
 order to speed up fuzzing, it may be useful to enable persistence mode.
@@ -113,7 +115,8 @@ it on a test program from our corpus.
 ```
 # assuming that you're in $WORKDIR/build/killerbeez
 cd ../build/killerbeez/
-./fuzzer file return_code honggfuzz -n 20 -sf /bin/bash -d '{"path":"corpus/test-linux","arguments":"@@"}'
+echo '{"path":"corpus/test-linux","arguments":"@@"}' > driver.json
+./fuzzer -n 20 -s /bin/bash -d driver.json file return_code honggfuzz
 ```
 
 If it ran correctly, you should see something like this:
@@ -136,7 +139,8 @@ the `-h` help flag. Some examples:
 
 ```
 ./fuzzer -h
-./fuzzer -h driver
+./fuzzer -hd
+./fuzzer -hi
 ```
 
 Looking at the results in the "output" directory, we see that it didn't find
@@ -158,7 +162,8 @@ containing ./fuzzer.
 ```
 # assuming that you're in $WORKDIR/build/killerbeez
 echo "ABC@" > test1  # ABC@ is one bit different than ABCD, the crashing input
-./fuzzer file return_code honggfuzz -n 2000 -sf ./test1 -d '{"path":"corpus/test-linux","arguments":"@@"}'
+echo '{"path":"corpus/test-linux","arguments":"@@"}' > driver.json
+./fuzzer -n 2000 -s ./test1 -d driver.json file return_code honggfuzz
 ```
 
 Which should yield output similar to this:

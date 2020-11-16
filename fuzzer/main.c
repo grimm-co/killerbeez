@@ -11,9 +11,10 @@
 #include <Shlwapi.h>
 #define F_OK 00     // for checking if a file is open/writable
 #define W_OK 02
+#include "XGetopt.h"
 #else
 #include <libgen.h>     // dirname
-#include <unistd.h>     // access, F_OK, W_OK
+#include <unistd.h>     // access, F_OK, W_OK, getopt
 #include <sys/stat.h>   // mkdir
 #include <errno.h>      // output directory creation
 #endif
@@ -34,32 +35,31 @@ void usage(char * program_name, char * mutator_directory)
 	printf(
 "\n"
 "Usage: %s\n"
-"         driver_name instrumentation_name mutator_name [options]\n"
+"         [options] driver_name instrumentation_name mutator_name\n"
 "\n"
 "Options:\n"
-"  -d driver_options                 Set the options for the driver\n"
-"  -i instrumentation_options        Set the options for the instrumentation\n"
-"  -isd instrumentation_state_file   Set the file containing that the\n"
-"                                      instrumentation state should dump to\n"
-"  -isf instrumentation_state_file   Set the file containing that the\n"
-"                                      instrumentation state should load from\n"
-"  -l logging_options                Set the options for logging\n"
-"  -n num_iterations                 Limit the number of iterations to run\n"
-"                                      (optional, infinite by default)\n"
-"  -m mutator_options                Set the options for the mutator\n"
-"  -md mutator_directory             The directory to look for mutator DLLs in\n"
-"                                      (must be specified to view help for\n"
-"                                      specific mutators)\n"
-"  -ms mutator_state                 Set the state that the mutator should load\n"
-"  -msd mutator_state_file           Set the file containing that the mutator\n"
-"                                      state should dump to\n"
-"  -msf mutator_state_file           Set the file containing that the mutator\n"
-"                                      state should load from\n"
-"  -o output_directory               The directory to write files which cause a\n"
-"                                      crash or hang\n"
-"  -sf seed_file                     The seed file to use\n"
-"\n\n"
-"\n -h <l[ogging], d[river], i[nstrumentation], m[utators]> for more help.\n\n",
+"  -d driver_options              JSON filename with options for the driver\n"
+"  -hd                            Get help text about drivers\n"
+"  -hi                            Get help text about instrumentation\n"
+"  -hl                            Get help text about logging\n"
+"  -hm                            Get help text about mutators\n"
+"  -i instrumentation_options     JSON filename with options for the instrumentation\n"
+"  -j instrumentation_state_file  Set the file that the instrumentation state should dump to\n"
+"  -k instrumentation_state_file  Set the file that the instrumentation state should load from\n"
+"  -l logging_options             JSON filename with options for logging\n"
+"  -m mutator_options             JSON filename with options for the mutator\n"
+"  -n num_iterations              Limit the number of iterations to run\n"
+"                                   (optional, infinite by default)\n"
+"  -o output_directory            The directory to write files which cause a\n"
+"                                   crash or hang\n"
+"  -p mutator_directory           The directory to look for mutator DLLs in\n"
+"                                   (must be specified to view help for\n"
+"                                   specific mutators)\n"
+"  -r mutator_state               Set the state that the mutator should load\n"
+"  -s seed                        The seed file to use\n"
+"  -t mutator_state_file          Set the file that the mutator state should dump to\n"
+"  -u mutator_state_file          Set the file that the mutator state should load from\n"
+"\n\n",
 		program_name
 	);
 
@@ -95,10 +95,15 @@ static void sigint_handler(int sig)
 
 #define NUM_ITERATIONS_INFINITE -1
 
+#define PRINT_HELP(x) \
+		puts(x);      \
+		free(x);
+
 int main(int argc, char ** argv)
 {
 	char *driver_name, *driver_options = NULL,
-		*mutator_name, *mutator_options = NULL, *mutator_saved_state = NULL, *mutation_state_dump_file = NULL, *mutation_state_load_file = NULL,
+		*mutator_name, *mutator_options = NULL, *mutator_saved_state = NULL,
+		*mutation_state_dump_file = NULL, *mutation_state_load_file = NULL,
 		*mutate_buffer = NULL, *mutator_directory = NULL, *mutator_directory_cli = NULL,
 		*logging_options = NULL,
 		*seed_file = NULL, *seed_buffer = NULL,
@@ -107,9 +112,10 @@ int main(int argc, char ** argv)
 		*instrumentation_state_dump_file = NULL;
 	int seed_length = 0, mutate_length = 0, instrumentation_length = 0, mutator_state_length;
 	time_t fuzz_begin_time;
-	int iteration = 0, fuzz_result = FUZZ_NONE, new_path = 0;
+	int i = 0, iteration = 0, fuzz_result = FUZZ_NONE, new_path = 0;
 	char filename[MAX_PATH];
 	char filehash[256];
+	char c;
 	char * directory;
 
 	//Default options
@@ -166,62 +172,73 @@ int main(int argc, char ** argv)
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Parse Arguments ///////////////////////////////////////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#define PRINT_HELP(x) \
-		puts(x);      \
-		free(x);         
-
-	// if "fuzzer.exe -h something"
-	if ( argc > 2 && !strcmp("-h", argv[1]) ) 
+	while ((c = getopt(argc, argv, "d:h:i:j:k:l:m:n:o:p:r:s:t:u:")) != -1)
 	{
-		puts("");
-		if (!strcmp("logging", argv[2]) || !strcmp("l", argv[2])) {
-			PRINT_HELP(logging_help());
-		} else if (!strcmp("driver", argv[2]) || !strcmp("d", argv[2])) {
-			PRINT_HELP(driver_help());
-		} else if (!strcmp("instrumentation", argv[2]) || !strcmp("i", argv[2])) {
-			PRINT_HELP(instrumentation_help());
-		} else if (!strcmp("mutators", argv[2]) || !strcmp("m", argv[2])) {
-			PRINT_HELP(mutator_help(mutator_directory));
-		} else {
-			printf("Unknown help option \"%s\". Expected <l[ogging], d[river], i[nstrumentation], m[utators]>.\n\n",argv[2]);
+		switch (c)
+		{
+			case 'd':
+				read_file(optarg, &driver_options);
+				break;
+			case 'h':
+				if (optarg == NULL) {
+					usage(argv[0], mutator_directory);
+				} else if (strcmp(optarg, "l") == 0) {
+					PRINT_HELP(logging_help());
+				} else if (strcmp(optarg, "d") == 0) {
+					PRINT_HELP(driver_help());
+				} else if (strcmp(optarg, "i") == 0) {
+					PRINT_HELP(instrumentation_help());
+				} else if (strcmp(optarg, "m") == 0) {
+					PRINT_HELP(mutator_help(mutator_directory));
+				}
+				exit(1);
+			case 'i':
+				read_file(optarg, &instrumentation_options);
+				break;
+			case 'j':
+				instrumentation_state_dump_file = optarg;
+				break;
+			case 'k':
+				instrumentation_state_load_file = optarg;
+				break;
+			case 'l':
+				read_file(optarg, &logging_options);
+				break;
+			case 'm':
+				read_file(optarg, &mutator_options);
+				break;
+			case 'n':
+				num_iterations = atoi(optarg);
+				break;
+			case 'o':
+				output_directory = optarg;
+				break;
+			case 'p':
+				mutator_directory_cli = optarg;
+				break;
+			case 'r':
+				mutator_saved_state = optarg;
+				break;
+			case 's':
+				seed_file = optarg;
+				break;
+			case 't':
+				mutation_state_dump_file = optarg;
+				break;
+			case 'u':
+				mutation_state_load_file = optarg;
+				break;
 		}
-		
-		exit(1);
 	}
 
-	if (argc < 4)
+	// Make sure we have enough positional arguments
+	if (argc-optind < 3)
 	{
 		usage(argv[0], mutator_directory);
 	}
-
-	driver_name = argv[1];
-	instrumentation_name = argv[2];
-	mutator_name = argv[3];
-
-	//Now parse the rest of the args now that we have a valid mutator dir setup
-	for (int i = 4; i < argc; i++)
-	{
-		IF_ARG_OPTION("-d", driver_options)
-		ELSE_IF_ARG_OPTION("-i", instrumentation_options)
-		ELSE_IF_ARG_OPTION("-isd", instrumentation_state_dump_file)
-		ELSE_IF_ARG_OPTION("-isf", instrumentation_state_load_file)
-		ELSE_IF_ARGINT_OPTION("-n", num_iterations)
-		ELSE_IF_ARG_OPTION("-m", mutator_options)
-		ELSE_IF_ARG_OPTION("-md", mutator_directory_cli)
-		ELSE_IF_ARG_OPTION("-l", logging_options)
-		ELSE_IF_ARG_OPTION("-ms", mutator_saved_state)
-		ELSE_IF_ARG_OPTION("-msd", mutation_state_dump_file)
-		ELSE_IF_ARG_OPTION("-msf", mutation_state_load_file)
-		ELSE_IF_ARG_OPTION("-o", output_directory)
-		ELSE_IF_ARG_OPTION("-sf", seed_file)
-	    else
-		{
-			if (strcmp("-h", argv[i]))
-				printf("Unknown argument: %s\n", argv[i]);
-			usage(argv[0], mutator_directory);
-		}
-	}
+	driver_name = argv[optind];
+	instrumentation_name = argv[optind+1];
+	mutator_name = argv[optind+2];
 
 	if (setup_logging(logging_options))
 	{
@@ -354,7 +371,7 @@ int main(int argc, char ** argv)
 	if (!driver)
 	{
 		FATAL_MSG("Unknown driver '%s' or bad options: \n\n\tdriver options: %s\n\n"\
-			"\tmutator options: %s\n\n\tPass %s -h driver for help.\n", driver_name,
+			"\tmutator options: %s\n\n\tPass %s -hd for help.\n", driver_name,
 			driver_options, mutator_options, argv[0]);
 	}
 
